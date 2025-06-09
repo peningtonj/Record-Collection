@@ -1,42 +1,52 @@
-package io.github.peningtonj.recordcollection
+package io.github.peningtonj.recordstore
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-import recordcollection.composeapp.generated.resources.Res
-import recordcollection.composeapp.generated.resources.compose_multiplatform
+
+import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthState
+import io.github.peningtonj.recordcollection.viewmodel.SplashViewModel
 
 @Composable
-@Preview
 fun App() {
     MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
+        val viewModel = remember { SplashViewModel() }
+        val authState by viewModel.authState.collectAsState()
+        val profile by viewModel.profileState.collectAsState()
+
         Column(
-            modifier = Modifier
-                .safeContentPadding()
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
+            when (authState) {
+                is AuthState.NotAuthenticated -> {
+                    Button(onClick = { viewModel.startAuth() }) {
+                        Text("Login with Spotify")
+                    }
+                }
+                is AuthState.Authenticating -> {
+                    CircularProgressIndicator()
+                }
+                is AuthState.Authenticated -> {
+                    profile?.let { userProfile ->
+                        Text("Welcome, ${userProfile.displayName ?: "Spotify User"}!")
+                    } ?: Text("Loading profile...")
+                }
+                is AuthState.Error -> {
+                    Text(
+                        text = (authState as AuthState.Error).message,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }
