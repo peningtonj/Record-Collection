@@ -9,6 +9,15 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.sqlDelight)
+}
+
+sqldelight {
+    databases {
+        create("RecordCollectionDatabase") {
+            packageName.set("io.github.peningtonj.recordcollection.db")
+        }
+    }
 }
 
 kotlin {
@@ -27,6 +36,8 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.sqlDelight.driver.android)
+
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -42,9 +53,15 @@ kotlin {
             implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
             implementation("io.ktor:ktor-client-okhttp:3.0.3")
+            implementation(libs.sqlDelight.runtime)
+            implementation(libs.sqlDelight.coroutines)
+            implementation("io.github.aakira:napier:2.7.1")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation("io.mockk:mockk:1.13.8")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+            implementation("app.cash.turbine:turbine:1.0.0") // For testing Flows
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
@@ -53,6 +70,8 @@ kotlin {
             implementation("io.ktor:ktor-server-core:3.0.3")
             implementation("io.ktor:ktor-client-java:3.0.3")
             implementation("org.apache.httpcomponents:httpclient:4.5.14")
+            implementation(libs.sqlDelight.driver.sqlite)
+
         }
     }
 }

@@ -1,0 +1,22 @@
+package io.github.peningtonj.recordcollection.db.mapper
+//
+import io.github.peningtonj.recordcollection.db.Profile
+import io.github.peningtonj.recordcollection.network.spotify.SpotifyProfile
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+
+object ProfileMapper {
+    @OptIn(ExperimentalTime::class)
+    fun SpotifyProfile.toProfileEntity() = Profile(
+        id = id,
+        display_name = displayName,
+        email = email,
+        country = country,
+        spotify_uri = uri,
+        spotify_url = externalUrls["spotify"] ?: "",
+        profile_image_url = images.firstOrNull()?.url,
+        followers_count = followers.total.toLong(),
+        product_type = product,
+        updated_at = Clock.System.now().epochSeconds
+    )
+}

@@ -1,11 +1,8 @@
 package io.github.peningtonj.recordcollection.network.oauth.spotify
 
+import io.github.aakira.napier.Napier
+import io.github.peningtonj.recordcollection.network.common.util.HttpClientProvider
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.forms.FormDataContent
-import io.ktor.client.request.headers
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
 import io.ktor.http.Parameters
 import kotlinx.serialization.Serializable
 import org.apache.http.client.utils.URIBuilder
@@ -15,7 +12,6 @@ import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.URI
 import java.net.URLDecoder
-import java.util.Base64
 
 @Serializable
 data class CallbackResponse(
@@ -30,14 +26,13 @@ data class CallbackResponse(
     }
 }
 
-actual class AuthHandler actual constructor(
-    private val client: HttpClient,
-    private val clientId: String,
-    private val clientSecret: String,
-) {
-    private val redirectUri = "http://localhost:8888/callback"
+class DesktopAuthHandler(
+    client: HttpClient = HttpClientProvider.create()
+) : BaseAuthHandler(client) {
+    override fun getRedirectUri() = "http://localhost:8888/callback"
 
-    actual suspend fun authenticate(): Result<String> {
+    override suspend fun authenticate(): Result<String> {
+        Napier.d { "Starting Desktop Authentication" }
 
         val server = ServerSocket(8888)
         return try {
@@ -47,11 +42,13 @@ actual class AuthHandler actual constructor(
                 .setPath("/authorize")
                 .addParameter("client_id", clientId)
                 .addParameter("response_type", "code")
-                .addParameter("redirect_uri", redirectUri)
+                .addParameter("redirect_uri", getRedirectUri())
                 .addParameter("scope", "playlist-modify-public playlist-modify-private user-library-read")
                 .build()
 
+            Napier.d { "Browsing to URL in Desktop" }
             Desktop.getDesktop().browse(authUrl)
+            Napier.d { "Waiting for callback" }
             val socket = server.accept()
             val reader = socket.getInputStream().bufferedReader()
             val requestLine = reader.readLine()
@@ -74,7 +71,7 @@ actual class AuthHandler actual constructor(
             val outputStream = socket.getOutputStream()
             sendSuccessResponse(outputStream)
             socket.close()
-            println(callbackResponse.code)
+            Napier.d("Received code: ${callbackResponse.code}")
 
             Result.success(callbackResponse.code)
         } catch (e: Exception) {
@@ -82,6 +79,10 @@ actual class AuthHandler actual constructor(
         } finally {
             server.close()
         }
+    }
+
+    override suspend fun refreshToken(): Result<AccessToken> {
+        TODO("Not yet implemented")
     }
 
     private fun sendSuccessResponse(outputStream: OutputStream) {
@@ -99,33 +100,6 @@ actual class AuthHandler actual constructor(
         </html>
     """.trimIndent())
         writer.flush()
-    }
-
-    actual suspend fun exchangeCodeForToken(code: String): Result<AccessToken> {
-        return try {
-            val response = client.post("https://accounts.spotify.com/api/token") {
-                headers {
-                    append("Authorization", "Basic ${buildBasicAuth()}")
-                }
-                setBody(FormDataContent(Parameters.build {
-                    append("grant_type", "authorization_code")
-                    append("code", code)
-                    append("redirect_uri", redirectUri)
-                }))
-            }
-
-            Result.success(response.body())
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    private fun buildBasicAuth(): String {
-        return Base64.getEncoder().encodeToString("$clientId:$clientSecret".toByteArray())
-    }
-
-    actual suspend fun refreshToken(): Result<AccessToken> {
-        TODO("Not yet implemented")
     }
 
 }

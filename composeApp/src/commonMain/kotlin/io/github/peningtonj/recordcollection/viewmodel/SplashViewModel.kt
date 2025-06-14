@@ -1,77 +1,73 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import io.github.peningtonj.recordcollection.db.Profile
+import io.github.peningtonj.recordcollection.di.DependencyContainer
 import io.github.peningtonj.recordcollection.network.common.util.HttpClientProvider
-import io.github.peningtonj.recordcollection.network.oauth.spotify.AccessToken
-import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
-import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthState
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyProfile
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import io.github.peningtonj.recordcollection.util.AppError
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class SplashViewModel(
+    private val dependencyContainer: DependencyContainer
+) : ViewModel() {
+    private val _profileState = MutableStateFlow<ProfileScreenState>(ProfileScreenState())
+    val profileState = _profileState.asStateFlow()
+    
+    val authState = dependencyContainer.authRepository.authState
 
-) {
-    private val _authState = MutableStateFlow<AuthState>(AuthState.NotAuthenticated)
-    private val _profileState = MutableStateFlow<SpotifyProfile?>(null)
-    val authState: StateFlow<AuthState> = _authState.asStateFlow()
-    val profileState: StateFlow<SpotifyProfile?> = _profileState.asStateFlow()
+    private val spotifyApi = SpotifyApi(
+        client = HttpClientProvider.create(),
+        authRepository = dependencyContainer.authRepository
+    )
 
-    private val spotifyApi = SpotifyApi(HttpClientProvider.create())
-
-    private val viewModelScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private val authHandler = AuthHandler()
+    init {
+        loadProfile()
+    }
 
     fun startAuth() {
         viewModelScope.launch {
-            _authState.value = AuthState.Authenticating
-
-            authHandler.authenticate()
-                .onSuccess { code ->
-                    // Here you would typically exchange the code for an access token
-                    authHandler.exchangeCodeForToken(code)
-                        .onSuccess { accessToken ->
-                            onAuthSuccess(accessToken)
-                        }
-                        .onFailure { error ->
-                            onAuthError(error.message ?: "Exchange code failed")
-                        }
-
-                }
-                    // For now, we'll just pass the code
-
-                .onFailure { error ->
-                    onAuthError(error.message ?: "Authentication failed")
+            dependencyContainer.authRepository.authenticate()
+                .onSuccess { 
+                    loadProfile()
                 }
         }
     }
 
-
-    fun onAuthSuccess(token: AccessToken) {
-        _authState.value = AuthState.Authenticated(token)
-        // Fetch profile after successful authentication
+    fun loadProfile() {
         viewModelScope.launch {
-            spotifyApi.getCurrentUserProfile(token.accessToken)
-                .onSuccess { profile ->
-                    _profileState.value = profile
+            _profileState.value = _profileState.value.copy(isLoading = true)
+            
+            try {
+                val dbProfile = dependencyContainer.profileRepository.getProfile()
+                val apiProfile = spotifyApi.getCurrentUserProfile().getOrNull()
+                
+                _profileState.value = _profileState.value.copy(
+                    isLoading = false,
+                    dbProfile = dbProfile,
+                    apiProfile = apiProfile
+                )
+                
+                apiProfile?.let { 
+                    dependencyContainer.profileRepository.saveProfile(it)
                 }
-                .onFailure { error ->
-                    onAuthError(error.message ?: "Failed to fetch profile")
-                }
+            } catch (e: Exception) {
+                _profileState.value = _profileState.value.copy(
+                    isLoading = false,
+                    error = AppError.ProfileError(e.message ?: "Failed to load profile")
+                )
+            }
         }
-    }
-
-    fun onAuthError(error: String) {
-        _authState.value = AuthState.Error(error)
-    }
-    
-    fun clear() {
-        viewModelScope.cancel()
     }
 }
+
+data class ProfileScreenState(
+    val dbProfile: Profile? = null,
+    val apiProfile: SpotifyProfile? = null,
+    val isLoading: Boolean = false,
+    val error: AppError? = null
+)

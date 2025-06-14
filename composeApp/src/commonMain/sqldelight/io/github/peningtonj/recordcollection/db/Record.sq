@@ -1,0 +1,30 @@
+CREATE TABLE Record (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    artist TEXT NOT NULL,
+    year INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+-- Get all records
+getAllRecords:
+SELECT *
+FROM Record
+ORDER BY created_at DESC;
+
+-- Get record by id
+getRecordById:
+SELECT *
+FROM Record
+WHERE id = ?;
+
+-- Insert or replace a record
+insertOrReplace:
+INSERT OR REPLACE INTO Record(id, title, artist, year, updated_at)
+VALUES (?, ?, ?, ?, strftime('%s', 'now'));
+
+-- Delete a record
+deleteRecord:
+DELETE FROM Record
+WHERE id = ?;
