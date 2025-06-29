@@ -25,7 +25,4 @@ class MainViewModel(
         }
     }
 
-    fun onLoginClick() {
-        // TODO: Implement login logic later
-    }
 }

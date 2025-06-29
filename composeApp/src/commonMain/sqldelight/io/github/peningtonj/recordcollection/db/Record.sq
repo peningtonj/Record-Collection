@@ -1,30 +1,92 @@
+import kotlin.String;
+import kotlin.Int;
+import kotlin.collections.List;
+
 CREATE TABLE Record (
     id TEXT NOT NULL PRIMARY KEY,
-    title TEXT NOT NULL,
-    artist TEXT NOT NULL,
-    year INTEGER,
+    name TEXT NOT NULL,
+    artist_id TEXT NOT NULL,
+    artist_name TEXT NOT NULL,
+    album_type TEXT NOT NULL,
+    total_tracks INTEGER NOT NULL,
+    release_date TEXT NOT NULL,
+    release_date_precision TEXT NOT NULL,
+    spotify_uri TEXT NOT NULL,
+    spotify_url TEXT NOT NULL,
+    image_url TEXT,
+    popularity INTEGER,
+    label TEXT,
+    copyrights TEXT,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 );
 
--- Get all records
 getAllRecords:
 SELECT *
 FROM Record
 ORDER BY created_at DESC;
 
--- Get record by id
 getRecordById:
 SELECT *
 FROM Record
 WHERE id = ?;
 
--- Insert or replace a record
-insertOrReplace:
-INSERT OR REPLACE INTO Record(id, title, artist, year, updated_at)
-VALUES (?, ?, ?, ?, strftime('%s', 'now'));
+insertOrReplace {
+    UPDATE Record
+    SET name = ?,
+        artist_id = ?,
+        artist_name = ?,
+        album_type = ?,
+        total_tracks = ?,
+        release_date = ?,
+        release_date_precision = ?,
+        spotify_uri = ?,
+        spotify_url = ?,
+        image_url = ?,
+        popularity = ?,
+        label = ?,
+        copyrights = ?,
+        updated_at = strftime('%s', 'now')
+    WHERE id = ?;
 
--- Delete a record
+    INSERT OR IGNORE INTO Record(
+        id,
+        name,
+        artist_id,
+        artist_name,
+        album_type,
+        total_tracks,
+        release_date,
+        release_date_precision,
+        spotify_uri,
+        spotify_url,
+        image_url,
+        popularity,
+        label,
+        copyrights,
+        updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'));
+}
+
 deleteRecord:
 DELETE FROM Record
 WHERE id = ?;
+
+searchByName:
+SELECT *
+FROM Record
+WHERE name LIKE '%' || :query || '%'
+ORDER BY created_at DESC;
+
+searchByArtist:
+SELECT *
+FROM Record
+WHERE artist_name LIKE '%' || :query || '%'
+ORDER BY created_at DESC;
+
+getByAlbumType:
+SELECT *
+FROM Record
+WHERE album_type = ?
+ORDER BY created_at DESC;

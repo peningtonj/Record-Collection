@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.db.Profile
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
-import io.github.peningtonj.recordcollection.network.spotify.SpotifyProfile
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfile
 import io.github.peningtonj.recordcollection.repository.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +18,7 @@ class ProfileViewModel(
     val profile = _profile.asStateFlow()
 
     suspend fun fetchAndSaveProfile(): Result<SpotifyProfile> {
-        return spotifyApi.getCurrentUserProfile().also { result ->
+        return spotifyApi.user.getCurrentUserProfile().also { result ->
             result.getOrNull()?.let { profile ->
                 repository.saveProfile(profile)
             }

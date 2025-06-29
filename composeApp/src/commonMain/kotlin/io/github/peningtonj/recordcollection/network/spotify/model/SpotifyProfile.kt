@@ -1,4 +1,4 @@
-package io.github.peningtonj.recordcollection.network.spotify
+package io.github.peningtonj.recordcollection.network.spotify.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

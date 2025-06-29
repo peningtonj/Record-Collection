@@ -4,7 +4,7 @@ import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.Profile
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.db.mapper.ProfileMapper.toProfileEntity
-import io.github.peningtonj.recordcollection.network.spotify.SpotifyProfile
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfile
 
 class ProfileRepository(private val database: RecordCollectionDatabase) {
     fun saveProfile(profile: SpotifyProfile) {

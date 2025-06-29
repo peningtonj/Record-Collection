@@ -1,7 +1,7 @@
 package io.github.peningtonj.recordcollection.db.mapper
 //
 import io.github.peningtonj.recordcollection.db.Profile
-import io.github.peningtonj.recordcollection.network.spotify.SpotifyProfile
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfile
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 

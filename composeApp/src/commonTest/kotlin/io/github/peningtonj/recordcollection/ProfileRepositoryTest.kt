@@ -3,10 +3,10 @@ package io.github.peningtonj.recordcollection.repository
 import io.github.peningtonj.recordcollection.db.Profile
 import io.github.peningtonj.recordcollection.db.ProfileQueries
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
-import io.github.peningtonj.recordcollection.network.spotify.ExplicitContent
-import io.github.peningtonj.recordcollection.network.spotify.Followers
-import io.github.peningtonj.recordcollection.network.spotify.Image
-import io.github.peningtonj.recordcollection.network.spotify.SpotifyProfile
+import io.github.peningtonj.recordcollection.network.spotify.model.ExplicitContent
+import io.github.peningtonj.recordcollection.network.spotify.model.Followers
+import io.github.peningtonj.recordcollection.network.spotify.model.Image
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfile
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk

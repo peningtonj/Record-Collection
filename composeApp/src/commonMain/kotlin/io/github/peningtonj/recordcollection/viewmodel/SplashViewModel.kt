@@ -6,7 +6,7 @@ import io.github.peningtonj.recordcollection.db.Profile
 import io.github.peningtonj.recordcollection.di.DependencyContainer
 import io.github.peningtonj.recordcollection.network.common.util.HttpClientProvider
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
-import io.github.peningtonj.recordcollection.network.spotify.SpotifyProfile
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfile
 import io.github.peningtonj.recordcollection.util.AppError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,7 +44,7 @@ class SplashViewModel(
             
             try {
                 val dbProfile = dependencyContainer.profileRepository.getProfile()
-                val apiProfile = spotifyApi.getCurrentUserProfile().getOrNull()
+                val apiProfile = spotifyApi.user.getCurrentUserProfile().getOrNull()
                 
                 _profileState.value = _profileState.value.copy(
                     isLoading = false,
