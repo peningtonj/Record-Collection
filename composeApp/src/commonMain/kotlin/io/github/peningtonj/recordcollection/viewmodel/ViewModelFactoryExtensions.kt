@@ -27,3 +27,10 @@ fun rememberMainViewModel(dependencies: DependencyContainer = LocalDependencyCon
         MainViewModel(dependencies.profileRepository)
     }
 }
+
+@Composable
+fun rememberLibraryViewModel(dependencies: DependencyContainer = LocalDependencyContainer.current): LibraryViewModel {
+    return remember {
+        LibraryViewModel(dependencies.albumRepository)
+    }
+}

@@ -4,24 +4,39 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class Album(
+data class AlbumDto(
     val id: String,
     val name: String,
-    val albumType: AlbumType,
-    val artists: List<Artist>,
+    @SerialName("album_type")
+    val albumType: AlbumTypeDto,
+    val artists: List<SimplifiedArtistDto>,
+    @SerialName("total_tracks")
     val totalTracks: Int,
+    @SerialName("release_date")
     val releaseDate: String,
+    @SerialName("release_date_precision")
     val releaseDatePrecision: ReleaseDatePrecision,
     val uri: String,
+    @SerialName("external_urls")
     val externalUrls: Map<String, String>,
-    val images: List<Image>,
+    @SerialName("external_ids")
+    val externalIds: Map<String, String>,
+    val images: List<ImageDto>,
     val popularity: Int?,
     val label: String?,
-    val copyrights: List<Copyright>
+    val copyrights: List<Copyright>,
+    @SerialName("available_markets")
+    val availableMarkets: List<String>,
+    val href: String,
+    val restrictions: Restrictions? = null,
+    val type: String,
+    val genres: List<String>,
+    val tracks: TracksDto
+
 )
 
 @Serializable
-enum class AlbumType {
+enum class AlbumTypeDto {
     @SerialName("album") ALBUM,
     @SerialName("single") SINGLE,
     @SerialName("compilation") COMPILATION
@@ -33,3 +48,9 @@ enum class ReleaseDatePrecision {
     @SerialName("month") MONTH,
     @SerialName("day") DAY
 }
+
+
+@Serializable
+data class AlbumsResponse(
+    val albums: List<AlbumDto>
+)

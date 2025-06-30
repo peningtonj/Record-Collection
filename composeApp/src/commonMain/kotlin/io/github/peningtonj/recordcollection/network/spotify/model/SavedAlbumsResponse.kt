@@ -3,8 +3,9 @@ package io.github.peningtonj.recordcollection.network.spotify.model
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class PaginatedResponse<T>(
-    val items: List<T>,
+data class SavedAlbumsResponse(
+    val href: String,
+    val items: List<SavedAlbumDto>,
     val total: Int,
     val limit: Int,
     val offset: Int,
@@ -13,8 +14,7 @@ data class PaginatedResponse<T>(
 )
 
 @Serializable
-data class SearchResponse(
-    val albums: PaginatedResponse<AlbumDto>?,
-    val artists: PaginatedResponse<FullArtistDto>?,
-    val tracks: PaginatedResponse<TrackDto>?
+data class SavedAlbumDto(
+    val added_at: String, // ISO 8601 timestamp
+    val album: AlbumDto
 )

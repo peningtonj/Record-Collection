@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SpotifyProfile(
+data class SpotifyProfileDto(
     val country: String? = null,
     @SerialName("display_name")
     val displayName: String? = null,
@@ -16,7 +16,7 @@ data class SpotifyProfile(
     val followers: Followers,
     val href: String,
     val id: String,
-    val images: List<Image>,
+    val images: List<ImageDto>,
     val product: String? = null,
     val type: String,
     val uri: String
@@ -37,7 +37,7 @@ data class Followers(
 )
 
 @Serializable
-data class Image(
+data class ImageDto(
     val url: String,
     val height: Int? = null,
     val width: Int? = null

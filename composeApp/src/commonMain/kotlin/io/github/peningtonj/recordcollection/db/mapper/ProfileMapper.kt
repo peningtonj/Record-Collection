@@ -1,13 +1,13 @@
 package io.github.peningtonj.recordcollection.db.mapper
 //
 import io.github.peningtonj.recordcollection.db.Profile
-import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfile
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfileDto
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 object ProfileMapper {
     @OptIn(ExperimentalTime::class)
-    fun SpotifyProfile.toProfileEntity() = Profile(
+    fun SpotifyProfileDto.toProfileEntity() = Profile(
         id = id,
         display_name = displayName,
         email = email,

@@ -28,7 +28,7 @@ class LoginViewModel(
             authRepository.authenticate()
                 .onSuccess { 
                     _authState.value = AuthState.Authenticated(it)
-                    navigator.navigateTo(Screen.Profile)
+                    navigator.navigateTo(Screen.Library)
                 }
                 .onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Authentication failed")

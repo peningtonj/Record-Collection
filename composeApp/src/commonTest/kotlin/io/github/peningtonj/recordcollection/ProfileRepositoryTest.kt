@@ -5,8 +5,8 @@ import io.github.peningtonj.recordcollection.db.ProfileQueries
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.network.spotify.model.ExplicitContent
 import io.github.peningtonj.recordcollection.network.spotify.model.Followers
-import io.github.peningtonj.recordcollection.network.spotify.model.Image
-import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfile
+import io.github.peningtonj.recordcollection.network.spotify.model.ImageDto
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfileDto
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -192,7 +192,7 @@ class ProfileRepositoryTest {
             updated_at = 1
         )
 
-        fun createSpotifyProfile() = SpotifyProfile(
+        fun createSpotifyProfile() = SpotifyProfileDto(
             country = "US",
             displayName = "Test User",
             email = "test@example.com",
@@ -210,7 +210,7 @@ class ProfileRepositoryTest {
             href = "https://api.spotify.com/v1/users/test",
             id = "test",
             images = listOf(
-                Image(
+                ImageDto(
                     url = "https://example.com/profile.jpg",
                     height = 300,
                     width = 300
