@@ -13,6 +13,7 @@ class DesktopNavigator : Navigator {
 
     private val _currentScreenFlow = MutableStateFlow<Screen>(Screen.Login)
     override val currentScreen: StateFlow<Screen> = _currentScreenFlow.asStateFlow()
+    override val currentRoute: String? = null
     private val _backStack = mutableStateOf(emptyList<Screen>())
 
     init {

@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 interface Navigator {
     fun navigate(event: NavigationEvent)
     val currentScreen: StateFlow<Screen>
+    val currentRoute: String?
 
     // Convenience methods
     fun navigateTo(screen: Screen) = navigate(NavigationEvent.NavigateTo(screen))

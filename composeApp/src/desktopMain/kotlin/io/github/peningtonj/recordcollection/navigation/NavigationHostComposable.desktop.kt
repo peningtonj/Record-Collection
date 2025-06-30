@@ -17,5 +17,4 @@ actual fun NavigationHost(
     Napier.d("Desktop current screen is: $currentScreen")
 
     content(currentScreen)
-
 }
