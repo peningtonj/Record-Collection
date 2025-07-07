@@ -10,13 +10,13 @@ import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthState
-import io.github.peningtonj.recordcollection.repository.BaseSpotifyAuthRepository
+import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class LoginViewModel(
-    private val authRepository: BaseSpotifyAuthRepository,
+    private val authRepository: SpotifyAuthRepository,
     private val navigator: Navigator
 ) : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.NotAuthenticated)
@@ -26,7 +26,7 @@ class LoginViewModel(
         viewModelScope.launch {
             _authState.value = AuthState.Authenticating
             authRepository.authenticate()
-                .onSuccess { 
+                .onSuccess {
                     _authState.value = AuthState.Authenticated(it)
                     navigator.navigateTo(Screen.Library)
                 }
