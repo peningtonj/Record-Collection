@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.network.spotify.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -15,6 +16,7 @@ data class SavedAlbumsResponse(
 
 @Serializable
 data class SavedAlbumDto(
-    val added_at: String, // ISO 8601 timestamp
+    @SerialName("added_at")
+    val addedAt: String, // ISO 8601 timestamp
     val album: AlbumDto
 )

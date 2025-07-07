@@ -1,15 +1,14 @@
--- commonMain/db/Album.sq should be renamed to AlbumEntity.sq
-CREATE TABLE album_entity (  -- Changed from 'album' to be consistent
+CREATE TABLE album_entity (
     id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
-    artist_name TEXT NOT NULL,
+    primary_artist TEXT NOT NULL,
+    artists TEXT NOT NULL,
     release_date TEXT,
     total_tracks INTEGER NOT NULL,
     spotify_uri TEXT NOT NULL,
-    spotify_url TEXT,
     added_at TEXT NOT NULL,
     album_type TEXT NOT NULL,
-    cover_image_url TEXT,
+    images TEXT NOT NULL,
     updated_at INTEGER NOT NULL
 );
 
@@ -22,14 +21,14 @@ insert:
 INSERT OR REPLACE INTO album_entity(
     id,
     name,
-    artist_name,
+    primary_artist,
+    artists,
     release_date,
     total_tracks,
     spotify_uri,
-    spotify_url,
     added_at,
     album_type,
-    cover_image_url,
+    images,
     updated_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
@@ -43,3 +42,13 @@ getLatest:
 SELECT * FROM album_entity
 ORDER BY added_at DESC
 LIMIT 1;
+
+getByReleaseDate:
+SELECT * FROM album_entity
+WHERE release_date LIKE '%' || :year || '%';
+
+getAllArtists:
+SELECT primary_artist
+FROM album_entity
+GROUP BY primary_artist
+ORDER BY COUNT(*) DESC;

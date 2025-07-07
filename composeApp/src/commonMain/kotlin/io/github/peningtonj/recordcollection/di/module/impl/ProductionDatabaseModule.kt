@@ -1,7 +1,7 @@
 package io.github.peningtonj.recordcollection.di.module.impl
 
+import DatabaseHelper
 import io.github.peningtonj.recordcollection.db.DatabaseDriver
-import io.github.peningtonj.recordcollection.db.DatabaseHelper
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.di.module.DatabaseModule
 
@@ -17,7 +17,6 @@ class ProductionDatabaseModule(
     }
     
     override fun close() {
-        database?.close()
         database = null
     }
 }

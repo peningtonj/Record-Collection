@@ -1,0 +1,41 @@
+CREATE TABLE artist_entity (
+    id TEXT NOT NULL PRIMARY KEY,
+    followers INTEGER NOT NULL,
+    genres TEXT AS kotlin.collections.List<kotlin.String> NOT NULL,
+    href TEXT NOT NULL,
+    images TEXT NOT NULL,
+    name TEXT NOT NULL,
+    popularity INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    uri TEXT NOT NULL
+);
+
+insert:
+INSERT OR REPLACE INTO artist_entity(
+    id,
+    followers,
+    genres,
+    href,
+    images,
+    name,
+    popularity,
+    type,
+    uri
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectAll:
+SELECT *
+FROM artist_entity;
+
+selectAllIds:
+SELECT id
+FROM artist_entity;
+
+selectAllGenres:
+SELECT genres
+FROM artist_entity;
+
+selectArtistGenres:
+SELECT genres
+FROM artist_entity
+WHERE id = ?;

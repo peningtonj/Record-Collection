@@ -4,17 +4,23 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOne
 import app.cash.sqldelight.coroutines.mapToOneOrNull
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
-import io.github.peningtonj.recordcollection.db.Album_entity
+import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.Json
 
 class AlbumRepository(
     private val database: RecordCollectionDatabase,
     private val spotifyApi: SpotifyApi
 ) {
     suspend fun syncSavedAlbums() {
+        Napier.d("Syncing Albums")
         var offset = 0
         val limit = 50 // Max allowed by Spotify API
         var hasMore = true
@@ -28,14 +34,14 @@ class AlbumRepository(
                         database.albumQueries.insert(
                             id = savedAlbum.album.id,
                             name = savedAlbum.album.name,
-                            artist_name = savedAlbum.album.artists.firstOrNull()?.name ?: "Unknown Artist",
+                            primary_artist = savedAlbum.album.artists.firstOrNull()?.name ?: "Unknown Artist",
+                            artists = Json.encodeToString(savedAlbum.album.artists),
                             release_date = savedAlbum.album.releaseDate,
                             total_tracks = savedAlbum.album.totalTracks.toLong(),
                             spotify_uri = savedAlbum.album.uri,
-                            spotify_url = savedAlbum.album.externalUrls["spotify"],
-                            added_at = savedAlbum.added_at,
+                            added_at = savedAlbum.addedAt,
                             album_type = savedAlbum.album.albumType.toString(),
-                            cover_image_url = savedAlbum.album.images.firstOrNull()?.url,
+                            images = Json.encodeToString(savedAlbum.album.images),
                             updated_at = System.currentTimeMillis()
                         )
                     }
@@ -47,10 +53,25 @@ class AlbumRepository(
                     throw error // Or handle error appropriately
                 }
         }
+        Napier.d("Finished Syncing Albums")
+
     }
 
-    fun getAllAlbums(): Flow<List<Album_entity>> = database.albumQueries
+    fun getEarliestReleaseDate(): Flow<LocalDate?> = getAllAlbums()
+        .map { albums ->
+            albums.minOfOrNull { album ->
+                album.releaseDate
+            }
+        }
+
+    fun getAllAlbums(): Flow<List<Album>> = database.albumQueries
         .selectAll()
+        .asFlow()
+        .mapToList(Dispatchers.IO)
+        .map { it.map(AlbumMapper::toDomain) }
+
+    fun getAllArtists(): Flow<List<String>> = database.albumQueries
+        .getAllArtists()
         .asFlow()
         .mapToList(Dispatchers.IO)
 
@@ -59,9 +80,25 @@ class AlbumRepository(
         .asFlow()
         .mapToOne(Dispatchers.IO)
 
-    fun getLatestAlbum(): Flow<Album_entity?> = database.albumQueries
-        .getLatest()
-        .asFlow()
-        .mapToOneOrNull(Dispatchers.IO)
+    fun getLatestAlbum(): Flow<Album?> {
+        Napier.d("DB QUERY: getLatestAlbum")
+
+        return database.albumQueries.getLatest()
+            .asFlow()
+            .mapToOneOrNull(Dispatchers.IO)
+            .map { entity ->
+                entity?.let(AlbumMapper::toDomain)
+            }
+    }
+
+    fun getAlbumsByYear(year : String): Flow<List<Album>> {
+        return database.albumQueries.getByReleaseDate(year)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { list ->
+                list.map(AlbumMapper::toDomain)
+            }
+    }
+
 
 }

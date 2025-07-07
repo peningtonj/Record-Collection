@@ -29,3 +29,8 @@ data class FullArtistDto(
     val type: String,
     val uri: String
 )
+
+@Serializable
+data class ArtistsResponse(
+    val artists: List<FullArtistDto>
+)

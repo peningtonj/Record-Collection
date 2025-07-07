@@ -48,30 +48,33 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-            implementation("io.ktor:ktor-client-core:3.0.3")
-            implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
-            implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
-            implementation("io.ktor:ktor-client-okhttp:3.0.3")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+            implementation("io.ktor:ktor-client-core:3.1.0")
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.ktor.client.okhttp)
             implementation(libs.sqlDelight.runtime)
             implementation(libs.sqlDelight.coroutines)
-            implementation("io.github.aakira:napier:2.7.1")
+            implementation(libs.napier)
+            implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+            implementation("io.coil-kt.coil3:coil-network-ktor3:3.2.0")
+            implementation(compose.materialIconsExtended)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation("io.mockk:mockk:1.13.8")
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-            implementation("app.cash.turbine:turbine:1.0.0") // For testing Flows
+            implementation(libs.mockk.core)
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+            implementation(libs.turbine) // For testing Flows
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
-            implementation("org.jetbrains.skiko:skiko-awt-runtime-macos-arm64:0.7.89")
-            implementation("io.ktor:ktor-server-core:3.0.3")
-            implementation("io.ktor:ktor-client-java:3.0.3")
+            implementation("org.jetbrains.skiko:skiko-awt-runtime-macos-arm64:0.9.4.2")
+            implementation(libs.ktor.server.core)
+            implementation(libs.ktor.client.java)
             implementation("org.apache.httpcomponents:httpclient:4.5.14")
             implementation(libs.sqlDelight.driver.sqlite)
-
         }
     }
 }

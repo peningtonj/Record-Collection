@@ -43,7 +43,7 @@ class DesktopAuthHandler(
                 .addParameter("client_id", clientId)
                 .addParameter("response_type", "code")
                 .addParameter("redirect_uri", getRedirectUri())
-                .addParameter("scope", "playlist-modify-public playlist-modify-private user-library-read")
+                .addParameter("scope", "playlist-modify-public playlist-modify-private user-library-read user-modify-playback-state")
                 .build()
 
             Napier.d { "Browsing to URL in Desktop" }

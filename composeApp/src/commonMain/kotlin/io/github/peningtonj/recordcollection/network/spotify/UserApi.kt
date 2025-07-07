@@ -9,6 +9,6 @@ class UserApi(
     private val client: HttpClient,
 ) {
     suspend fun getCurrentUserProfile(): Result<SpotifyProfileDto> = runCatching {
-        client.get("https://api.spotify.com/v1/me").body()
+        client.get("${SpotifyApi.BASE_URL}/me").body()
     }
 }

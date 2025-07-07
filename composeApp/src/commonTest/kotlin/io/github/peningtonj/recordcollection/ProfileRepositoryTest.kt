@@ -12,7 +12,6 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.sql.SQLException
@@ -29,11 +28,6 @@ class ProfileRepositoryTest {
     fun setup() {
         coEvery { mockDatabase.profileQueries } returns mockQueries
         repository = ProfileRepository(mockDatabase)
-    }
-
-    @After
-    fun tearDown() {
-        // Clear any stored state if needed
     }
 
     /**
@@ -207,7 +201,7 @@ class ProfileRepositoryTest {
                 href = null,
                 total = 42
             ),
-            href = "https://api.spotify.com/v1/users/test",
+            href = "${SpotifyApi.BASE_URL}/users/test",
             id = "test",
             images = listOf(
                 ImageDto(

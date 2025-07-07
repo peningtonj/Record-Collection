@@ -1,7 +1,6 @@
 // commonMain/navigation/Navigator.kt
 package io.github.peningtonj.recordcollection.navigation
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import kotlinx.coroutines.flow.StateFlow
 

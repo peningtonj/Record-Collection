@@ -1,35 +1,131 @@
-package io.github.peningtonj.recordcollection.services
+package io.github.peningtonj.recordcollection.service
 
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.filter.AlbumFilter
+import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.datetime.LocalDate
 
 class LibraryService(
     private val albumRepository: AlbumRepository,
     private val artistRepository: ArtistRepository
 ) {
+    // Core data operations
     fun getAllAlbumsWithGenres(): Flow<List<Album>> = combine(
         albumRepository.getAllAlbums(),
         artistRepository.getAllArtists()
     ) { albums, artists ->
         val artistGenreMap = artists.associate { it.id to it.genres }
+        enrichAlbumsWithGenres(albums, artistGenreMap)
+    }
 
-        albums.map { album ->
-            val genres = album.artists.firstOrNull()?.id?.let { artistId ->
-                artistGenreMap[artistId]
-            } ?: emptyList()
+    fun getFilteredAlbums(filter: AlbumFilter): Flow<List<Album>> =
+        getAllAlbumsWithGenres().map { albums ->
+            filterAlbums(albums, filter)
+        }
 
-            album.copy(genres = genres)
+    // Library statistics
+    fun getLibraryStats(): Flow<LibraryStats> = combine(
+        albumRepository.getAlbumCount(),
+        albumRepository.getAllAlbums(),
+        artistRepository.getAllGenres()
+    ) { count, albums, genres ->
+        LibraryStats(
+            totalAlbums = count.toInt(),
+            uniqueArtists = albums.map { it.primaryArtist }.distinct().size,
+            genreDistribution = genres.groupingBy { it }.eachCount(),
+            decadeDistribution = calculateDecadeDistribution(albums)
+        )
+    }
+
+    // Helper functions
+    private fun enrichAlbumsWithGenres(
+        albums: List<Album>,
+        artistGenreMap: Map<String, List<String>>
+    ): List<Album> = albums.map { album ->
+        val genres = album.artists.firstOrNull()?.id?.let { artistId ->
+            artistGenreMap[artistId]
+        } ?: emptyList()
+        album.copy(genres = genres)
+    }
+
+    private fun filterAlbums(albums: List<Album>, albumFilter: AlbumFilter): List<Album> {
+        Napier.d("Filtering ${albums.size} albums with filter: $albumFilter")
+
+        return albums.filter { album ->
+            matchesDateRange(album, albumFilter.releaseDateRange) &&
+                    matchesTags(album, albumFilter.tags)
         }
     }
 
-    suspend fun syncLibraryData() {
-        albumRepository.syncSavedAlbums()
-        val albums = albumRepository.getAllAlbums().first()
-        val artists = artistRepository.getArtistsForAlbums(albums)
-        artistRepository.saveArtists(artists)
+    private fun matchesDateRange(album: Album, dateRange: DateRange?): Boolean {
+        if (dateRange == null) return true
+
+        return when {
+            dateRange.start != null && album.releaseDate <= dateRange.start -> false
+            dateRange.end != null && album.releaseDate >= dateRange.end -> false
+            else -> true
+        }
     }
+
+    private fun matchesTags(album: Album, tags: Map<String, List<String>>): Boolean {
+        return tags.all { (category, values) ->
+            when (category) {
+                "Artist" -> matchesArtist(album, values)
+                "Genre" -> matchesGenre(album, values)
+                else -> true
+            }
+        }
+    }
+
+    private fun matchesArtist(album: Album, artists: List<String>): Boolean {
+        val albumArtists = album.artists.map { it.name.lowercase() }
+        return artists.any { selectedArtist ->
+            albumArtists.any { it.contains(selectedArtist.lowercase()) }
+        }
+    }
+
+    private fun matchesGenre(album: Album, genres: List<String>): Boolean {
+        val albumGenres = album.genres.map { it.lowercase() }
+        return genres.any { selectedGenre ->
+            albumGenres.any { it.contains(selectedGenre.lowercase()) }
+        }
+    }
+
+    private fun calculateDecadeDistribution(albums: List<Album>): Map<String, Int> {
+        return albums
+            .groupBy { album -> "${(album.releaseDate.year / 10) * 10}s" }
+            .mapValues { it.value.size }
+    }
+
+    suspend fun syncLibraryData() {
+        Napier.d("Starting library sync")
+
+        albumRepository.syncSavedAlbums()
+
+        albumRepository.getAllAlbums()
+            .collect { albums ->
+                if (albums.isNotEmpty()) {
+                    val artists = artistRepository.getArtistsForAlbums(albums)
+                    if (artists.isNotEmpty()) {
+                        artistRepository.saveArtists(artists)
+                    }
+                }
+            }
+
+        Napier.d("Library sync completed")
+    }
+
 }
+
+data class LibraryStats(
+    val totalAlbums: Int,
+    val uniqueArtists: Int,
+    val genreDistribution: Map<String, Int>,
+    val decadeDistribution: Map<String, Int>
+)

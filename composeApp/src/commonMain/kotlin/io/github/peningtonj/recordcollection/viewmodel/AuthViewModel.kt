@@ -4,33 +4,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.peningtonj.recordcollection.di.DependencyContainer
+import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalDependencyContainer
-import io.github.peningtonj.recordcollection.repository.BaseSpotifyAuthRepository
+import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthState
+import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
-    private val authRepository: BaseSpotifyAuthRepository
+    authRepository: SpotifyAuthRepository
 ) : ViewModel() {
-    private val _isAuthenticated = MutableStateFlow<Boolean?>(null) // null means "checking"
-    val isAuthenticated = _isAuthenticated.asStateFlow()
+    val authState = authRepository.authState
 
-    init {
-        checkAuthState()
-    }
-
-    fun checkAuthState() {
-        viewModelScope.launch {
-            _isAuthenticated.value = authRepository.getAccessToken() != null
-        }
-    }
+    // For UI that only needs to know if authenticated
+    val isAuthenticated = authState.map { state ->
+        state is AuthState.Authenticated
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
 }
 
-@Composable
-fun rememberAuthViewModel(
-    dependencies: DependencyContainer = LocalDependencyContainer.current
-) = remember(dependencies) {
-    AuthViewModel(dependencies.authRepository)
-}

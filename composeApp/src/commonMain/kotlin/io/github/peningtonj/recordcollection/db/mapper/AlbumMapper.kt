@@ -2,14 +2,13 @@ package io.github.peningtonj.recordcollection.db.mapper
 
 import io.github.peningtonj.recordcollection.db.Album_entity
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.AlbumType
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.ImageDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedArtistDto
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
-import java.text.ParseException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 
 object AlbumMapper {
@@ -24,8 +23,8 @@ object AlbumMapper {
             releaseDate = parseReleaseDate(entity.release_date.toString()),
             totalTracks = entity.total_tracks.toInt(),
             spotifyUri = entity.spotify_uri,
-            addedAt = entity.added_at,
-            albumType = entity.album_type,
+            addedAt = Instant.parse(entity.added_at),
+            albumType = AlbumType.fromString(entity.album_type),
             images = Json.decodeFromString<List<ImageDto>>(entity.images)
                 .map { ImageMapper.toDomain(it) },
             updatedAt = entity.updated_at
@@ -36,34 +35,36 @@ object AlbumMapper {
         return Album(
             id = entity.id,
             name = entity.name,
-            primaryArtist = entity.artists.firstOrNull()?.name,
+            primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist",
             artists = entity.artists.map { ArtistMapper.toDomain(it) },
             releaseDate = parseReleaseDate(entity.releaseDate),
             totalTracks = entity.totalTracks,
             spotifyUri = entity.uri,
-            albumType = entity.albumType.name,
+            albumType = AlbumType.fromString(entity.albumType.name),
             images = entity.images
                 .map { ImageMapper.toDomain(it) },
         )
     }
 
-    private fun parseReleaseDate(releaseDate: String): Date {
-        val formats = listOf(
-            "yyyy-MM-dd",
-            "yyyy-MM",
-            "yyyy"
-        )
+    fun parseReleaseDate(releaseDate: String): LocalDate {
+        return when (releaseDate.count { it == '-' }) {
+            1 -> {
+                // Year-Month: 2024-12
+                val parts = releaseDate.split('-')
+                val year = parts[0].toInt()
+                val month = parts[1].toInt()
+                LocalDate(year, month, 1) // Default to 1st of month
+            }
 
-        for (format in formats) {
-            try {
-                val sdf = SimpleDateFormat(format, Locale.US)
-                sdf.isLenient = false
-                return sdf.parse(releaseDate)!!
-            } catch (e: ParseException) {
-                // Try the next format
+            0 -> {
+                // Year only: 2024
+                val year = releaseDate.toInt()
+                LocalDate(year, 1, 1) // Default to January 1st
+            }
+
+            else -> {
+                LocalDate.parse(releaseDate) // Uses ISO format
             }
         }
-
-        throw IllegalArgumentException("Unrecognized date format: $releaseDate")
     }
 }
