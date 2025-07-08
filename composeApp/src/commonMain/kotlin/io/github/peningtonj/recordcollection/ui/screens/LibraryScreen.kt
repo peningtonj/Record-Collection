@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Screen
-import io.github.peningtonj.recordcollection.ui.components.AlbumGrid
+import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
 import io.github.peningtonj.recordcollection.ui.components.filter.ActiveChips
 import io.github.peningtonj.recordcollection.ui.components.filter.ReleaseYearFilter
 import io.github.peningtonj.recordcollection.ui.components.filter.TextSearchBar
