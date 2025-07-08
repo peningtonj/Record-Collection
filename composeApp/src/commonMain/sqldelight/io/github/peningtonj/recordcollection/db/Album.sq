@@ -52,3 +52,8 @@ SELECT primary_artist
 FROM album_entity
 GROUP BY primary_artist
 ORDER BY COUNT(*) DESC;
+
+getAlbumById:
+SELECT *
+FROM album_entity
+WHERE id = :albumId;

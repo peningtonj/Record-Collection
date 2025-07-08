@@ -8,10 +8,14 @@ import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
+import io.github.peningtonj.recordcollection.db.mapper.TrackMapper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 
@@ -56,6 +60,58 @@ class AlbumRepository(
         Napier.d("Finished Syncing Albums")
 
     }
+
+    fun getTracksForAlbum(albumId: String): Flow<List<Track>> {
+        return database.trackEntityQueries
+            .getByAlbumId(albumId = albumId)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { it.map { track -> TrackMapper.toDomain(track, null) } }
+    }
+
+    suspend fun checkAndUpdateTracksIfNeeded(albumId: String) {
+            val tracksExist = database.trackEntityQueries
+                .countTracksForAlbum(albumId)
+                .executeAsOne() > 0
+
+            if (!tracksExist) {
+                fetchAndSaveTracks(albumId)
+            }
+        }
+
+    private suspend fun fetchAndSaveTracks(albumId: String) {
+        spotifyApi.library.getAlbumTracks(albumId)
+            .onSuccess { response ->
+                database.transaction {
+                    response.items.forEach { track ->
+                        database.trackEntityQueries.insert(
+                            id = track.id,
+                            album_id = albumId,
+                            name = track.name,
+                            track_number = track.trackNumber.toLong(),
+                            duration_ms = track.durationMs.toLong(),
+                            spotify_uri = track.uri,
+                            artists = Json.encodeToString(track.artists),
+                            preview_url = track.previewUrl,
+                            primary_artist = track.artists.firstOrNull()?.name ?: "Unknown Artist",
+                            is_explicit = if(track.explicit) 1 else 0,
+                            disc_number = track.discNumber.toLong(),
+                            popularity = null,
+                        )
+                    }
+                }
+            }
+            .onFailure { error ->
+                Napier.e("Failed to fetch tracks for album $albumId", error)
+            }
+    }
+
+    fun getAlbumById(id: String) : Flow<Album> = database.albumQueries
+        .getAlbumById(id)
+        .asFlow()
+        .mapToOne(Dispatchers.IO)
+        .map { AlbumMapper.toDomain(it) }
+
 
     fun getEarliestReleaseDate(): Flow<LocalDate?> = getAllAlbums()
         .map { albums ->

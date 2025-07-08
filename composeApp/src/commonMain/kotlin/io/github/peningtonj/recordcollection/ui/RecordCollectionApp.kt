@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.navigation.*
+import io.github.peningtonj.recordcollection.ui.screens.AlbumScreen
 import io.github.peningtonj.recordcollection.ui.screens.LibraryScreen
 import io.github.peningtonj.recordcollection.ui.screens.LoginScreen
 import io.github.peningtonj.recordcollection.ui.screens.ProfileScreen
@@ -25,6 +26,7 @@ fun RecordCollectionApp(
                     Screen.Login -> LoginScreen()
                     Screen.Profile -> ProfileScreen()
                     Screen.Library -> LibraryScreen()
+                    is Screen.Album -> AlbumScreen(albumId = screen.albumId)
                 }
             }
         }

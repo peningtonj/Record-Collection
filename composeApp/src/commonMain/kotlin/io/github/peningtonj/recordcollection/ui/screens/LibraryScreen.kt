@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
+import io.github.peningtonj.recordcollection.navigation.LocalNavigator
+import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.ui.components.AlbumGrid
 import io.github.peningtonj.recordcollection.ui.components.filter.ActiveChips
 import io.github.peningtonj.recordcollection.ui.components.filter.ReleaseYearFilter
@@ -49,6 +51,7 @@ fun LibraryScreen(
     val genres by viewModel.allGenres.collectAsState()
     val earliestReleaseDate by viewModel.earliestReleaseDate.collectAsState(LocalDate(1950,1,1))
 
+    val navigator = LocalNavigator.current
 
 
     val filterOptions by remember(artists, genres) {
@@ -134,7 +137,12 @@ fun LibraryScreen(
         }
 
         AlbumGrid(filteredAlbums,
-            onAlbumClick = {album -> playbackViewModel.playAlbum(album)}
+            onAlbumClick = { album ->
+                navigator.navigateTo(Screen.Album(album.id))
+            },
+            onPlayClick = { album ->
+                playbackViewModel.playAlbum(album)
+            }
         )
 
         if (syncState is SyncState.Error) {

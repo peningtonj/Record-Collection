@@ -54,3 +54,10 @@ enum class ReleaseDatePrecision {
 data class AlbumsResponse(
     val albums: List<AlbumDto>
 )
+
+@Serializable
+data class SavedAlbumDto(
+    @SerialName("added_at")
+    val addedAt: String, // ISO 8601 timestamp
+    val album: AlbumDto
+)

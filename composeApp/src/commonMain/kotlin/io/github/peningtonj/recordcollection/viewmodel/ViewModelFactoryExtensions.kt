@@ -54,3 +54,12 @@ fun rememberPlaybackViewModel(
         PlaybackViewModel(dependencies.playbackRepository)
     }
 }
+
+@Composable
+fun rememberAlbumScreenViewModel(
+    dependencies: DependencyContainer = LocalDependencyContainer.current
+): AlbumScreenViewModel {
+    return remember {
+        AlbumScreenViewModel(dependencies.albumRepository)
+    }
+}
