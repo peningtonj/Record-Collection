@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
+import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -29,7 +30,10 @@ class AlbumScreenViewModel(
                     albumRepository.getTracksForAlbum(albumId)
                 ) { album, tracks ->
                     AlbumScreenUiState.Success(
-                        album = album,
+                        album = AlbumDisplayData(
+                            album,
+                            tracks.sumOf { it.durationMs },
+                        ),
                         tracks = tracks
                     )
                 }.catch { e ->
@@ -48,7 +52,7 @@ sealed interface AlbumScreenUiState {
     data object Loading : AlbumScreenUiState
     data class Error(val message: String) : AlbumScreenUiState
     data class Success(
-        val album: Album,
+        val album: AlbumDisplayData,
         val tracks: List<Track>
     ) : AlbumScreenUiState
 }

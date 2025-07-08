@@ -15,6 +15,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.peningtonj.recordcollection.ui.components.album.AlbumHeader
+import io.github.peningtonj.recordcollection.ui.components.album.TrackListing
 import io.github.peningtonj.recordcollection.viewmodel.AlbumScreenUiState
 import io.github.peningtonj.recordcollection.viewmodel.AlbumScreenViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
@@ -37,11 +39,9 @@ fun AlbumScreen(
 
     when (uiState) {
         is AlbumScreenUiState.Loading -> {
-            // Show loading state
             LoadingIndicator()
         }
         is AlbumScreenUiState.Error -> {
-            // Show error state
             ErrorMessage((uiState as AlbumScreenUiState.Error).message)
         }
         is AlbumScreenUiState.Success -> {
@@ -52,22 +52,16 @@ fun AlbumScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Album: ${successState.album.name}",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                }
+                AlbumHeader(
+                    albumDisplayData = successState.album,
+                    onPlayClick = { playbackViewModel.playAlbum(album = successState.album.album) },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 // Display tracks
-                successState.tracks.forEach { track ->
-                    Text( track.name)
-                }
+                TrackListing(successState.tracks)
             }
         }
     }
 }
+

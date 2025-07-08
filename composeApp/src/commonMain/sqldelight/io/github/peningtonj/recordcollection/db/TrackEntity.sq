@@ -59,3 +59,4 @@ WHERE primary_artist = :artist;
 countTracksForAlbum:
 SELECT count(*) FROM track_entity
 WHERE album_id = :albumId;
+
