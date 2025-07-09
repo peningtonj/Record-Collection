@@ -1,5 +1,5 @@
 import app.cash.sqldelight.ColumnAdapter
-import io.github.peningtonj.recordcollection.db.Artist_entity
+import io.github.peningtonj.recordcollection.db.Artists
 import io.github.peningtonj.recordcollection.db.DatabaseDriver
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import kotlinx.serialization.json.Json
@@ -8,7 +8,7 @@ class DatabaseHelper(databaseDriver: DatabaseDriver) {
     private val driver = databaseDriver.createDriver()
 
     // Create the column adapter for the genres list
-    private val artistEntityAdapter = Artist_entity.Adapter(
+    private val artistsAdapter = Artists.Adapter(
         genresAdapter = object : ColumnAdapter<List<String>, String> {
             override fun decode(databaseValue: String): List<String> {
                 return if (databaseValue.isBlank()) {
@@ -31,7 +31,7 @@ class DatabaseHelper(databaseDriver: DatabaseDriver) {
 
     val database = RecordCollectionDatabase(
         driver = driver,
-        artist_entityAdapter = artistEntityAdapter
+        artistsAdapter = artistsAdapter,
     )
 
     fun close() {

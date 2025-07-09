@@ -5,15 +5,16 @@ import io.github.peningtonj.recordcollection.di.module.NetworkModule
 import io.github.peningtonj.recordcollection.di.module.RepositoryModule
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
 import io.github.peningtonj.recordcollection.repository.*
+import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 
 class ModularDependencyContainer(
     private val networkModule: NetworkModule,
     private val databaseModule: DatabaseModule,
     private val repositoryModule: RepositoryModule,
-    override val authHandler: AuthHandler
+    override val authHandler: AuthHandler,
 ) : DependencyContainer {
-    
+
     private val database by lazy { databaseModule.provideDatabase() }
     
     override val authRepository by lazy {
@@ -22,7 +23,7 @@ class ModularDependencyContainer(
             database = database
         )
     }
-    
+
     private val spotifyApi by lazy {
         networkModule.provideSpotifyApi(authRepository)
     }
@@ -50,9 +51,25 @@ class ModularDependencyContainer(
     }
     
     override val libraryService by lazy {
-        LibraryService(albumRepository, artistRepository)
+        LibraryService(albumRepository, artistRepository, ratingRepository)
+    }
+
+    override val ratingRepository by lazy {
+        repositoryModule.provideRatingRepository(database)
     }
     
+    override val albumCollectionRepository by lazy {
+        repositoryModule.provideAlbumCollectionRepository(database)
+    }
+    
+    override val collectionAlbumRepository by lazy {
+        repositoryModule.provideCollectionAlbumRepository(database)
+    }
+
+    override val collectionsService: CollectionsService by lazy {
+        CollectionsService(collectionAlbumRepository, albumCollectionRepository)
+    }
+
     override fun close() {
         networkModule.close()
         databaseModule.close()

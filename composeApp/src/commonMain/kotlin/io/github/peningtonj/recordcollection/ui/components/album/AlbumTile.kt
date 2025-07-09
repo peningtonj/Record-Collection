@@ -27,10 +27,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.ui.components.rating.StarRatingDisplay
+import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 
 @Composable
 fun CompactAlbumTile(
-    album: Album,
+    album: AlbumDisplayData,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onPlayClick: () -> Unit = {}
@@ -46,8 +48,8 @@ fun CompactAlbumTile(
             verticalArrangement = Arrangement.spacedBy(12.dp)  // Increased from 8.dp
         ) {
             AsyncImage(
-                model = album.images.firstOrNull()?.url ?: "",
-                contentDescription = "Album cover for ${album.name}",
+                model = album.album.images.firstOrNull()?.url ?: "",
+                contentDescription = "Album cover for ${album.album.name}",
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(4.dp)),
@@ -61,7 +63,7 @@ fun CompactAlbumTile(
             ) {
                 Column {
                     Text(
-                        text = album.name,
+                        text = album.album.name,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -70,13 +72,15 @@ fun CompactAlbumTile(
                     )
 
                     Text(
-                        text = album.primaryArtist,
+                        text = album.album.primaryArtist,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.fillMaxWidth(0.75f)  // Increased from 0.7f
                     )
+
+                    StarRatingDisplay(album.rating)
                 }
 
                 PlayButton(
@@ -92,7 +96,7 @@ fun CompactAlbumTile(
 
 @Composable
 fun AlbumGrid(
-    albums: List<Album>,
+    albums: List<AlbumDisplayData>,
     modifier: Modifier = Modifier,
     onAlbumClick: (Album) -> Unit = {},
     onPlayClick: (Album) -> Unit
@@ -107,8 +111,8 @@ fun AlbumGrid(
         items(albums) { album ->
             CompactAlbumTile(
                 album = album,
-                onClick = { onAlbumClick(album) },
-                onPlayClick = { onPlayClick(album) }
+                onClick = { onAlbumClick(album.album) },
+                onPlayClick = { onPlayClick(album.album) }
             )
         }
     }

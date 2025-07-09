@@ -12,12 +12,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.github.peningtonj.recordcollection.ui.components.rating.StarRating
 import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
+import io.github.peningtonj.recordcollection.ui.models.formattedTotalDuration
 
 @Composable
 fun AlbumHeader(
     albumDisplayData: AlbumDisplayData,
     onPlayClick: () -> Unit,
+    onRatingChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -89,10 +92,15 @@ fun AlbumHeader(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = albumDisplayData.formattedTotalDuration(),
+                    text = formattedTotalDuration(albumDisplayData.totalDuration),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
+
+            StarRating(
+                albumDisplayData.rating,
+                onRatingChange = onRatingChange,
+            )
         }
     }
 }

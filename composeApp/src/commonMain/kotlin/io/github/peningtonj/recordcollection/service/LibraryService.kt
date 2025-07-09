@@ -6,6 +6,8 @@ import io.github.peningtonj.recordcollection.db.domain.filter.AlbumFilter
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
+import io.github.peningtonj.recordcollection.repository.RatingRepository
+import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -13,21 +15,27 @@ import kotlinx.datetime.LocalDate
 
 class LibraryService(
     private val albumRepository: AlbumRepository,
-    private val artistRepository: ArtistRepository
+    private val artistRepository: ArtistRepository,
+    private val ratingRepository: RatingRepository
 ) {
     // Core data operations
-    fun getAllAlbumsWithGenres(): Flow<List<Album>> = combine(
+    fun getAllAlbumsEnriched(): Flow<List<AlbumDisplayData>> = combine(
         albumRepository.getAllAlbums(),
-        artistRepository.getAllArtists()
-    ) { albums, artists ->
+        artistRepository.getAllArtists(),
+        ratingRepository.getAllRatings()
+    ) { albums, artists, ratings ->
         val artistGenreMap = artists.associate { it.id to it.genres }
-        enrichAlbumsWithGenres(albums, artistGenreMap)
+        val ratingsMap = ratings.associate { it.albumId to it.rating }
+        enrichAlbumsWithGenres(albums, artistGenreMap).map {
+            AlbumDisplayData(it, 0, ratingsMap[it.id] ?: 0)
+        }
     }
 
-    fun getFilteredAlbums(filter: AlbumFilter): Flow<List<Album>> =
-        getAllAlbumsWithGenres().map { albums ->
-            filterAlbums(albums, filter)
-        }
+    fun getFilteredAlbums(filter: AlbumFilter): Flow<List<AlbumDisplayData>> =
+        getAllAlbumsEnriched().map()
+     { albums ->
+        filterAlbums(albums, filter)
+    }
 
     // Library statistics
     fun getLibraryStats(): Flow<LibraryStats> = combine(
@@ -54,12 +62,13 @@ class LibraryService(
         album.copy(genres = genres)
     }
 
-    private fun filterAlbums(albums: List<Album>, albumFilter: AlbumFilter): List<Album> {
+    private fun filterAlbums(albums: List<AlbumDisplayData>, albumFilter: AlbumFilter): List<AlbumDisplayData> {
         Napier.d("Filtering ${albums.size} albums with filter: $albumFilter")
 
         return albums.filter { album ->
-            matchesDateRange(album, albumFilter.releaseDateRange) &&
-                    matchesTags(album, albumFilter.tags)
+            matchesDateRange(album.album, albumFilter.releaseDateRange) &&
+                    matchesTags(album.album, albumFilter.tags) &&
+                    matchesRating(album, albumFilter.minRating)
         }
     }
 
@@ -81,6 +90,12 @@ class LibraryService(
                 else -> true
             }
         }
+    }
+
+    private fun matchesRating(album: AlbumDisplayData, minRating: Int?): Boolean {
+        if (minRating == null) return true
+
+        return album.rating >= minRating
     }
 
     private fun matchesArtist(album: Album, artists: List<String>): Boolean {

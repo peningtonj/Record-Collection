@@ -1,4 +1,4 @@
-CREATE TABLE track_entity (
+CREATE TABLE tracks (
     id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     album_id TEXT NOT NULL,
@@ -11,17 +11,17 @@ CREATE TABLE track_entity (
     spotify_uri TEXT NOT NULL,
     preview_url TEXT,
     popularity INTEGER,
-    FOREIGN KEY(album_id) REFERENCES album_entity(id)
+    FOREIGN KEY(album_id) REFERENCES albums(id)
 );
 
 -- Select all tracks ordered by when they were added
 selectAll:
 SELECT *
-FROM track_entity;
+FROM tracks;
 
 -- Insert or update a track
 insert:
-INSERT OR REPLACE INTO track_entity(
+INSERT OR REPLACE INTO tracks(
     id,
     name,
     album_id,
@@ -38,25 +38,25 @@ INSERT OR REPLACE INTO track_entity(
 
 -- Delete all tracks
 deleteAll:
-DELETE FROM track_entity;
+DELETE FROM tracks;
 
 -- Get total number of tracks
 getCount:
-SELECT COUNT(*) FROM track_entity;
+SELECT COUNT(*) FROM tracks;
 
 -- Get tracks by album ID
 getByAlbumId:
-SELECT * FROM track_entity
+SELECT * FROM tracks
 WHERE album_id = :albumId
 ORDER BY disc_number, track_number;
 
 -- Get tracks by artist
 getByArtist:
-SELECT * FROM track_entity
+SELECT * FROM tracks
 WHERE primary_artist = :artist;
 
 -- Count tracks by album
 countTracksForAlbum:
-SELECT count(*) FROM track_entity
+SELECT count(*) FROM tracks
 WHERE album_id = :albumId;
 

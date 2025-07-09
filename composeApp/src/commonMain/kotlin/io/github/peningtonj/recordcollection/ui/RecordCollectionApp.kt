@@ -19,6 +19,7 @@ import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.navigation.*
 import io.github.peningtonj.recordcollection.ui.components.navigation.NavigationPanel
 import io.github.peningtonj.recordcollection.ui.screens.AlbumScreen
+import io.github.peningtonj.recordcollection.ui.screens.CollectionScreen
 import io.github.peningtonj.recordcollection.ui.screens.LibraryScreen
 import io.github.peningtonj.recordcollection.ui.screens.LoginScreen
 import io.github.peningtonj.recordcollection.ui.screens.ProfileScreen
@@ -69,6 +70,7 @@ fun RecordCollectionApp(
                             Screen.Profile -> ProfileScreen()
                             Screen.Library -> LibraryScreen()
                             is Screen.Album -> AlbumScreen(albumId = screen.albumId)
+                            is Screen.Collection -> CollectionScreen(collectionName = screen.collectionName)
                         }
                     }
                 }

@@ -2,25 +2,21 @@ package io.github.peningtonj.recordcollection.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumHeader
 import io.github.peningtonj.recordcollection.ui.components.album.TrackListing
 import io.github.peningtonj.recordcollection.viewmodel.AlbumScreenUiState
-import io.github.peningtonj.recordcollection.viewmodel.AlbumScreenViewModel
+import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumScreenViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 import io.github.peningtonj.recordcollection.ui.components.common.LoadingIndicator
 import io.github.peningtonj.recordcollection.ui.components.common.ErrorMessage
@@ -29,7 +25,7 @@ import io.github.peningtonj.recordcollection.ui.components.common.ErrorMessage
 @Composable
 fun AlbumScreen(
     albumId: String,
-    viewModel: AlbumScreenViewModel = rememberAlbumScreenViewModel(),
+    viewModel: AlbumViewModel = rememberAlbumViewModel(),
     playbackViewModel: PlaybackViewModel = rememberPlaybackViewModel()
 ) {
     LaunchedEffect(albumId) {
@@ -55,7 +51,8 @@ fun AlbumScreen(
                 AlbumHeader(
                     albumDisplayData = successState.album,
                     onPlayClick = { playbackViewModel.playAlbum(album = successState.album.album) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    onRatingChange = { rating -> viewModel.setRating(albumId, rating)}
                 )
 
                 // Display tracks

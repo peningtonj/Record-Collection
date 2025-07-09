@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,11 +25,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Screen
+import io.github.peningtonj.recordcollection.service.CollectionsService
+import io.github.peningtonj.recordcollection.ui.components.CreateCollectionButton
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
 import io.github.peningtonj.recordcollection.ui.components.filter.ActiveChips
+import io.github.peningtonj.recordcollection.ui.components.filter.HorizontalFilterBar
+import io.github.peningtonj.recordcollection.ui.components.filter.RatingFilter
 import io.github.peningtonj.recordcollection.ui.components.filter.ReleaseYearFilter
 import io.github.peningtonj.recordcollection.ui.components.filter.TextSearchBar
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
@@ -41,7 +47,7 @@ import kotlinx.datetime.LocalDate
 @Composable
 fun LibraryScreen(
     viewModel: LibraryViewModel = rememberLibraryViewModel(),
-    playbackViewModel: PlaybackViewModel = rememberPlaybackViewModel()
+    playbackViewModel: PlaybackViewModel = rememberPlaybackViewModel(),
 ) {
     val syncState by viewModel.syncState.collectAsState()
     val libraryStats by viewModel.libraryStats.collectAsState()
@@ -95,27 +101,30 @@ fun LibraryScreen(
             }
         }
 
-        Row {
-            TextSearchBar(
-                currentFilter,
-                options = filterOptions,
-                onFilterChange = { newFilter ->
-                    viewModel.updateFilter(newFilter)
-                },
-                modifier = Modifier.weight(1f)
-            )
+        TextSearchBar(
+            currentFilter,
+            options = filterOptions,
+            onFilterChange = { newFilter ->
+                viewModel.updateFilter(newFilter)
+            },
+        )
 
-            ReleaseYearFilter(
-                onFilterChange = { start, end ->
+
+        HorizontalFilterBar(
+            currentFilter = currentFilter,
+            onRatingChange = { newRating ->
+                    viewModel.updateFilter(currentFilter.copy(minRating = newRating))
+                },
+            onYearFilterChange = { start, end, label ->
                     val newYearRange = DateRange(
                         LocalDate(start, 1, 1),
                         LocalDate(end, 12, 31),
+                        name = label
                     )
                     viewModel.updateFilter(currentFilter.copy(releaseDateRange = newYearRange))
                 },
-                startYear = earliestReleaseDate?.year ?: 1950
-            )
-        }
+            startYear = earliestReleaseDate?.year ?: 1950
+        )
 
         if (currentFilter.tags.isNotEmpty() || currentFilter.releaseDateRange != null) {
             ActiveChips(
@@ -126,14 +135,23 @@ fun LibraryScreen(
             )
         }
 
-        IconButton(
-            onClick = {
-                playbackViewModel.playAlbum(filteredAlbums.random())
+        Row() {
+            IconButton(
+                onClick = {
+                    playbackViewModel.playAlbum(filteredAlbums.random().album)
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Shuffle,
+                    contentDescription = "Random Album")
             }
-        ) {
-            Icon(
-                imageVector = Icons.Default.Shuffle,
-                contentDescription = "Random Album")
+
+            CreateCollectionButton(
+                onCreateCollection = { name ->
+                    viewModel.createCollectionFromCurrentFilter(name)
+                }
+            )
+
         }
 
         AlbumGrid(filteredAlbums,

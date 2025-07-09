@@ -6,8 +6,8 @@ import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalDependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Navigator
-import io.github.peningtonj.recordcollection.network.common.util.HttpClientProvider
-import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
+import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
+import io.github.peningtonj.recordcollection.ui.collections.CollectionsViewModel
 
 @Composable
 fun rememberAuthViewModel(
@@ -40,8 +40,9 @@ fun rememberLibraryViewModel(
     return remember {
         LibraryViewModel(
             dependencies.libraryService,
+            dependencies.collectionsService,
             dependencies.albumRepository,
-            dependencies.artistRepository
+            dependencies.artistRepository,
         )
     }
 }
@@ -56,10 +57,36 @@ fun rememberPlaybackViewModel(
 }
 
 @Composable
-fun rememberAlbumScreenViewModel(
+fun rememberAlbumViewModel(
     dependencies: DependencyContainer = LocalDependencyContainer.current
-): AlbumScreenViewModel {
+): AlbumViewModel {
     return remember {
-        AlbumScreenViewModel(dependencies.albumRepository)
+        AlbumViewModel(dependencies.albumRepository, dependencies.ratingRepository)
+    }
+}
+
+@Composable
+fun rememberCollectionsViewModel(
+    dependencies: DependencyContainer = LocalDependencyContainer.current
+): CollectionsViewModel {
+    return remember(dependencies) {
+        CollectionsViewModel(
+            repository = dependencies.albumCollectionRepository
+        )
+    }
+}
+
+@Composable
+fun rememberCollectionDetailViewModel(
+    collectionName: String,
+    dependencies: DependencyContainer = LocalDependencyContainer.current
+): CollectionDetailViewModel {
+    return remember(collectionName, dependencies) {
+        CollectionDetailViewModel(
+            collectionRepository = dependencies.albumCollectionRepository,
+            collectionAlbumRepository = dependencies.collectionAlbumRepository,
+            ratingRepository = dependencies.ratingRepository,
+            collectionName = collectionName
+        )
     }
 }

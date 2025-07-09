@@ -1,6 +1,6 @@
 package io.github.peningtonj.recordcollection.db.mapper
 
-import io.github.peningtonj.recordcollection.db.Artist_entity
+import io.github.peningtonj.recordcollection.db.Artists
 import io.github.peningtonj.recordcollection.db.domain.Artist
 import io.github.peningtonj.recordcollection.db.domain.SimplifiedArtist
 import io.github.peningtonj.recordcollection.network.spotify.model.ImageDto
@@ -17,7 +17,7 @@ object ArtistMapper {
         )
     }
 
-    fun toDomain(entity: Artist_entity) : Artist {
+    fun toDomain(entity: Artists) : Artist {
         return Artist(
             followers = entity.followers,
             genres = entity.genres,

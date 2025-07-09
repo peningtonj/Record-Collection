@@ -1,11 +1,15 @@
 package io.github.peningtonj.recordcollection.di.container
 
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
+import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
+import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.PlaybackRepository
 import io.github.peningtonj.recordcollection.repository.ProfileRepository
+import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
+import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 
 interface DependencyContainer : AutoCloseable {
@@ -16,4 +20,10 @@ interface DependencyContainer : AutoCloseable {
     val playbackRepository: PlaybackRepository
     val artistRepository: ArtistRepository
     val libraryService: LibraryService
+    val ratingRepository: RatingRepository
+    val collectionAlbumRepository: CollectionAlbumRepository
+    val albumCollectionRepository: AlbumCollectionRepository
+
+    val collectionsService: CollectionsService
+
 }

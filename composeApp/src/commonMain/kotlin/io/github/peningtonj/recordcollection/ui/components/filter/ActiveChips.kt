@@ -87,7 +87,7 @@ fun ReleaseYearChip(
 ) {
     FilterChip(
         onClick = {
-            onFilterChange(currentFilter.copy(releaseDateRange = DateRange()))
+            onFilterChange(currentFilter.copy(releaseDateRange = null))
         },
         label = { Text(releaseYearFilter.toLabel()) },
         selected = true,
@@ -101,7 +101,6 @@ fun ReleaseYearChip(
 
     )
 }
-
 
 @Composable
 fun ClearAllChip(

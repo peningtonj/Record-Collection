@@ -1,7 +1,7 @@
 package io.github.peningtonj.recordcollection.repository
 
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
-import io.github.peningtonj.recordcollection.db.Spotify_auth
+import io.github.peningtonj.recordcollection.db.Auths
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AccessToken
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthState
@@ -58,7 +58,11 @@ class SpotifyAuthRepository(
     private suspend fun refreshToken(): Result<AccessToken> {
         _authState.value = AuthState.Authenticating
 
-        return authHandler.refreshToken()
+        val refreshToken = getRefreshToken()
+            ?: return Result.failure(Exception("No refresh token available"))
+
+
+        return authHandler.refreshToken(refreshToken)
             .onSuccess { token ->
                 saveToken(token)
                 _authState.value = AuthState.Authenticated(token)
@@ -72,8 +76,8 @@ class SpotifyAuthRepository(
     private fun saveToken(token: AccessToken) {
         val expiresAt = System.currentTimeMillis() + (token.expiresIn * 1000)
         
-        database.spotifyAuthQueries.insertOrUpdateToken(
-            Spotify_auth(
+        database.authsQueries.insertOrUpdateToken(
+            Auths(
                 id = 1,
                 access_token = token.accessToken,
                 token_type = token.tokenType,
@@ -85,14 +89,14 @@ class SpotifyAuthRepository(
         )
     }
 
-    fun getStoredToken(): Spotify_auth? =
-        database.spotifyAuthQueries.getStoredToken().executeAsOneOrNull()
+    fun getStoredToken(): Auths? =
+        database.authsQueries.getStoredToken().executeAsOneOrNull()
 
     fun getRefreshToken(): String? =
-        database.spotifyAuthQueries.getRefreshToken().executeAsOneOrNull()
+        database.authsQueries.getRefreshToken().executeAsOneOrNull()
 
     private fun hasRefreshToken(): Boolean =
-        database.spotifyAuthQueries.hasRefreshToken().executeAsOne()
+        database.authsQueries.hasRefreshToken().executeAsOne()
 
     // Initial State
     private fun loadInitialState(): AuthState {
@@ -106,10 +110,10 @@ class SpotifyAuthRepository(
     }
 
     // Extensions
-    private fun Spotify_auth.isExpired(): Boolean =
+    private fun Auths.isExpired(): Boolean =
         System.currentTimeMillis() >= expires_at
 
-    private fun Spotify_auth.toAccessToken(): AccessToken =
+    private fun Auths.toAccessToken(): AccessToken =
         AccessToken(
             accessToken = access_token,
             tokenType = token_type,

@@ -1,6 +1,6 @@
 package io.github.peningtonj.recordcollection.db.mapper
 
-import io.github.peningtonj.recordcollection.db.Album_entity
+import io.github.peningtonj.recordcollection.db.Albums
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumType
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
@@ -13,7 +13,7 @@ import kotlinx.serialization.json.Json
 
 object AlbumMapper {
 
-    fun toDomain(entity: Album_entity): Album {
+    fun toDomain(entity: Albums): Album {
         return Album(
             id = entity.id,
             name = entity.name,

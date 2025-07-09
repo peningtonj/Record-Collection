@@ -7,8 +7,10 @@ import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.filter.AlbumFilter
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
+import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.LibraryStats
+import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,13 +22,15 @@ import kotlinx.coroutines.flow.flatMapLatest
 
 class LibraryViewModel(
     private val libraryService: LibraryService,
-    private val albumRepository: AlbumRepository,
-    private val artistRepository: ArtistRepository
+    private val collectionsService: CollectionsService,
+    albumRepository: AlbumRepository,
+    artistRepository: ArtistRepository,
 ) : ViewModel() {
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val syncState = _syncState.asStateFlow()
 
-    private val _currentFilter = MutableStateFlow(AlbumFilter())
+    // Load saved filter state on initialization
+    private val _currentFilter = MutableStateFlow(loadSavedFilter())
     val currentFilter = _currentFilter.asStateFlow()
 
     // Basic library data
@@ -48,7 +52,7 @@ class LibraryViewModel(
 
     // In LibraryViewModel
     @OptIn(ExperimentalCoroutinesApi::class)
-    val filteredAlbums: StateFlow<List<Album>> = currentFilter
+    val filteredAlbums: StateFlow<List<AlbumDisplayData>> = currentFilter
         .flatMapLatest { filter ->
             libraryService.getFilteredAlbums(filter)
         }
@@ -71,10 +75,13 @@ class LibraryViewModel(
     fun updateFilter(filter: AlbumFilter) {
         Napier.d { "Updating Filter from ${_currentFilter.value} to $filter" }
         _currentFilter.value = filter
+        saveFilter(filter)
     }
 
     fun updateFilterPartial(update: (AlbumFilter) -> AlbumFilter) {
-        _currentFilter.value = update(_currentFilter.value)
+        val newFilter = update(_currentFilter.value)
+        _currentFilter.value = newFilter
+        saveFilter(newFilter)
     }
 
     // Sync operations
@@ -90,6 +97,19 @@ class LibraryViewModel(
             }
         }
     }
+
+    private fun saveFilter(filter: AlbumFilter) {
+        // Save to persistent storage
+        FilterPreferences.saveFilter(filter)
+    }
+
+    private fun loadSavedFilter(): AlbumFilter {
+        // Load from persistent storage
+        return FilterPreferences.loadFilter()
+    }
+
+    fun createCollectionFromCurrentFilter(name: String) =
+        collectionsService.createCollectionFromAlbums(filteredAlbums.value.map { it.album }, name)
 }
 
 sealed class SyncState {

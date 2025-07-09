@@ -29,4 +29,16 @@ interface RepositoryModule {
     fun provideProfileRepository(
         database: RecordCollectionDatabase
     ): ProfileRepository
+
+    fun provideRatingRepository(
+        database: RecordCollectionDatabase
+    ): RatingRepository
+
+    fun provideAlbumCollectionRepository(
+        database: RecordCollectionDatabase
+    ): AlbumCollectionRepository
+
+    fun provideCollectionAlbumRepository(
+        database: RecordCollectionDatabase
+    ): CollectionAlbumRepository
 }

@@ -1,7 +1,7 @@
 package io.github.peningtonj.recordcollection.db.mapper
 
-import io.github.peningtonj.recordcollection.db.Track_entity
-import io.github.peningtonj.recordcollection.db.Album_entity
+import io.github.peningtonj.recordcollection.db.Tracks
+import io.github.peningtonj.recordcollection.db.Albums
 import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.network.spotify.model.PlaybackTrack
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedArtistDto
@@ -23,7 +23,7 @@ object TrackMapper {
         )
     }
 
-    fun toDomain(entity: Track_entity, albumEntity: Album_entity?) : Track {
+    fun toDomain(entity: Tracks, albumEntity: Albums?) : Track {
         return Track(
             id = entity.id,
             name = entity.name,

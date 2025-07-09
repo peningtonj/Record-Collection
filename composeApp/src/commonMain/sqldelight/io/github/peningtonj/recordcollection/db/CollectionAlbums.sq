@@ -1,0 +1,52 @@
+CREATE TABLE collection_albums (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    collection_name TEXT NOT NULL,
+    album_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    added_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (collection_name) REFERENCES album_collections(name) ON DELETE CASCADE,
+    FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE,
+    UNIQUE(collection_name, album_id)
+);
+
+CREATE INDEX idx_collection_albums_collection_name ON collection_albums(collection_name);
+CREATE INDEX idx_collection_albums_position ON collection_albums(collection_name, position);
+
+-- Queries
+selectByCollectionName:
+SELECT * FROM collection_albums
+WHERE collection_name = ?
+ORDER BY position ASC;
+
+selectAlbumsInCollection:
+SELECT a.*, ca.position, ca.added_at AS c_added_at
+FROM albums a
+JOIN collection_albums ca ON a.id = ca.album_id
+WHERE ca.collection_name = ?
+ORDER BY ca.position ASC;
+
+insert:
+INSERT INTO collection_albums (collection_name, album_id, position)
+VALUES (?, ?, ?);
+
+delete:
+DELETE FROM collection_albums
+WHERE collection_name = ? AND album_id = ?;
+
+deleteByCollectionName:
+DELETE FROM collection_albums WHERE collection_name = ?;
+
+updatePosition:
+UPDATE collection_albums
+SET position = ?
+WHERE collection_name = ? AND album_id = ?;
+
+getMaxPosition:
+SELECT COALESCE(MAX(position), 0) FROM collection_albums WHERE collection_name = ?;
+
+getCount:
+SELECT COUNT(*) FROM collection_albums WHERE collection_name = ?;
+
+isAlbumInCollection:
+SELECT COUNT(*) > 0 FROM collection_albums
+WHERE collection_name = ? AND album_id = ?;

@@ -1,4 +1,4 @@
-CREATE TABLE album_entity (
+CREATE TABLE albums (
     id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     primary_artist TEXT NOT NULL,
@@ -14,11 +14,11 @@ CREATE TABLE album_entity (
 
 selectAll:
 SELECT *
-FROM album_entity
+FROM albums
 ORDER BY added_at DESC;
 
 insert:
-INSERT OR REPLACE INTO album_entity(
+INSERT OR REPLACE INTO albums(
     id,
     name,
     primary_artist,
@@ -33,27 +33,27 @@ INSERT OR REPLACE INTO album_entity(
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 deleteAll:
-DELETE FROM album_entity;
+DELETE FROM albums;
 
 getCount:
-SELECT COUNT(*) FROM album_entity;
+SELECT COUNT(*) FROM albums;
 
 getLatest:
-SELECT * FROM album_entity
+SELECT * FROM albums
 ORDER BY added_at DESC
 LIMIT 1;
 
 getByReleaseDate:
-SELECT * FROM album_entity
+SELECT * FROM albums
 WHERE release_date LIKE '%' || :year || '%';
 
 getAllArtists:
 SELECT primary_artist
-FROM album_entity
+FROM albums
 GROUP BY primary_artist
 ORDER BY COUNT(*) DESC;
 
 getAlbumById:
 SELECT *
-FROM album_entity
+FROM albums
 WHERE id = :albumId;

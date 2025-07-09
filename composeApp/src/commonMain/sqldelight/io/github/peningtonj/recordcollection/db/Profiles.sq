@@ -1,4 +1,4 @@
-CREATE TABLE Profile (
+CREATE TABLE profiles (
     id TEXT NOT NULL PRIMARY KEY,
     display_name TEXT,
     email TEXT,
@@ -14,12 +14,12 @@ CREATE TABLE Profile (
 -- Get the current user's profile
 getProfile:
 SELECT *
-FROM Profile
+FROM profiles
 LIMIT 1;
 
 -- Update or insert the profile
 upsertProfile:
-INSERT OR REPLACE INTO Profile(
+INSERT OR REPLACE INTO profiles(
     id,
     display_name,
     email,
@@ -30,8 +30,8 @@ INSERT OR REPLACE INTO Profile(
     followers_count,
     product_type,
     updated_at
-) VALUES :profile;  -- This accepts a single Profile object
+) VALUES :profile;
 
 -- Delete profile (for logout)
 deleteProfile:
-DELETE FROM Profile;
+DELETE FROM profiles;

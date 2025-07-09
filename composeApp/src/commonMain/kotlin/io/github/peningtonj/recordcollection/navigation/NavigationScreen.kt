@@ -6,6 +6,7 @@ sealed class Screen(val route: String) {
     data object Profile : Screen("profile")
     data object Library : Screen("library")
     data class Album(val albumId: String) : Screen("album/$albumId")
+    data class Collection(val collectionName: String) : Screen("collection/$collectionName")
 
     companion object {
         fun fromRoute(route: String): Screen = when(route) {

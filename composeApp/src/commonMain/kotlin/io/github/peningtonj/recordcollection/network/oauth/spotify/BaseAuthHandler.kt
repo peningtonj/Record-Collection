@@ -28,7 +28,8 @@ data class AccessToken(
 interface AuthHandler {
     suspend fun authenticate(): Result<String>
     suspend fun exchangeCodeForToken(code: String): Result<AccessToken>
-    suspend fun refreshToken(): Result<AccessToken>
+    suspend fun refreshToken(refreshToken: String): Result<AccessToken>
+
 }
 
 abstract class BaseAuthHandler(

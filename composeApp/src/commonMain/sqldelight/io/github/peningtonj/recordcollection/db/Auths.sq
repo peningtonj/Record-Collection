@@ -1,4 +1,4 @@
-CREATE TABLE spotify_auth (
+CREATE TABLE auths (
     -- Use a single row approach with id=1
     id INTEGER PRIMARY KEY NOT NULL DEFAULT 1,
     -- Fields matching AccessToken
@@ -12,10 +12,10 @@ CREATE TABLE spotify_auth (
 );
 
 getStoredToken:
-SELECT * FROM spotify_auth WHERE id = 1;
+SELECT * FROM auths WHERE id = 1;
 
 insertOrUpdateToken:
-INSERT OR REPLACE INTO spotify_auth (
+INSERT OR REPLACE INTO auths (
     id,
     access_token,
     refresh_token,
@@ -23,13 +23,13 @@ INSERT OR REPLACE INTO spotify_auth (
     scope,
     expires_in,
     expires_at
-) VALUES :spotify_auth;
+) VALUES :auths;
 
 deleteToken:
-DELETE FROM spotify_auth WHERE id = 1;
+DELETE FROM auths WHERE id = 1;
 
 hasRefreshToken:
-SELECT EXISTS(SELECT 1 FROM spotify_auth WHERE refresh_token IS NOT NULL AND refresh_token != '');
+SELECT EXISTS(SELECT 1 FROM auths WHERE refresh_token IS NOT NULL AND refresh_token != '');
 
 getRefreshToken:
-SELECT refresh_token FROM spotify_auth WHERE id = 1;
+SELECT refresh_token FROM auths WHERE id = 1;

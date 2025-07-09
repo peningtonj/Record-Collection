@@ -18,6 +18,10 @@ fun TrackListing(
     tracks: List<Track>,
     modifier: Modifier = Modifier
 ) {
+    // Group tracks by disc number
+    val tracksByDisc = tracks.groupBy { it.discNumber }.toSortedMap()
+    val hasMultipleDiscs = tracksByDisc.size > 1
+
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -27,12 +31,47 @@ fun TrackListing(
             TrackListingHeader()
         }
         
-        items(
-            items = tracks,
-            key = { it.id }
-        ) { track ->
-            TrackListingItem(track = track)
+        tracksByDisc.forEach { (discNumber, discTracks) ->
+            // Add disc divider for multi-disc albums
+            if (hasMultipleDiscs) {
+                item {
+                    DiscDivider(discNumber = discNumber.toInt())
+                }
+            }
+            
+            items(
+                items = discTracks,
+                key = { it.id }
+            ) { track ->
+                TrackListingItem(track = track)
+            }
         }
+    }
+}
+
+@Composable
+fun DiscDivider(
+    discNumber: Int,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+            thickness = 1.dp
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "Disc $discNumber",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 4.dp)
+        )
     }
 }
 

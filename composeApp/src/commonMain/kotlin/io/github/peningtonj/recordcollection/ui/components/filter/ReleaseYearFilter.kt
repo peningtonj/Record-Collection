@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,26 +42,30 @@ import androidx.compose.ui.window.Popup
 
 @Composable
 fun ReleaseYearFilter(
-    onFilterChange: (Int, Int) -> Unit,
+    onFilterChange: (Int, Int, String?) -> Unit, // Add optional label parameter
     startYear: Int
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     Box {
-        IconButton(
-            onClick = { expanded = true }
+        OutlinedButton(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.height(48.dp)
         ) {
             Icon(
                 Icons.Default.DateRange,
-                modifier = Modifier.size(80.dp),
-                contentDescription = "Filter by year"
+                contentDescription = "Filter by year",
+                modifier = Modifier.size(16.dp)
             )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Release Year")
         }
 
         if (expanded) {
             Popup(
                 alignment = Alignment.TopEnd,
-                offset = IntOffset(x = -280, y = 48), // Pixel-perfect positioning
+                offset = IntOffset(x = -280, y = 48),
                 onDismissRequest = { expanded = false }
             ) {
                 Surface(
@@ -72,8 +78,8 @@ fun ReleaseYearFilter(
                     shadowElevation = 8.dp
                 ) {
                     ReleaseYearWidget(
-                        onYearSelected = { start, end ->
-                            onFilterChange(start, end)
+                        onYearSelected = { start, end, label ->
+                            onFilterChange(start, end, label)
                             expanded = false
                         },
                         startYear = startYear
@@ -84,11 +90,10 @@ fun ReleaseYearFilter(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReleaseYearWidget(
-    onYearSelected: (Int, Int) -> Unit,
+    onYearSelected: (Int, Int, String?) -> Unit, // Add optional label parameter
     startYear: Int
 ) {
     Column(
@@ -102,22 +107,26 @@ fun ReleaseYearWidget(
 
         // Range slider for years
         var yearRange by remember { mutableStateOf(startYear.toFloat() ..2025f) }
+        var selectedLabel by remember { mutableStateOf<String?>(null) }
 
         Text("${yearRange.start.toInt()} - ${yearRange.endInclusive.toInt()}")
 
         RangeSlider(
             value = yearRange,
-            onValueChange = { yearRange = it },
+            onValueChange = { 
+                yearRange = it
+                selectedLabel = null // Clear label when manually adjusting slider
+            },
             valueRange = startYear.toFloat()..2025f,
             modifier = Modifier
                 .padding(vertical = 8.dp)
-                .height(32.dp) // Default is usually around 48dp
-
+                .height(32.dp)
         )
 
         QuickSelectButtons(
-            onClick = { range ->
+            onClick = { range, label ->
                 yearRange = range
+                selectedLabel = label
             }
         )
 
@@ -128,13 +137,13 @@ fun ReleaseYearWidget(
             TextButton(
                 onClick = { /* Clear filter */ },
                 modifier = Modifier.scale(0.8f)
-                ) {
+            ) {
                 Text("Clear")
             }
 
             Button(
                 onClick = {
-                    onYearSelected(yearRange.start.toInt(), yearRange.endInclusive.toInt())
+                    onYearSelected(yearRange.start.toInt(), yearRange.endInclusive.toInt(), selectedLabel)
                 },
                 modifier = Modifier.scale(0.8f)
             ) {
@@ -146,7 +155,7 @@ fun ReleaseYearWidget(
 
 @Composable
 fun QuickSelectButtons(
-    onClick: (ClosedFloatingPointRange<Float>) -> Unit
+    onClick: (ClosedFloatingPointRange<Float>, String) -> Unit
 ) {
     val currentYear = 2025
     val presets = listOf(
@@ -161,7 +170,7 @@ fun QuickSelectButtons(
     ) {
         items(presets) { (label, range) ->
             AssistChip(
-                onClick = {onClick(range)},
+                onClick = { onClick(range, label) },
                 label = { Text(label, fontSize = 12.sp) }
             )
         }

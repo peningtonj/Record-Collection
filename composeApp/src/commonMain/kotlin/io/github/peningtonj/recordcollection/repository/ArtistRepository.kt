@@ -79,7 +79,7 @@ class ArtistRepository(
 
     }
 
-    fun getArtistGenre(artist: Artist) = database.artistEntityQueries
+    fun getArtistGenre(artist: Artist) = database.artistsQueries
         .selectArtistGenres(artist.id)
         .asFlow()
         .mapToList(Dispatchers.IO)
@@ -89,7 +89,7 @@ class ArtistRepository(
 
     fun saveArtists(artists: List<FullArtistDto>) {
         artists.forEach { artistDto ->
-            database.artistEntityQueries.insert(
+            database.artistsQueries.insert(
                 id = artistDto.id,
                 followers = artistDto.followers.total.toLong(),
                 genres = artistDto.genres,
@@ -103,18 +103,18 @@ class ArtistRepository(
         }
     }
 
-    fun getAllArtists(): Flow<List<Artist>> = database.artistEntityQueries
+    fun getAllArtists(): Flow<List<Artist>> = database.artistsQueries
         .selectAll()
         .asFlow()
         .mapToList(Dispatchers.IO)
         .map { it.map(ArtistMapper::toDomain) }
 
-    fun getAllArtistIds(): Flow<List<String>> = database.artistEntityQueries
+    fun getAllArtistIds(): Flow<List<String>> = database.artistsQueries
         .selectAllIds()
         .asFlow()
         .mapToList(Dispatchers.IO)
 
-    fun getAllGenres(): Flow<List<String>> = database.artistEntityQueries
+    fun getAllGenres(): Flow<List<String>> = database.artistsQueries
         .selectAllGenres()
         .asFlow()
         .mapToList(Dispatchers.IO)

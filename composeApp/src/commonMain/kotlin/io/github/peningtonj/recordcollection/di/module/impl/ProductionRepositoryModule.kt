@@ -30,4 +30,20 @@ class ProductionRepositoryModule : RepositoryModule {
     override fun provideProfileRepository(
         database: RecordCollectionDatabase
     ): ProfileRepository = ProfileRepository(database)
+
+    override fun provideRatingRepository(
+        database: RecordCollectionDatabase
+    ): RatingRepository = RatingRepository(database)
+
+    override fun provideAlbumCollectionRepository(
+        database: RecordCollectionDatabase
+    ): AlbumCollectionRepository = AlbumCollectionRepository(database)
+
+
+    override fun provideCollectionAlbumRepository(
+        database: RecordCollectionDatabase
+    ): CollectionAlbumRepository = CollectionAlbumRepository(database)
+
+
+
 }

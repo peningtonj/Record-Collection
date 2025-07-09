@@ -29,13 +29,13 @@ class AlbumRepository(
         val limit = 50 // Max allowed by Spotify API
         var hasMore = true
 
-        database.albumQueries.deleteAll()
+        database.albumsQueries.deleteAll()
 
         while (hasMore) {
             spotifyApi.library.getUsersSavedAlbums(limit, offset)
                 .onSuccess { response ->
                     response.items.forEach { savedAlbum ->
-                        database.albumQueries.insert(
+                        database.albumsQueries.insert(
                             id = savedAlbum.album.id,
                             name = savedAlbum.album.name,
                             primary_artist = savedAlbum.album.artists.firstOrNull()?.name ?: "Unknown Artist",
@@ -62,7 +62,7 @@ class AlbumRepository(
     }
 
     fun getTracksForAlbum(albumId: String): Flow<List<Track>> {
-        return database.trackEntityQueries
+        return database.tracksQueries
             .getByAlbumId(albumId = albumId)
             .asFlow()
             .mapToList(Dispatchers.IO)
@@ -70,7 +70,7 @@ class AlbumRepository(
     }
 
     suspend fun checkAndUpdateTracksIfNeeded(albumId: String) {
-            val tracksExist = database.trackEntityQueries
+            val tracksExist = database.tracksQueries
                 .countTracksForAlbum(albumId)
                 .executeAsOne() > 0
 
@@ -84,7 +84,7 @@ class AlbumRepository(
             .onSuccess { response ->
                 database.transaction {
                     response.items.forEach { track ->
-                        database.trackEntityQueries.insert(
+                        database.tracksQueries.insert(
                             id = track.id,
                             album_id = albumId,
                             name = track.name,
@@ -106,7 +106,7 @@ class AlbumRepository(
             }
     }
 
-    fun getAlbumById(id: String) : Flow<Album> = database.albumQueries
+    fun getAlbumById(id: String) : Flow<Album> = database.albumsQueries
         .getAlbumById(id)
         .asFlow()
         .mapToOne(Dispatchers.IO)
@@ -121,18 +121,18 @@ class AlbumRepository(
             }
         }
 
-    fun getAllAlbums(): Flow<List<Album>> = database.albumQueries
+    fun getAllAlbums(): Flow<List<Album>> = database.albumsQueries
         .selectAll()
         .asFlow()
         .mapToList(Dispatchers.IO)
         .map { it.map(AlbumMapper::toDomain) }
 
-    fun getAllArtists(): Flow<List<String>> = database.albumQueries
+    fun getAllArtists(): Flow<List<String>> = database.albumsQueries
         .getAllArtists()
         .asFlow()
         .mapToList(Dispatchers.IO)
 
-    fun getAlbumCount(): Flow<Long> = database.albumQueries
+    fun getAlbumCount(): Flow<Long> = database.albumsQueries
         .getCount()
         .asFlow()
         .mapToOne(Dispatchers.IO)
@@ -140,7 +140,7 @@ class AlbumRepository(
     fun getLatestAlbum(): Flow<Album?> {
         Napier.d("DB QUERY: getLatestAlbum")
 
-        return database.albumQueries.getLatest()
+        return database.albumsQueries.getLatest()
             .asFlow()
             .mapToOneOrNull(Dispatchers.IO)
             .map { entity ->
@@ -149,7 +149,7 @@ class AlbumRepository(
     }
 
     fun getAlbumsByYear(year : String): Flow<List<Album>> {
-        return database.albumQueries.getByReleaseDate(year)
+        return database.albumsQueries.getByReleaseDate(year)
             .asFlow()
             .mapToList(Dispatchers.IO)
             .map { list ->

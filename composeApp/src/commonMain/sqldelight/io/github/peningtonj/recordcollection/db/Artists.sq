@@ -1,4 +1,4 @@
-CREATE TABLE artist_entity (
+CREATE TABLE artists (
     id TEXT NOT NULL PRIMARY KEY,
     followers INTEGER NOT NULL,
     genres TEXT AS kotlin.collections.List<kotlin.String> NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE artist_entity (
 );
 
 insert:
-INSERT OR REPLACE INTO artist_entity(
+INSERT OR REPLACE INTO artists(
     id,
     followers,
     genres,
@@ -25,17 +25,17 @@ INSERT OR REPLACE INTO artist_entity(
 
 selectAll:
 SELECT *
-FROM artist_entity;
+FROM artists;
 
 selectAllIds:
 SELECT id
-FROM artist_entity;
+FROM artists;
 
 selectAllGenres:
 SELECT genres
-FROM artist_entity;
+FROM artists;
 
 selectArtistGenres:
 SELECT genres
-FROM artist_entity
+FROM artists
 WHERE id = ?;
