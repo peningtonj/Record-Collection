@@ -1,5 +1,7 @@
 package io.github.peningtonj.recordcollection.repository
 
+import AlbumResult
+import Playlist
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOne
@@ -16,6 +18,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 
@@ -158,4 +162,50 @@ class AlbumRepository(
     }
 
 
+    suspend fun import() : Map<Playlist, List<AlbumResult>> {
+        Napier.d("Importing Collections")
+        val playlistsResponse = spotifyApi.temp.getPlaylists()
+        val playlists = playlistsResponse.getOrThrow()
+        Napier.d("Fetched ${playlists.size} playlists")
+
+        return playlists.associateWith { playlist -> spotifyApi.temp.extractAlbumsFromPlaylist(playlist) }
+    }
+
+suspend fun getMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = runCatching {
+    if (ids.isEmpty()) return@runCatching emptyList()
+    
+    val albums = mutableListOf<Album>()
+    
+    // Process in batches of 20 (Spotify API limit)
+    ids.chunked(20).forEach { batch ->
+        spotifyApi.library.getMultipleAlbums(batch)
+            .onSuccess { response ->
+                response.albums.forEach { albumDto ->
+                    albums.add(AlbumMapper.toDomain(albumDto))
+                    
+                    if (saveToDb) {
+                        database.albumsQueries.insert(
+                            id = albumDto.id,
+                            name = albumDto.name,
+                            primary_artist = albumDto.artists.firstOrNull()?.name ?: "Unknown Artist",
+                            artists = Json.encodeToString(albumDto.artists),
+                            release_date = albumDto.releaseDate,
+                            total_tracks = albumDto.totalTracks.toLong(),
+                            spotify_uri = albumDto.uri,
+                            added_at = Clock.System.now().toString(),
+                            album_type = albumDto.albumType.toString(),
+                            images = Json.encodeToString(albumDto.images),
+                            updated_at = System.currentTimeMillis()
+                        )
+
+                    }
+                }
+            }
+            .onFailure { error ->
+                throw error
+            }
+    }
+    
+    albums
+}
 }

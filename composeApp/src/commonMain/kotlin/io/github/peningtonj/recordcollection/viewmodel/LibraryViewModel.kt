@@ -110,6 +110,12 @@ class LibraryViewModel(
 
     fun createCollectionFromCurrentFilter(name: String) =
         collectionsService.createCollectionFromAlbums(filteredAlbums.value.map { it.album }, name)
+
+    fun import() =
+        viewModelScope.launch {
+            collectionsService.import()
+        }
+
 }
 
 sealed class SyncState {

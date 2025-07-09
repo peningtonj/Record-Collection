@@ -40,7 +40,7 @@ class DesktopAuthHandler(
         }
     }
 ) : BaseAuthHandler(client) {
-    
+
     override fun getRedirectUri() = "http://localhost:8888/callback"
 
     override suspend fun authenticate(): Result<String> {
@@ -55,7 +55,10 @@ class DesktopAuthHandler(
                 .addParameter("client_id", clientId)
                 .addParameter("response_type", "code")
                 .addParameter("redirect_uri", getRedirectUri())
-                .addParameter("scope", "playlist-modify-public playlist-modify-private user-library-read user-modify-playback-state")
+                .addParameter(
+                    "scope",
+                    "playlist-modify-public playlist-modify-private user-library-read user-modify-playback-state"
+                )
                 .build()
 
             Napier.d { "Browsing to URL in Desktop" }
@@ -96,7 +99,7 @@ class DesktopAuthHandler(
     override suspend fun refreshToken(refreshToken: String): Result<AccessToken> {
         return try {
             Napier.d { "Refreshing access token" }
-            
+
             val response = client.post("https://accounts.spotify.com/api/token") {
                 headers {
                     append("Authorization", "Basic ${buildBasicAuth()}")
@@ -109,7 +112,7 @@ class DesktopAuthHandler(
 
             val newToken: AccessToken = response.body()
             Napier.d { "Successfully refreshed access token" }
-            
+
             Result.success(newToken)
         } catch (e: Exception) {
             Napier.e(e) { "Failed to refresh token: ${e.message}" }
@@ -119,7 +122,8 @@ class DesktopAuthHandler(
 
     private fun sendSuccessResponse(outputStream: OutputStream) {
         val writer = PrintWriter(outputStream, true)
-        writer.print("""
+        writer.print(
+            """
         HTTP/1.1 200 OK
         Content-Type: text/html
         Connection: close
@@ -208,6 +212,8 @@ class DesktopAuthHandler(
             </script>
         </body>
         </html>
-    """.trimIndent())
-    writer.flush()
+    """.trimIndent()
+        )
+        writer.flush()
+    }
 }

@@ -67,7 +67,7 @@ class ModularDependencyContainer(
     }
 
     override val collectionsService: CollectionsService by lazy {
-        CollectionsService(collectionAlbumRepository, albumCollectionRepository)
+        CollectionsService(collectionAlbumRepository, albumCollectionRepository, albumRepository)
     }
 
     override fun close() {

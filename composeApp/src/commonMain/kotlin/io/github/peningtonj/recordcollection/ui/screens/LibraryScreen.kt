@@ -31,15 +31,21 @@ import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.ui.components.CreateCollectionButton
+import io.github.peningtonj.recordcollection.ui.components.Temp
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
+import io.github.peningtonj.recordcollection.ui.components.album.CollectionAlbumContextMenu
+import io.github.peningtonj.recordcollection.ui.components.album.StandardAlbumContextMenu
+import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumContextMenuActions
 import io.github.peningtonj.recordcollection.ui.components.filter.ActiveChips
 import io.github.peningtonj.recordcollection.ui.components.filter.HorizontalFilterBar
 import io.github.peningtonj.recordcollection.ui.components.filter.RatingFilter
 import io.github.peningtonj.recordcollection.ui.components.filter.ReleaseYearFilter
 import io.github.peningtonj.recordcollection.ui.components.filter.TextSearchBar
+import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.SyncState
+import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 import kotlinx.datetime.LocalDate
@@ -48,6 +54,7 @@ import kotlinx.datetime.LocalDate
 fun LibraryScreen(
     viewModel: LibraryViewModel = rememberLibraryViewModel(),
     playbackViewModel: PlaybackViewModel = rememberPlaybackViewModel(),
+    albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
 ) {
     val syncState by viewModel.syncState.collectAsState()
     val libraryStats by viewModel.libraryStats.collectAsState()
@@ -59,6 +66,8 @@ fun LibraryScreen(
 
     val navigator = LocalNavigator.current
 
+    // Get centralized album actions
+    val albumActions = rememberAlbumContextMenuActions()
 
     val filterOptions by remember(artists, genres) {
         derivedStateOf {
@@ -109,7 +118,6 @@ fun LibraryScreen(
             },
         )
 
-
         HorizontalFilterBar(
             currentFilter = currentFilter,
             onRatingChange = { newRating ->
@@ -151,7 +159,6 @@ fun LibraryScreen(
                     viewModel.createCollectionFromCurrentFilter(name)
                 }
             )
-
         }
 
         AlbumGrid(filteredAlbums,
@@ -159,7 +166,17 @@ fun LibraryScreen(
                 navigator.navigateTo(Screen.Album(album.id))
             },
             onPlayClick = { album ->
-                playbackViewModel.playAlbum(album)
+                albumActions["play"]?.action?.invoke(album)
+            },
+            contextMenuContent = { album, onDismiss ->
+                StandardAlbumContextMenu(
+                    album = album,
+                    actions = albumActions,
+                    onDismiss = onDismiss
+                )
+            },
+            onRatingChange = { album, rating ->
+                albumViewModel.setRating(album.id, rating)
             }
         )
 

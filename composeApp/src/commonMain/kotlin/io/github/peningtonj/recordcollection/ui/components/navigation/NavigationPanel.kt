@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.LocalLibrary
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,8 +45,8 @@ import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewMo
 fun NavigationPanel(
     navigator: Navigator,
     currentScreen: Screen,
+    modifier: Modifier = Modifier,
     collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
-    modifier: Modifier = Modifier
 ) {
     val collectionsUiState by collectionsViewModel.uiState.collectAsState()
     
@@ -66,7 +67,7 @@ fun NavigationPanel(
         // Main navigation items
         NavigationItem(
             title = "Records",
-            icon = Icons.Default.LibraryMusic,
+            icon = Icons.Default.LocalLibrary,
             isSelected = currentScreen is Screen.Library,
             onClick = { navigator.navigateTo(Screen.Library) }
         )

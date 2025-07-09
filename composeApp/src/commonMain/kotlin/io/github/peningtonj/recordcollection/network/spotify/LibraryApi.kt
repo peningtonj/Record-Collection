@@ -49,6 +49,14 @@ class LibraryApi(
         client.get(url).body()
     }
 
+    suspend fun getUsersPlaylists(limit: Int = 20, offset: Int = 0): Result<PaginatedResponse<SavedAlbumDto>> = runCatching {
+        val url = URLBuilder("${SpotifyApi.BASE_URL}/me/playlists").apply {
+            parameters.append("limit", limit.toString())
+            parameters.append("offset", offset.toString())
+        }.buildString()
+
+        client.get(url).body()
+    }
 
     suspend fun getUsersSavedAlbums(limit: Int = 20, offset: Int = 0): Result<PaginatedResponse<SavedAlbumDto>> = runCatching {
         val url = URLBuilder("${SpotifyApi.BASE_URL}/me/albums").apply {

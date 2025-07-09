@@ -61,7 +61,11 @@ fun rememberAlbumViewModel(
     dependencies: DependencyContainer = LocalDependencyContainer.current
 ): AlbumViewModel {
     return remember {
-        AlbumViewModel(dependencies.albumRepository, dependencies.ratingRepository)
+        AlbumViewModel(
+            dependencies.albumRepository,
+            dependencies.ratingRepository,
+            dependencies.collectionAlbumRepository
+        )
     }
 }
 
