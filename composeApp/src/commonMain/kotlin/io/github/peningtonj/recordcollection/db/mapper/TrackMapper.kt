@@ -19,7 +19,8 @@ object TrackMapper {
             isExplicit = false,
             trackNumber = 0,
             discNumber = 0,
-            albumId = entity.album.id
+            albumId = entity.album.id,
+            spotifyUri = entity.uri
         )
     }
 
@@ -34,7 +35,8 @@ object TrackMapper {
             trackNumber = entity.track_number,
             discNumber = entity.disc_number,
             isExplicit = entity.is_explicit == 1L,
-            albumId = entity.album_id
+            albumId = entity.album_id,
+            spotifyUri = entity.spotify_uri
         )
     }
 }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Playback
+import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.repository.PlaybackRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable.isActive
@@ -48,6 +49,13 @@ class PlaybackViewModel(
         viewModelScope.launch {
             playbackRepository.turnOffShuffle()
             playbackRepository.startAlbumPlayback(album)
+        }
+    }
+
+    fun playTrackFromAlbum(album: Album, track: Track) {
+        viewModelScope.launch {
+            playbackRepository.turnOffShuffle()
+            playbackRepository.startAlbumPlaybackFromTrack(album, track)
         }
     }
 

@@ -10,5 +10,6 @@ data class Track(
     val trackNumber: Long,
     val discNumber: Long,
     val durationMs: Long,
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val spotifyUri: String,
 )

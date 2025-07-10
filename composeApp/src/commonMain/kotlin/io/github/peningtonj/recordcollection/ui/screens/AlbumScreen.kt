@@ -56,7 +56,10 @@ fun AlbumScreen(
                 )
 
                 // Display tracks
-                TrackListing(successState.tracks)
+                TrackListing(successState.tracks,
+                    onPlayClick = { track ->
+                        playbackViewModel.playTrackFromAlbum(album = successState.album.album, track)
+                    })
             }
         }
     }

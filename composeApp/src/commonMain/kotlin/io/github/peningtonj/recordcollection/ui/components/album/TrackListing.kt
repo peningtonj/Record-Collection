@@ -11,11 +11,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.db.domain.Track
 import androidx.compose.foundation.background
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun TrackListing(
     tracks: List<Track>,
+    onPlayClick: (Track) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Group tracks by disc number
@@ -43,7 +51,7 @@ fun TrackListing(
                 items = discTracks,
                 key = { it.id }
             ) { track ->
-                TrackListingItem(track = track)
+                TrackListingItem(track = track, onPlayClick = onPlayClick)
             }
         }
     }
@@ -114,22 +122,46 @@ fun TrackListingHeader(
 @Composable
 fun TrackListingItem(
     track: Track,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPlayClick: (Track) -> Unit = {}
 ) {
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .hoverable(interactionSource = interactionSource),
+    horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+
     ) {
         // Track number
-        Text(
-            text = track.trackNumber.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(24.dp)
-        )
+        Box(
+            modifier = Modifier.width(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isHovered) {
+                IconButton(
+                    onClick = { onPlayClick(track) },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Play ${track.name}",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            } else {
+                Text(
+                    text = track.trackNumber.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         // Track title and artists
         Column(
