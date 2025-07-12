@@ -52,6 +52,10 @@ fun CollectionScreen(
             onPlayAllClick = {
                 Napier.d { "Play all albums in collection $collectionName" }
             },
+            onRandomClick =
+                {
+                    playbackViewModel.playAlbum(uiState.albums.random().album.album)
+                }
         )
 
         AlbumGrid(

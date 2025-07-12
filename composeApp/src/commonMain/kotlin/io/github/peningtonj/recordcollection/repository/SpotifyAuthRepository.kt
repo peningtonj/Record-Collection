@@ -54,6 +54,14 @@ class SpotifyAuthRepository(
         }
     }
 
+    suspend fun logout() {
+        // Clear tokens from database
+        database.authsQueries.deleteToken()
+        
+        // Update state to not authenticated
+        _authState.value = AuthState.NotAuthenticated
+    }
+
     // Token Management
     private suspend fun refreshToken(): Result<AccessToken> {
         _authState.value = AuthState.Authenticating
@@ -83,7 +91,7 @@ class SpotifyAuthRepository(
                 token_type = token.tokenType,
                 scope = token.scope,
                 expires_in = token.expiresIn,
-                refresh_token = token.refreshToken,
+                refresh_token = token.refreshToken ?: "",
                 expires_at = expiresAt
             )
         )

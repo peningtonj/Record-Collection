@@ -28,7 +28,8 @@ class CollectionDetailViewModel(
     init {
         loadCollectionDetails()
     }
-    
+
+
     private fun loadCollectionDetails() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)

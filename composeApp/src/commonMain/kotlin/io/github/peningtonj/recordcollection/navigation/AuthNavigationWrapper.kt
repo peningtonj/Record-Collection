@@ -31,9 +31,6 @@ fun AuthNavigationWrapper(
                     navigator.navigateTo(Screen.Login)
                 }
             }
-            null -> {
-                // Still checking auth state, could show a splash screen here
-            }
         }
     }
     

@@ -15,8 +15,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.aakira.napier.Napier
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
-import io.github.peningtonj.recordcollection.repository.TagRepository
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumHeader
 import io.github.peningtonj.recordcollection.ui.components.album.TrackListing
 import io.github.peningtonj.recordcollection.viewmodel.AlbumScreenUiState
@@ -57,18 +55,6 @@ fun AlbumScreen(
             val successState = uiState as AlbumScreenUiState.Success
             val albumDetail = successState.albumDetail
 
-            // Detailed logging of AlbumDetailUiState
-//            Napier.d { "=== AlbumDetailUiState Data ===" }
-//            Napier.d { "Album: ${albumDetail.album.name} by ${albumDetail.album.primaryArtist}" }
-//            Napier.d { "Album ID: ${albumDetail.album.id}" }
-//            Napier.d { "Total Tags: ${albumDetail.tags.size}" }
-//            Napier.d { "Release Date: ${albumDetail.album.releaseDate}" }
-//            Napier.d { "Total Tracks: ${albumDetail.album.totalTracks}" }
-//            Napier.d { "Total Duration: ${albumDetail.totalDuration}ms" }
-//            Napier.d { "Rating: ${albumDetail.rating?.rating ?: "No rating"}" }
-//            Napier.d { "Is Loading: ${albumDetail.isLoading}" }
-//            Napier.d { "Error: ${albumDetail.error ?: "No error"}" }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -100,15 +86,16 @@ fun AlbumScreen(
                             showAddTagDialog = false
                         }
                     )
-
-
-                    // Display tracks
-                    TrackListing(
-                        successState.albumDetail.tracks,
-                        onPlayClick = { track ->
-                            playbackViewModel.playTrackFromAlbum(album = successState.albumDetail.album, track)
-                        })
                 }
+
+
+                // Display tracks
+                TrackListing(
+                    successState.albumDetail.tracks,
+                    onPlayClick = { track ->
+                        playbackViewModel.playTrackFromAlbum(album = successState.albumDetail.album, track)
+                    })
+
             }
         }
     }

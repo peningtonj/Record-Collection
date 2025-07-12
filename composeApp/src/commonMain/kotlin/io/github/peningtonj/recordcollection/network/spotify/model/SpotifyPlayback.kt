@@ -24,6 +24,8 @@ data class PlaybackDto(
     val item: PlaybackItem? = null, // This now handles both tracks and episodes automatically
     @SerialName("shuffle_state")
     val shuffleState: Boolean,
+    @SerialName("smart_shuffle")
+    val smartShuffleState: Boolean,
     @SerialName("repeat_state")
     val repeatState: String,
     val actions: ActionsDto
@@ -126,8 +128,12 @@ data class StartPlaybackRequest(
     val positionMs: Int? = null
 )
 
-data class ShuffleToggleRequest(
+data class ShufflePlaybackRequest(
     val state: Boolean,
+    val deviceId: String? = null
+)
+
+data class DevicePlaybackRequest(
     val deviceId: String? = null
 )
 

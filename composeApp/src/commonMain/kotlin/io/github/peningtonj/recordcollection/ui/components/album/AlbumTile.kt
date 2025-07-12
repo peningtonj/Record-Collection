@@ -45,6 +45,7 @@ import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.ui.components.rating.StarRating
 import io.github.peningtonj.recordcollection.ui.components.rating.StarRatingDisplay
 import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
+import androidx.compose.ui.window.PopupProperties
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -85,10 +86,14 @@ fun CompactAlbumTile(
                 if (pointerEvent.button == PointerButton.Secondary) {
                     onContextMenu()
                     // For right click, position menu at mouse location
+                    // Clamp the position to ensure it stays within the card bounds
+                    val mouseX = pointerEvent.changes.first().position.x
+                    val mouseY = pointerEvent.changes.first().position.y
+                    
                     contextMenuPosition = with(density) {
                         DpOffset(
-                            x = pointerEvent.changes.first().position.x.toDp(),
-                            y = pointerEvent.changes.first().position.y.toDp()
+                            x = mouseX.toDp().coerceIn(0.dp, (cardSize.width).toDp()),
+                            y = mouseY.toDp().coerceIn(0.dp, (cardSize.height).toDp())
                         )
                     }
                     showContextMenu = true
@@ -137,6 +142,7 @@ fun CompactAlbumTile(
 
                         StarRating(
                             album.rating,
+                            starSpacing = 0.dp,
                             onRatingChange = onRatingChange,
                         )
 
@@ -155,7 +161,13 @@ fun CompactAlbumTile(
             DropdownMenu(
                 expanded = showContextMenu,
                 onDismissRequest = { showContextMenu = false },
-                offset = contextMenuPosition
+                offset = contextMenuPosition,
+                properties = PopupProperties(
+                    focusable = true,
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true,
+                    clippingEnabled = false // Allow menu to extend beyond parent bounds
+                )
             ) {
                 contextMenuContent { showContextMenu = false }
             }
@@ -174,7 +186,7 @@ fun AlbumGrid(
     contextMenuContent: @Composable (album: Album, onDismiss: () -> Unit) -> Unit = { _, _ -> }
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 200.dp),
+        columns = GridCells.Adaptive(minSize = 175.dp),
         modifier = modifier,
         contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),

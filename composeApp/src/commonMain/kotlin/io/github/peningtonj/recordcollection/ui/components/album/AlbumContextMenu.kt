@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowRight
 import androidx.compose.material.icons.filled.Delete
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
@@ -108,7 +110,7 @@ fun AlbumContextMenu(
                                 Text(menuAction.label)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Icon(
-                                    Icons.Default.ArrowRight,
+                                    Icons.AutoMirrored.Filled.ArrowRight,
                                     contentDescription = null
                                 )
                             }
@@ -119,11 +121,17 @@ fun AlbumContextMenu(
                         }
                     )
 
-                    // Collections submenu
+                    // Collections submenu with reliable positioning
                     DropdownMenu(
                         expanded = showCollectionSubmenu,
                         onDismissRequest = { showCollectionSubmenu = false },
-                        offset = DpOffset(x = 200.dp, y = 0.dp) // Position to the right
+                        offset = DpOffset(x = 180.dp, y = (-32).dp), // Position to the right and slightly up
+                        properties = PopupProperties(
+                            focusable = true,
+                            dismissOnBackPress = true,
+                            dismissOnClickOutside = true,
+                            clippingEnabled = false // Allow menu to extend beyond parent bounds
+                        )
                     ) {
                         collectionsState.collections.forEach { collection ->
                             DropdownMenuItem(

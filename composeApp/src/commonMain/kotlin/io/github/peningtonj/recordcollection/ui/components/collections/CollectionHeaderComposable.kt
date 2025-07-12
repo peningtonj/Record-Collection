@@ -3,6 +3,10 @@ package io.github.peningtonj.recordcollection.ui.components.collection
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +21,7 @@ fun CollectionHeader(
     collectionName: String,
     albumCount: Int,
     onPlayAllClick: () -> Unit,
+    onRandomClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -49,6 +54,14 @@ fun CollectionHeader(
                     modifier = Modifier
                         .padding(top = 4.dp)
                 )
+                IconButton(
+                    onClick = onRandomClick
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shuffle,
+                        contentDescription = "Random Album")
+                }
+
             }
 
             // Album Count

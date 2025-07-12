@@ -59,7 +59,7 @@ class AlbumRepository(
     suspend fun syncSavedAlbums() {
         Napier.d("Syncing Albums")
         var offset = 0
-        val limit = 5 // Max allowed by Spotify API
+        val limit = 50 // Max allowed by Spotify API
         var hasMore = true
 
         database.albumsQueries.deleteAll()
@@ -86,7 +86,7 @@ class AlbumRepository(
                     }
 
                     offset += response.items.size
-                    hasMore = false
+                    hasMore = response.next != null && response.next.isNotEmpty()
                 }
                 .onFailure { error ->
                     throw error // Or handle error appropriately
@@ -105,16 +105,19 @@ class AlbumRepository(
     }
 
     suspend fun checkAndUpdateTracksIfNeeded(albumId: String) {
-            val tracksExist = database.tracksQueries
-                .countTracksForAlbum(albumId)
-                .executeAsOne() > 0
+        Napier.d("Checking if tracks exist for album $albumId")
+        val tracksExist = database.tracksQueries
+            .countTracksForAlbum(albumId)
+            .executeAsOne() > 0
 
-            if (!tracksExist) {
-                fetchAndSaveTracks(albumId)
-            }
+        Napier.d { "Tracks exist: $tracksExist" }
+        if (!tracksExist) {
+            fetchAndSaveTracks(albumId)
         }
+    }
 
     private suspend fun fetchAndSaveTracks(albumId: String) {
+        Napier.d("Fetching tracks for album $albumId")
         spotifyApi.library.getAlbumTracks(albumId)
             .onSuccess { response ->
                 database.transaction {

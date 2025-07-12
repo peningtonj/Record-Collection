@@ -28,6 +28,7 @@ fun StarRating(
     onRatingChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
     starSize: Dp = 24.dp,
+    starSpacing: Dp = 4.dp,
     interactive: Boolean = true,
     halfStars : Boolean = true
 ) {
@@ -40,7 +41,7 @@ fun StarRating(
 
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(starSpacing)
     ) {
         repeat(5) { index ->
             val starValue = (index + 1) * 2 // Each star represents 2 points

@@ -20,18 +20,18 @@ data class AlbumDto(
     @SerialName("external_urls")
     val externalUrls: Map<String, String>,
     @SerialName("external_ids")
-    val externalIds: Map<String, String>,
+    val externalIds: Map<String, String>? = null,
     val images: List<ImageDto>,
-    val popularity: Int?,
-    val label: String?,
-    val copyrights: List<Copyright>,
+    val popularity: Int? = null,
+    val label: String? = null,
+    val copyrights: List<Copyright>? = emptyList(),
     @SerialName("available_markets")
     val availableMarkets: List<String>,
     val href: String,
     val restrictions: Restrictions? = null,
     val type: String,
-    val genres: List<String>,
-    val tracks: TracksDto
+    val genres: List<String>? = emptyList(),
+    val tracks: TracksDto? = null
 
 )
 

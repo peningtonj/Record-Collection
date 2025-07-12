@@ -185,6 +185,10 @@ fun LibraryScreen(
                     viewModel.createCollectionFromCurrentFilter(name)
                 }
             )
+
+            Temp(
+                { viewModel.import() }
+            )
         }
 
         AlbumGrid(filteredAlbums,

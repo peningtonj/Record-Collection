@@ -22,7 +22,7 @@ data class AccessToken(
     @SerialName("expires_in")
     val expiresIn: Long,
     @SerialName("refresh_token")
-    val refreshToken: String
+    val refreshToken: String? = null
 )
 
 interface AuthHandler {
