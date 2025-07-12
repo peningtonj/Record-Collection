@@ -13,7 +13,7 @@ selectByName:
 SELECT * FROM album_collections WHERE name = ?;
 
 insert:
-INSERT INTO album_collections (name, description)
+INSERT OR REPLACE INTO album_collections (name, description)
 VALUES (?, ?);
 
 update:

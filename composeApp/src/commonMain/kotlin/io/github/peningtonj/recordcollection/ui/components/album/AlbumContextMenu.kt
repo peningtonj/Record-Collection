@@ -8,9 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowRight
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -32,7 +30,6 @@ import io.github.peningtonj.recordcollection.ui.collections.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionDetailViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 
@@ -145,6 +142,7 @@ fun AlbumContextMenu(
                             text = { Text("Create New Collection...") },
                             onClick = {
                                 Napier.d { "Create new collection for ${album.name}" }
+                                collectionsViewModel.createCollection(album.name)
                                 showCollectionSubmenu = false
                                 onDismiss()
                             },

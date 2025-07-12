@@ -123,16 +123,6 @@ class LibraryService(
 
         albumRepository.syncSavedAlbums()
 
-        albumRepository.getAllAlbums()
-            .collect { albums ->
-                if (albums.isNotEmpty()) {
-                    val artists = artistRepository.getArtistsForAlbums(albums)
-                    if (artists.isNotEmpty()) {
-                        artistRepository.saveArtists(artists)
-                    }
-                }
-            }
-
         Napier.d("Library sync completed")
     }
 

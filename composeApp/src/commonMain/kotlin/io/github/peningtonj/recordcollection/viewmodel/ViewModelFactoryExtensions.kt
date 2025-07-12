@@ -2,6 +2,7 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalDependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
@@ -56,6 +57,7 @@ fun rememberPlaybackViewModel(
     }
 }
 
+
 @Composable
 fun rememberAlbumViewModel(
     dependencies: DependencyContainer = LocalDependencyContainer.current
@@ -64,7 +66,10 @@ fun rememberAlbumViewModel(
         AlbumViewModel(
             dependencies.albumRepository,
             dependencies.ratingRepository,
-            dependencies.collectionAlbumRepository
+            dependencies.collectionAlbumRepository,
+            getAlbumDetailUseCase = dependencies.albumDetailUseCase,
+            tagRepository = dependencies.tagRepository,
+            albumTagRepository = dependencies.albumTagRepository,
         )
     }
 }

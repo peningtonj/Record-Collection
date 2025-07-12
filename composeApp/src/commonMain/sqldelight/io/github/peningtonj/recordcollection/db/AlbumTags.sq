@@ -1,0 +1,49 @@
+CREATE TABLE album_tags (
+    album_id TEXT NOT NULL,
+    tag_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (album_id, tag_id),
+    FOREIGN KEY(album_id) REFERENCES albums(id) ON DELETE CASCADE,
+    FOREIGN KEY(tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
+);
+
+-- Get all tags for a specific album
+getTagsForAlbum:
+SELECT t.* FROM tags t
+JOIN album_tags at ON t.tag_id = at.tag_id
+WHERE at.album_id = :albumId
+ORDER BY t.tag_key;
+
+-- Get albums with a specific tag
+getAlbumsWithTag:
+SELECT a.* FROM albums a
+JOIN album_tags at ON a.id = at.album_id
+WHERE at.tag_id = :tagId;
+
+-- Get albums with multiple tags (AND condition)
+getAlbumsWithAllTags:
+SELECT a.* FROM albums a
+JOIN album_tags at ON a.id = at.album_id
+WHERE at.tag_id IN :tagIds
+GROUP BY a.id
+HAVING COUNT(DISTINCT at.tag_id) = :tagCount;
+
+-- Add tag to album
+addTagToAlbum:
+INSERT OR IGNORE INTO album_tags(album_id, tag_id, created_at)
+VALUES (?, ?, ?);
+
+-- Remove tag from album
+removeTagFromAlbum:
+DELETE FROM album_tags
+WHERE album_id = :albumId AND tag_id = :tagId;
+
+-- Remove all tags from album
+removeAllTagsFromAlbum:
+DELETE FROM album_tags
+WHERE album_id = :albumId;
+
+-- Count tags for an album
+countTagsForAlbum:
+SELECT COUNT(*) FROM album_tags
+WHERE album_id = :albumId;

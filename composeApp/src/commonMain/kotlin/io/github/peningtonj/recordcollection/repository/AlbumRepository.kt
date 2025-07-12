@@ -13,24 +13,53 @@ import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.db.mapper.TrackMapper
+import io.github.peningtonj.recordcollection.events.AlbumEvent
+import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
+import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 
 class AlbumRepository(
     private val database: RecordCollectionDatabase,
-    private val spotifyApi: SpotifyApi
+    private val spotifyApi: SpotifyApi,
+    private val eventDispatcher: AlbumEventDispatcher
+
 ) {
+    fun saveAlbum(album: AlbumDto) {
+        database.albumsQueries.insert(
+            id = album.id,
+            name = album.name,
+            primary_artist = album.artists.firstOrNull()?.name ?: "Unknown Artist",
+            artists = Json.encodeToString(album.artists),
+            release_date = album.releaseDate,
+            total_tracks = album.totalTracks.toLong(),
+            spotify_uri = album.uri,
+            added_at = Clock.System.now().toString(),
+            album_type = album.albumType.toString(),
+            images = Json.encodeToString(album.images),
+            updated_at = System.currentTimeMillis()
+        )
+    }
+
+    suspend fun fetchAlbum(albumId: String, replaceArtist : Boolean = false) {
+        Napier.d("Fetching Album $albumId")
+        spotifyApi.library.getAlbum(albumId)
+            .onSuccess { response ->
+                database.transaction {
+                    saveAlbum(response)
+                }
+                val album = AlbumMapper.toDomain(response)
+                eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album, replaceArtist))
+            }
+    }
     suspend fun syncSavedAlbums() {
         Napier.d("Syncing Albums")
         var offset = 0
-        val limit = 50 // Max allowed by Spotify API
+        val limit = 5 // Max allowed by Spotify API
         var hasMore = true
 
         database.albumsQueries.deleteAll()
@@ -52,10 +81,12 @@ class AlbumRepository(
                             images = Json.encodeToString(savedAlbum.album.images),
                             updated_at = System.currentTimeMillis()
                         )
+                        val album = AlbumMapper.toDomain(savedAlbum.album)
+                        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album, true))
                     }
 
                     offset += response.items.size
-                    hasMore = response.next != null
+                    hasMore = false
                 }
                 .onFailure { error ->
                     throw error // Or handle error appropriately
@@ -104,6 +135,7 @@ class AlbumRepository(
                         )
                     }
                 }
+
             }
             .onFailure { error ->
                 Napier.e("Failed to fetch tracks for album $albumId", error)
@@ -171,7 +203,7 @@ class AlbumRepository(
         return playlists.associateWith { playlist -> spotifyApi.temp.extractAlbumsFromPlaylist(playlist) }
     }
 
-suspend fun getMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = runCatching {
+suspend fun fetchMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = runCatching {
     if (ids.isEmpty()) return@runCatching emptyList()
     
     val albums = mutableListOf<Album>()
@@ -184,28 +216,18 @@ suspend fun getMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Resu
                     albums.add(AlbumMapper.toDomain(albumDto))
                     
                     if (saveToDb) {
-                        database.albumsQueries.insert(
-                            id = albumDto.id,
-                            name = albumDto.name,
-                            primary_artist = albumDto.artists.firstOrNull()?.name ?: "Unknown Artist",
-                            artists = Json.encodeToString(albumDto.artists),
-                            release_date = albumDto.releaseDate,
-                            total_tracks = albumDto.totalTracks.toLong(),
-                            spotify_uri = albumDto.uri,
-                            added_at = Clock.System.now().toString(),
-                            album_type = albumDto.albumType.toString(),
-                            images = Json.encodeToString(albumDto.images),
-                            updated_at = System.currentTimeMillis()
-                        )
-
+                        saveAlbum(albumDto)
                     }
+                    val album = AlbumMapper.toDomain(albumDto)
+                    eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
                 }
+
             }
             .onFailure { error ->
                 throw error
             }
     }
-    
+
     albums
 }
 }

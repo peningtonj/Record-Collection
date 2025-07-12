@@ -50,3 +50,10 @@ SELECT COUNT(*) FROM collection_albums WHERE collection_name = ?;
 isAlbumInCollection:
 SELECT COUNT(*) > 0 FROM collection_albums
 WHERE collection_name = ? AND album_id = ?;
+
+getCollectionsForAlbum:
+SELECT ac.*, ca.position, ca.added_at
+FROM album_collections ac
+JOIN collection_albums ca ON ac.name = ca.collection_name
+WHERE ca.album_id = ?
+ORDER BY ac.name ASC;

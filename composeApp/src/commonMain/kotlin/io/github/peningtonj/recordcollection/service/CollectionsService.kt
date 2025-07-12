@@ -2,7 +2,6 @@ package io.github.peningtonj.recordcollection.service
 
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
-import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
@@ -26,7 +25,7 @@ class CollectionsService(
         val playlists = albumRepository.import()
         playlists.forEach { (playlist, albumIds) ->
             Napier.d { "Importing playlist: ${playlist.name}"}
-            val albums = albumRepository.getMultipleAlbums(albumIds.map { it.id })
+            val albums = albumRepository.fetchMultipleAlbums(albumIds.map { it.id })
             albumCollectionRepository.createCollection(playlist.name)
             albums.onSuccess { response ->
                 response.forEach { album ->

@@ -2,11 +2,12 @@ package io.github.peningtonj.recordcollection.di
 
 import io.github.peningtonj.recordcollection.db.DatabaseDriver
 import io.github.peningtonj.recordcollection.di.container.DependencyContainer
-import io.github.peningtonj.recordcollection.di.container.DependencyContainerFactory
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionDatabaseModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionNetworkModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionRepositoryModule
 import io.github.peningtonj.recordcollection.di.container.ModularDependencyContainer
+import io.github.peningtonj.recordcollection.di.module.impl.ProductionEventModule
+import io.github.peningtonj.recordcollection.di.module.impl.ProductionUseCaseModule
 import io.github.peningtonj.recordcollection.network.oauth.spotify.DesktopAuthHandler
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -25,13 +26,17 @@ object DependencyContainerFactory {
         val databaseModule = ProductionDatabaseModule(DatabaseDriver())
         val networkModule = ProductionNetworkModule()
         val repositoryModule = ProductionRepositoryModule()
+        val useCaseModule = ProductionUseCaseModule()
+        val eventModule = ProductionEventModule()
         
         // Create the container first
         val container = ModularDependencyContainer(
             networkModule = networkModule,
             databaseModule = databaseModule,
             repositoryModule = repositoryModule,
-            authHandler = DesktopAuthHandler(authClient)
+            useCaseModule = useCaseModule,
+            authHandler = DesktopAuthHandler(authClient),
+            eventModule = eventModule
         )
         
         // Now initialize the auth handler with the repository

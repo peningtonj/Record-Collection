@@ -2,6 +2,9 @@
 package io.github.peningtonj.recordcollection.di.module
 
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
+import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
+import io.github.peningtonj.recordcollection.network.everynoise.EveryNoiseApi
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.repository.*
@@ -14,12 +17,14 @@ interface RepositoryModule {
     
     fun provideAlbumRepository(
         database: RecordCollectionDatabase,
-        spotifyApi: SpotifyApi
+        spotifyApi: SpotifyApi,
+        eventDispatcher: AlbumEventDispatcher
     ): AlbumRepository
     
     fun provideArtistRepository(
         database: RecordCollectionDatabase,
-        spotifyApi: SpotifyApi
+        spotifyApi: SpotifyApi,
+        everyNoiseApi: EveryNoiseApi
     ): ArtistRepository
     
     fun providePlaybackRepository(
@@ -41,4 +46,13 @@ interface RepositoryModule {
     fun provideCollectionAlbumRepository(
         database: RecordCollectionDatabase
     ): CollectionAlbumRepository
+
+    fun provideAlbumTagRepository(
+        database: RecordCollectionDatabase
+    ): AlbumTagRepository
+
+    fun provideTagRepository(
+        database: RecordCollectionDatabase
+    ): TagRepository
+
 }

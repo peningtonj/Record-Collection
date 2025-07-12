@@ -2,22 +2,29 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
-import io.github.peningtonj.recordcollection.db.domain.Track
+import io.github.peningtonj.recordcollection.db.domain.Tag
+import io.github.peningtonj.recordcollection.db.domain.TagType
+import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
-import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
+import io.github.peningtonj.recordcollection.repository.TagRepository
+import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
+import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.catch
 
 class AlbumViewModel (
     private val albumRepository: AlbumRepository,
     private val ratingRepository: RatingRepository,
     private val collectionAlbumRepository: CollectionAlbumRepository,
+    private val getAlbumDetailUseCase: GetAlbumDetailUseCase,
+    private val tagRepository: TagRepository,
+    private val albumTagRepository: AlbumTagRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AlbumScreenUiState>(AlbumScreenUiState.Loading)
@@ -28,30 +35,20 @@ class AlbumViewModel (
 
     fun setRating(albumId: String, rating: Int) =
         ratingRepository.addRating(albumId, rating.toLong())
+
     fun loadAlbum(albumId: String) {
         viewModelScope.launch {
             _uiState.value = AlbumScreenUiState.Loading
             try {
                 albumRepository.checkAndUpdateTracksIfNeeded(albumId)
 
-                combine(
-                    albumRepository.getAlbumById(albumId),
-                    albumRepository.getTracksForAlbum(albumId),
-                    ratingRepository.getAlbumRating(albumId)
-                ) { album, tracks, rating ->
-                    AlbumScreenUiState.Success(
-                        album = AlbumDisplayData(
-                            album,
-                            tracks.sumOf { it.durationMs },
-                            rating = rating?.rating ?: 0
-                        ),
-                        tracks = tracks,
-                    )
-                }.catch { e ->
-                    _uiState.value = AlbumScreenUiState.Error(e.message ?: "Unknown error")
-                }.collect { successState ->
-                    _uiState.value = successState
-                }
+                getAlbumDetailUseCase.execute(albumId)
+                    .catch { e ->
+                        _uiState.value = AlbumScreenUiState.Error(e.message ?: "Unknown error")
+                    }
+                    .collect { albumDetailState ->
+                        _uiState.value = AlbumScreenUiState.Success(albumDetailState)
+                    }
             } catch (e: Exception) {
                 _uiState.value = AlbumScreenUiState.Error(e.message ?: "Unknown error")
             }
@@ -65,13 +62,49 @@ class AlbumViewModel (
     fun removeAlbumFromCollection(album: Album, collectionName: String) = viewModelScope.launch {
         collectionAlbumRepository.removeAlbumFromCollection(collectionName, album.id)
     }
+
+    fun refreshAlbum(album: Album) = viewModelScope.launch {
+        albumRepository.fetchAlbum(album.id, true)
+    }
+
+    fun removeTagFromAlbum(albumId: String, tagId: String) = viewModelScope.launch {
+        try {
+            albumTagRepository.removeTagFromAlbum(albumId, tagId)
+            loadAlbum(albumId) // Refresh the album data
+            Napier.d { "Removed tag $tagId from album $albumId" }
+        } catch (e: Exception) {
+            Napier.e(e) { "Error removing tag from album" }
+        }
+    }
+
+    fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) = viewModelScope.launch {
+        try {
+            val newTag = Tag(
+                key = tagKey,
+                value = tagValue,
+                type = TagType.USER // Adjust based on your TagType enum
+            )
+
+            // Insert the tag first
+            tagRepository.insertTag(newTag)
+
+            // Then add it to the album
+            albumTagRepository.addTagToAlbum(albumId, newTag.id)
+
+            // Refresh the album data
+            loadAlbum(albumId)
+
+            Napier.d { "Added tag ${newTag.key}:${newTag.value} to album $albumId" }
+        } catch (e: Exception) {
+            Napier.e(e) { "Error adding tag to album" }
+        }
+    }
 }
 
 sealed interface AlbumScreenUiState {
     data object Loading : AlbumScreenUiState
     data class Error(val message: String) : AlbumScreenUiState
     data class Success(
-        val album: AlbumDisplayData,
-        val tracks: List<Track>,
+        val albumDetail: AlbumDetailUiState
     ) : AlbumScreenUiState
 }

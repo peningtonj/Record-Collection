@@ -4,8 +4,10 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOne
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
+import io.github.peningtonj.recordcollection.db.domain.AlbumCollectionInfo
 import io.github.peningtonj.recordcollection.db.domain.CollectionAlbum
-import io.github.peningtonj.recordcollection.db.domain.CollectionAlbumMapper
+import io.github.peningtonj.recordcollection.db.domain.CollectionAlbumId
+import io.github.peningtonj.recordcollection.db.mapper.CollectionAlbumMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -69,4 +71,10 @@ class CollectionAlbumRepository(
             .isAlbumInCollection(collectionName, albumId)
             .asFlow()
             .mapToOne(Dispatchers.IO)
+
+    fun getCollectionsForAlbum(albumId: String): Flow<List<AlbumCollectionInfo>> =
+        database.collectionAlbumsQueries.getCollectionsForAlbum(albumId)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { it.map { CollectionAlbumMapper.toDomain(it) } }
 }

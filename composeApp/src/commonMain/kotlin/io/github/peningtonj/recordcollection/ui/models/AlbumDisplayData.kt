@@ -15,17 +15,3 @@ data class CollectionAlbumDisplayData(
     val rating: Int
 )
 
-
-fun formattedTotalDuration(totalDuration: Long): String {
-    val duration = totalDuration.milliseconds
-    val totalMinutes = duration.inWholeMinutes
-    val hours = totalMinutes / 60
-    val minutes = totalMinutes % 60
-    val seconds = (duration.inWholeSeconds % 60)
-
-    return if (hours > 0) {
-        "$hours h $minutes min"
-    } else {
-        "$minutes min $seconds sec"
-    }
-}

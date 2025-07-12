@@ -1,0 +1,34 @@
+CREATE TABLE tags (
+    tag_id TEXT NOT NULL PRIMARY KEY,
+    tag_key TEXT NOT NULL,
+    tag_value TEXT NOT NULL,
+    tag_type TEXT NOT NULL -- 'metadata', 'user_generated', 'ai_generated'
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_id ON tags(tag_id);
+
+-- Core queries
+selectAll:
+SELECT * FROM tags
+ORDER BY tag_key;
+
+insert:
+INSERT OR REPLACE INTO tags(
+    tag_id,
+    tag_key,
+    tag_value,
+    tag_type
+) VALUES (?, ?, ?, ?);
+
+getByType:
+SELECT * FROM tags
+WHERE tag_type = :tag_type
+ORDER BY tag_key;
+
+getByKey:
+SELECT * FROM tags
+WHERE tag_key = :tag_key;
+
+deleteById:
+DELETE FROM tags
+WHERE tag_id = :tag_id;

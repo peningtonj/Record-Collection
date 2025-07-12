@@ -1,6 +1,7 @@
 // commonMain/ui/screens/LibraryScreen.kt
 package io.github.peningtonj.recordcollection.ui.screens
 
+import DatabaseMigration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DataArray
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
@@ -102,9 +104,33 @@ fun LibraryScreen(
                     is SyncState.Syncing -> CircularProgressIndicator(
                         modifier = Modifier.size(24.dp)
                     )
-                else -> Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "sync"
+
+                    else -> Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "sync"
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = {
+                    val migration = DatabaseMigration()
+                    migration.migrateDatabases(
+                        "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection_bkup.db",
+                        "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection.db"
+                    )
+
+                },
+                enabled = syncState !is SyncState.Syncing
+            ) {
+                when (syncState) {
+                    is SyncState.Syncing -> CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp)
+                    )
+
+                    else -> Icon(
+                        imageVector = Icons.Default.DataArray,
+                        contentDescription = "sync"
                     )
                 }
             }
