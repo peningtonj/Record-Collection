@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.ui.components.playback
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,6 +43,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.aakira.napier.Napier
+import io.github.peningtonj.recordcollection.navigation.LocalNavigator
+import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
@@ -55,10 +58,9 @@ fun PlaybackBar(
     val isLoading by playbackViewModel.isLoading.collectAsState()
     val error by playbackViewModel.error.collectAsState()
     val session by playbackViewModel.currentSession.collectAsState()
-
+    val navigator = LocalNavigator.current
 
     var interpolatedProgress by remember { mutableFloatStateOf(0f) }
-
 
     LaunchedEffect(playback) {
         val currentPlayback = playback // Capture the value to avoid smart cast issues
@@ -82,6 +84,7 @@ fun PlaybackBar(
                 .coerceIn(0f, 1f)
         }
     }
+    
     // Handle error display if needed
     LaunchedEffect(error) {
         error?.let {
@@ -133,11 +136,16 @@ fun PlaybackBar(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Album art
+                    // Album art - now clickable
                     Card(
                         modifier = Modifier
                             .size(48.dp)
-                            .clip(RoundedCornerShape(4.dp)),
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable(enabled = currentPlayback?.track?.album?.id != null) {
+                                currentPlayback?.track?.album?.id?.let { albumId ->
+                                    navigator.navigateTo(Screen.Album(albumId))
+                                }
+                            },
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         if (currentPlayback?.track?.album?.images?.isNotEmpty() == true) {
@@ -201,7 +209,6 @@ fun PlaybackBar(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-
                     }
                 }
                 
@@ -288,7 +295,6 @@ fun PlaybackBar(
                                 }
                             )
                         }
-
                     }
                 }
             }
