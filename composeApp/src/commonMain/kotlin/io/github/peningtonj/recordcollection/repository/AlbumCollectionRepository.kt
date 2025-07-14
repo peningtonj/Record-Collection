@@ -6,11 +6,13 @@ import app.cash.sqldelight.coroutines.mapToOne
 import app.cash.sqldelight.coroutines.mapToOneOrNull
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
+import io.github.peningtonj.recordcollection.db.domain.CollectionFolder
 import io.github.peningtonj.recordcollection.db.mapper.AlbumCollectionMapper
+import io.github.peningtonj.recordcollection.db.mapper.CollectionFolderMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
+import kotlinx.serialization.json.Json
 
 class AlbumCollectionRepository(
     private val database: RecordCollectionDatabase
@@ -33,20 +35,22 @@ class AlbumCollectionRepository(
     fun createCollection(
         name: String,
         description: String? = null,
+        parent: String? = null,
     ) = database.albumCollectionsQueries.insert(
             name = name,
             description = description,
+            parent_name = parent
         )
 
-    suspend fun updateCollection(
-        oldName: String,
-        newName: String,
-        description: String? = null,
+    fun updateCollectionByName(
+        newCollectionDetails: AlbumCollection,
+        existingName: String,
     ) {
         database.albumCollectionsQueries.update(
-            name = oldName,
-            description = description,
-            newName
+            existing_name = existingName,
+            new_description = newCollectionDetails.description,
+            new_parent = newCollectionDetails.parentName,
+            new_name = newCollectionDetails.name,
         )
     }
     
@@ -59,4 +63,40 @@ class AlbumCollectionRepository(
             .getCount()
             .asFlow()
             .mapToOne(Dispatchers.IO)
+
+    fun createFolder(folder: CollectionFolder) =
+        database.collectionFoldersQueries.insert(
+            folder_name = folder.folderName,
+            collections = Json.encodeToString(folder.collections),
+            folders = Json.encodeToString(folder.folders),
+            parent = folder.parentName,
+        )
+
+    fun getAllTopLevelCollections() =
+        database.albumCollectionsQueries
+            .selectAllTopLevelCollections()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { it.map(AlbumCollectionMapper::toDomain) }
+
+    fun getAllTopLevelFolders() =
+        database.collectionFoldersQueries
+            .getTopLevelFolders()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { it.map(CollectionFolderMapper::toDomain) }
+
+    fun getCollectionsByFolder(folderName: String): Flow<List<AlbumCollection>> =
+        database.albumCollectionsQueries
+            .selectByParent(folderName)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { it.map(AlbumCollectionMapper::toDomain) }
+
+    fun getFoldersByParent(parentName: String): Flow<List<CollectionFolder>> =
+        database.collectionFoldersQueries
+            .getFoldersByParent(parentName)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { it.map(CollectionFolderMapper::toDomain) }
 }

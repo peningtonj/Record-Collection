@@ -10,7 +10,8 @@ object AlbumCollectionMapper {
             name = albumCollection.name,
             description = albumCollection.description,
             createdAt = Instant.fromEpochSeconds(albumCollection.created_at),
-            updatedAt = Instant.fromEpochSeconds(albumCollection.updated_at)
+            updatedAt = Instant.fromEpochSeconds(albumCollection.updated_at),
+            parentName = albumCollection.parent_name
         )
     }
 }

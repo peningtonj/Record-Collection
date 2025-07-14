@@ -1,4 +1,4 @@
-package io.github.peningtonj.recordcollection.ui.components.collection
+package io.github.peningtonj.recordcollection.ui.components.collections
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

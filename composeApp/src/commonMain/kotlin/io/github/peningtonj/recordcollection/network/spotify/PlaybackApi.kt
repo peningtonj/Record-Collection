@@ -1,13 +1,18 @@
 package io.github.peningtonj.recordcollection.network.spotify
 
 import io.github.aakira.napier.Napier
+import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi.Companion.BASE_URL
+import io.github.peningtonj.recordcollection.network.spotify.model.AddToQueueRequest
 import io.github.peningtonj.recordcollection.network.spotify.model.DevicePlaybackRequest
 import io.github.peningtonj.recordcollection.network.spotify.model.PlaybackDto
 import io.github.peningtonj.recordcollection.network.spotify.model.ShufflePlaybackRequest
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyPlayHistoryRequest
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyPlayHistoryResponse
 import io.github.peningtonj.recordcollection.network.spotify.model.StartPlaybackRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -133,7 +138,24 @@ class PlaybackApi(
         }
     }
 
+    suspend fun getRecentlyPlayedTracks(
+        request: SpotifyPlayHistoryRequest
+    ): SpotifyPlayHistoryResponse {
+        val response = client.get("$BASE_URL/me/player/recently-played") {
+            parameter("limit", request.limit)
+            parameter("after", request.after)
+            parameter("before", request.before)
+        }
+        return response.body()
+    }
 
+    suspend fun addTrackToQueue(addToQueueRequest: AddToQueueRequest) =
+        client.post("$BASE_URL/me/player/queue") {
+            parameter("uri", addToQueueRequest.uri)
+            addToQueueRequest.deviceId?.let {
+                parameter("device_id", it)
+            }
+        }
 }
 
 sealed class PlaybackException(message: String) : Exception(message) {

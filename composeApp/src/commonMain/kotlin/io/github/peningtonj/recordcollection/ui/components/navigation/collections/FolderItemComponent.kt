@@ -1,4 +1,4 @@
-package io.github.peningtonj.recordcollection.ui.components.navigation
+package io.github.peningtonj.recordcollection.ui.components.navigation.collections
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -20,12 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
+import io.github.peningtonj.recordcollection.db.domain.CollectionFolder
 
 @Composable
-fun CollectionItem(
-    collection: AlbumCollection,
-    isSelected: Boolean,
+fun FolderItem(
+    folder: CollectionFolder,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -35,11 +33,7 @@ fun CollectionItem(
             .padding(vertical = 2.dp)
             .clickable { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Row(
@@ -49,26 +43,18 @@ fun CollectionItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.LibraryMusic,
+                imageVector = Icons.Default.Folder,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
-                tint = if (isSelected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Text(
-                text = collection.name,
+                text = folder.folderName,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (isSelected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

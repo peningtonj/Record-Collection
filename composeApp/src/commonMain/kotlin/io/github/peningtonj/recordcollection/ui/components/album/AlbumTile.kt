@@ -46,11 +46,12 @@ import io.github.peningtonj.recordcollection.ui.components.rating.StarRating
 import io.github.peningtonj.recordcollection.ui.components.rating.StarRatingDisplay
 import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 import androidx.compose.ui.window.PopupProperties
+import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun CompactAlbumTile(
-    album: AlbumDisplayData,
+    album: AlbumDetailUiState,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onPlayClick: () -> Unit = {},
@@ -141,7 +142,7 @@ fun CompactAlbumTile(
                         )
 
                         StarRating(
-                            album.rating,
+                            album.rating?.rating ?: 0,
                             starSpacing = 0.dp,
                             onRatingChange = onRatingChange,
                         )
@@ -177,13 +178,13 @@ fun CompactAlbumTile(
 
 @Composable
 fun AlbumGrid(
-    albums: List<AlbumDisplayData>,
+    albums: List<AlbumDetailUiState>,
     modifier: Modifier = Modifier,
-    onAlbumClick: (Album) -> Unit = {},
-    onPlayClick: (Album) -> Unit,
-    onContextMenu: (Album) -> Unit = {},
-    onRatingChange: (Album, Int) -> Unit,
-    contextMenuContent: @Composable (album: Album, onDismiss: () -> Unit) -> Unit = { _, _ -> }
+    onAlbumClick: (AlbumDetailUiState) -> Unit = {},
+    onPlayClick: (AlbumDetailUiState) -> Unit,
+    onContextMenu: (AlbumDetailUiState) -> Unit = {},
+    onRatingChange: (AlbumDetailUiState, Int) -> Unit,
+    contextMenuContent: @Composable (album: AlbumDetailUiState, onDismiss: () -> Unit) -> Unit = { _, _ -> }
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 175.dp),
@@ -195,14 +196,14 @@ fun AlbumGrid(
         items(albums) { album ->
             CompactAlbumTile(
                 album = album,
-                onClick = { onAlbumClick(album.album) },
-                onPlayClick = { onPlayClick(album.album) },
-                onContextMenu = { onContextMenu(album.album) },
+                onClick = { onAlbumClick(album) },
+                onPlayClick = { onPlayClick(album) },
+                onContextMenu = { onContextMenu(album) },
                 contextMenuContent = { onDismiss -> 
-                    contextMenuContent(album.album, onDismiss)
+                    contextMenuContent(album, onDismiss)
                 },
                 onRatingChange = { rating ->
-                    onRatingChange(album.album, rating)
+                    onRatingChange(album, rating)
                 }
             )
         }

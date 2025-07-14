@@ -1,0 +1,28 @@
+CREATE TABLE collection_folders (
+    folder_name TEXT NOT NULL PRIMARY KEY,
+    collections TEXT CHECK (json_valid(collections)), -- Store as JSON array
+    folders TEXT CHECK (json_valid(folders)),         -- Store as JSON array
+    parent TEXT CHECK (json_valid(folders))
+);
+
+insert:
+INSERT OR REPLACE INTO collection_folders(
+    folder_name,
+    collections,
+    folders,
+    parent
+) VALUES (?, ?, ?, ?);
+
+getAllCollectionFolders:
+SELECT *
+FROM collection_folders;
+
+getTopLevelFolders:
+SELECT *
+FROM collection_folders
+WHERE parent IS NULL;
+
+getFoldersByParent:
+SELECT *
+FROM collection_folders
+WHERE parent = :parent;

@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
+import PlaybackQueueService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
@@ -7,6 +8,8 @@ import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Playback
 import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.repository.PlaybackRepository
+import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,13 +18,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+const val DEFAULT_POLLING_DELAY_MS = 3000L
+const val TRANSITIONING_POLLING_DELAY_MS = 500L
+
 class PlaybackViewModel(
-    private val playbackRepository: PlaybackRepository
+    private val playbackRepository: PlaybackRepository,
+    private val queueManager: PlaybackQueueService
 ) : ViewModel() {
 
-    init {
-        startPlaybackPolling()
-    }
+    private val _currentSession = MutableStateFlow<PlaybackQueueService.QueueSession?>(null)
+    val currentSession: StateFlow<PlaybackQueueService.QueueSession?> = _currentSession.asStateFlow()
 
     private val _playbackState = MutableStateFlow<Playback?>(null)
     val playbackState: StateFlow<Playback?> = _playbackState.asStateFlow()
@@ -32,146 +38,149 @@ class PlaybackViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private var pollingJob: Job? = null
+    private val playbackPoller = PlaybackPoller(
+        playbackRepository = playbackRepository,
+        onPlaybackUpdate = { playback ->
+            _playbackState.value = playback
+            handleQueueTransitions(playback)
+        },
+        onError = { error -> _error.value = error }
+    )
 
-    fun startPlaybackPolling() {
-        pollingJob?.cancel()
-        pollingJob = viewModelScope.launch {
-            while (isActive) {
-                try {
-                    val playback = playbackRepository.getCurrentPlayback()
-                    _playbackState.value = playback
-                    _error.value = null // Clear any previous errors
-                } catch (e: Exception) {
-                    _error.value = e.message
-                    // Handle error - maybe stop polling if unauthorized
-                }
-                delay(3000) // Poll every 3 seconds
-            }
+    init {
+        playbackPoller.start(viewModelScope)
+    }
+
+    private suspend fun handleQueueTransitions(playback: Playback?) {
+        val session = _currentSession.value
+
+        // Check for transition track addition
+        if (queueManager.shouldAddTransitionTrack(session, playback)) {
+            addTransitionTrack(session!!)
+        }
+
+        // Check for transitioning to next album
+        if (queueManager.shouldTransitionToNextAlbum(session, playback)) {
+            transitionToNextAlbum(session!!)
         }
     }
 
-    fun stopPlaybackPolling() {
-        pollingJob?.cancel()
+    private suspend fun addTransitionTrack(session: PlaybackQueueService.QueueSession) {
+        queueManager.addTransitionTrack(session).fold(
+            onSuccess = {
+                _currentSession.value = session.copy(hasAddedTransitionTrack = true)
+                playbackPoller.setPollingDelay(TRANSITIONING_POLLING_DELAY_MS)
+                Napier.d("Transition track added for album: ${session.album.name}")
+            },
+            onFailure = { error ->
+                _error.value = "Failed to add transition track: ${error.message}"
+            }
+        )
     }
 
-    // Existing album playback methods
-    fun playAlbum(album: Album) {
+    private fun transitionToNextAlbum(session: PlaybackQueueService.QueueSession) {
+        if (session.queue.isNotEmpty()) {
+            playAlbum(session.queue.first(), session.queue.drop(1))
+            playbackPoller.setPollingDelay(DEFAULT_POLLING_DELAY_MS)
+        }
+    }
+
+    suspend fun startAlbumWithOrWithoutTrack(
+        album: Album,
+        track: Track? = null
+    ) {
+        if (track != null) {
+            playbackRepository.startAlbumPlaybackFromTrack(album, track)
+        } else {
+            playbackRepository.startAlbumPlayback(album)
+        }
+    }
+
+    fun playAlbum(album: AlbumDetailUiState,
+                  queue: List<AlbumDetailUiState> = emptyList(),
+                  startFromTrack: Track? = null) {
         viewModelScope.launch {
-            _isLoading.value = true
-            try {
+            executeWithLoading {
+                val albumWithTracks = queueManager.ensureTracksLoaded(album)
+
                 playbackRepository.turnOffShuffle()
-                playbackRepository.startAlbumPlayback(album)
-                // Update state immediately after starting playback
+                startAlbumWithOrWithoutTrack(albumWithTracks.album, startFromTrack)
+
+                _currentSession.value = PlaybackQueueService.QueueSession(
+                    album = albumWithTracks.album,
+                    lastTrack = albumWithTracks.tracks.last(),
+                    queue = queue
+                )
+
                 updatePlaybackState()
-            } catch (e: Exception) {
-                _error.value = e.message
-            } finally {
-                _isLoading.value = false
             }
         }
     }
 
-    fun playTrackFromAlbum(album: Album, track: Track) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
+    // Utility functions
+    private suspend fun executeWithLoading(action: suspend () -> Unit) {
+        _isLoading.value = true
+        try {
+            action()
+            _error.value = null
+        } catch (e: Exception) {
+            _error.value = e.message
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    private suspend fun executePlaybackAction(action: suspend () -> Unit) {
+        try {
+            action()
+            updatePlaybackState()
+        } catch (e: Exception) {
+            _error.value = e.message
+        }
+    }
+
+    // Simplified playback controls
+    fun play() = viewModelScope.launch {
+        executePlaybackAction { playbackRepository.resumePlayback() }
+    }
+
+    fun pause() = viewModelScope.launch {
+        executePlaybackAction { playbackRepository.pausePlayback() }
+    }
+
+    fun togglePlayPause() = viewModelScope.launch {
+        executePlaybackAction {
+            val isPlaying = _playbackState.value?.isPlaying == true
+            if (isPlaying) playbackRepository.pausePlayback()
+            else playbackRepository.resumePlayback()
+        }
+    }
+
+    fun next() = viewModelScope.launch {
+        executePlaybackAction {
+            playbackRepository.skipToNext()
+            delay(100)
+        }
+    }
+
+    fun previous() = viewModelScope.launch {
+        executePlaybackAction {
+            playbackRepository.skipToPrevious()
+            delay(100)
+        }
+    }
+
+    fun seek(positionMs: Long) = viewModelScope.launch {
+        executePlaybackAction { playbackRepository.seekToPosition(positionMs) }
+    }
+
+    fun setShuffle(enabled: Boolean) = viewModelScope.launch {
+        executePlaybackAction {
+            if (enabled) {
+                playbackRepository.turnOnShuffle()
+                _currentSession.value = null // Clear session as shuffle breaks sequence
+            } else {
                 playbackRepository.turnOffShuffle()
-                playbackRepository.startAlbumPlaybackFromTrack(album, track)
-                updatePlaybackState()
-            } catch (e: Exception) {
-                _error.value = e.message
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    // New playback control methods
-    fun play() {
-        viewModelScope.launch {
-            try {
-                playbackRepository.resumePlayback()
-                updatePlaybackState()
-            } catch (e: Exception) {
-                _error.value = e.message
-            }
-        }
-    }
-
-    fun pause() {
-        viewModelScope.launch {
-            try {
-                playbackRepository.pausePlayback()
-                updatePlaybackState()
-            } catch (e: Exception) {
-                _error.value = e.message
-            }
-        }
-    }
-
-    fun togglePlayPause() {
-        viewModelScope.launch {
-            try {
-                val currentState = _playbackState.value
-                if (currentState?.isPlaying == true) {
-                    playbackRepository.pausePlayback()
-                } else {
-                    playbackRepository.resumePlayback()
-                }
-                updatePlaybackState()
-            } catch (e: Exception) {
-                _error.value = e.message
-            }
-        }
-    }
-
-    fun next() {
-        viewModelScope.launch {
-            try {
-                playbackRepository.skipToNext()
-                delay(100) // Small delay to ensure state is updated on Spotify's side
-                updatePlaybackState()
-            } catch (e: Exception) {
-                _error.value = e.message
-            }
-        }
-    }
-
-    fun previous() {
-        viewModelScope.launch {
-            try {
-                playbackRepository.skipToPrevious()
-                delay(100)
-                updatePlaybackState()
-            } catch (e: Exception) {
-                _error.value = e.message
-            }
-        }
-    }
-
-    fun seek(positionMs: Long) {
-        viewModelScope.launch {
-            try {
-                playbackRepository.seekToPosition(positionMs)
-                updatePlaybackState()
-            } catch (e: Exception) {
-                _error.value = e.message
-            }
-        }
-    }
-
-    fun setShuffle(enabled: Boolean) {
-        viewModelScope.launch {
-            try {
-                if (enabled) {
-                    playbackRepository.turnOnShuffle()
-                } else {
-                    playbackRepository.turnOffShuffle()
-                }
-                updatePlaybackState()
-            } catch (e: Exception) {
-                _error.value = e.message
             }
         }
     }
@@ -180,17 +189,51 @@ class PlaybackViewModel(
         _error.value = null
     }
 
+    fun clearSession() {
+        _currentSession.value = null
+    }
+
     private suspend fun updatePlaybackState() {
-        try {
-            val playback = playbackRepository.getCurrentPlayback()
-            _playbackState.value = playback
-        } catch (e: Exception) {
-            _error.value = e.message
-        }
+        _playbackState.value = playbackRepository.getCurrentPlayback()
     }
 
     override fun onCleared() {
         super.onCleared()
-        stopPlaybackPolling()
+        playbackPoller.stop()
     }
+
 }
+
+
+    class PlaybackPoller(
+        private val playbackRepository: PlaybackRepository,
+        private val onPlaybackUpdate: suspend (Playback?) -> Unit,
+        private val onError: (String?) -> Unit
+    ) {
+        private var pollingJob: Job? = null
+        private var _delayMs = MutableStateFlow(DEFAULT_POLLING_DELAY_MS)
+
+        fun start(scope: CoroutineScope) {
+            pollingJob?.cancel()
+            pollingJob = scope.launch {
+                while (isActive) {
+                    try {
+                        val playback = playbackRepository.getCurrentPlayback()
+                        onPlaybackUpdate(playback)
+                        onError(null)
+                    } catch (e: Exception) {
+                        onError(e.message)
+                    }
+                    delay(_delayMs.value)
+                }
+            }
+        }
+
+        fun setPollingDelay(delayMs: Long) {
+            _delayMs.value = delayMs
+        }
+
+        fun stop() {
+            pollingJob?.cancel()
+        }
+    }

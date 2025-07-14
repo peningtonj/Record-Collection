@@ -6,7 +6,6 @@ import io.github.peningtonj.recordcollection.db.SelectAlbumsInCollection
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollectionInfo
 import io.github.peningtonj.recordcollection.db.domain.CollectionAlbum
-import io.github.peningtonj.recordcollection.db.domain.CollectionAlbumId
 import kotlinx.datetime.Instant
 
 object CollectionAlbumMapper {

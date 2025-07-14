@@ -3,7 +3,7 @@ import java.sql.*
 
 class DatabaseMigration {
     
-    fun migrateDatabases(backupDbPath: String, targetDbPath: String) {
+    fun migrateDatabases(backupDbPath: String, targetDbPath: String, specificTables: List<String> = emptyList()) {
         try {
             // Connect to target database
             val targetConn = DriverManager.getConnection("jdbc:sqlite:$targetDbPath")
@@ -13,17 +13,23 @@ class DatabaseMigration {
             stmt.execute("ATTACH DATABASE '$backupDbPath' AS backup")
             println("Attached backup database")
 
-            // Collect all table names first
-            val tableNames = mutableListOf<String>()
-            val tables = stmt.executeQuery("SELECT name FROM backup.sqlite_master WHERE type='table'")
-            val skip = listOf("sqlite_sequence", "auths")
-            while (tables.next()) {
-                val tableName = tables.getString("name")
-                if (!skip.contains(tableName)) {
-                    tableNames.add(tableName)
+            var tableNames = mutableListOf<String>()
+
+            if (specificTables.isEmpty()) {
+                // Collect all table names first
+                val tables = stmt.executeQuery("SELECT name FROM backup.sqlite_master WHERE type='table'")
+                val skip = listOf("sqlite_sequence", "auths")
+                while (tables.next()) {
+                    val tableName = tables.getString("name")
+                    if (!skip.contains(tableName)) {
+                        tableNames.add(tableName)
+                    }
                 }
+                tables.close() // Close the ResultSet
+            } else {
+                tableNames = specificTables.toMutableList()
+                println("Migrating specific tables: $tableNames")
             }
-            tables.close() // Close the ResultSet
 
             // Now process each table
             tableNames.forEach { tableName ->

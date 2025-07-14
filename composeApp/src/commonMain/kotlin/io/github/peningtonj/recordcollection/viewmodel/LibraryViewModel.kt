@@ -10,7 +10,8 @@ import io.github.peningtonj.recordcollection.repository.ArtistRepository
 import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.LibraryStats
-import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
+import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
+import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,10 +20,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.combine
 
 class LibraryViewModel(
     private val libraryService: LibraryService,
     private val collectionsService: CollectionsService,
+    private val getAlbumDetailUseCase: GetAlbumDetailUseCase,
     albumRepository: AlbumRepository,
     artistRepository: ArtistRepository,
 ) : ViewModel() {
@@ -50,11 +53,23 @@ class LibraryViewModel(
             emptyList()
         )
 
-    // In LibraryViewModel
     @OptIn(ExperimentalCoroutinesApi::class)
-    val filteredAlbums: StateFlow<List<AlbumDisplayData>> = currentFilter
+    val filteredAlbums: StateFlow<List<AlbumDetailUiState>> = currentFilter
         .flatMapLatest { filter ->
             libraryService.getFilteredAlbums(filter)
+        }
+        .flatMapLatest { albumDisplayData ->
+            if (albumDisplayData.isEmpty()) {
+                kotlinx.coroutines.flow.flowOf(emptyList())
+            } else {
+                combine(
+                    albumDisplayData.map { displayData ->
+                        getAlbumDetailUseCase.execute(displayData.album.id)
+                    }
+                ) { albumDetails ->
+                    albumDetails.toList()
+                }
+            }
         }
         .stateIn(
             viewModelScope,

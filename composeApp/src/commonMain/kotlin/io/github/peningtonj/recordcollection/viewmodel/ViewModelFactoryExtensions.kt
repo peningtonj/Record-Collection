@@ -2,13 +2,11 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalDependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
-import io.github.peningtonj.recordcollection.ui.collections.CollectionsViewModel
 
 @Composable
 fun rememberAuthViewModel(
@@ -42,6 +40,7 @@ fun rememberLibraryViewModel(
         LibraryViewModel(
             dependencies.libraryService,
             dependencies.collectionsService,
+            dependencies.albumDetailUseCase,
             dependencies.albumRepository,
             dependencies.artistRepository,
         )
@@ -53,7 +52,10 @@ fun rememberPlaybackViewModel(
     dependencies: DependencyContainer = LocalDependencyContainer.current
 ): PlaybackViewModel {
     return remember {
-        PlaybackViewModel(dependencies.playbackRepository)
+        PlaybackViewModel(
+            dependencies.playbackRepository,
+            dependencies.playbackQueueService
+        )
     }
 }
 
@@ -94,7 +96,7 @@ fun rememberCollectionDetailViewModel(
         CollectionDetailViewModel(
             collectionRepository = dependencies.albumCollectionRepository,
             collectionAlbumRepository = dependencies.collectionAlbumRepository,
-            ratingRepository = dependencies.ratingRepository,
+            getAlbumDetailUseCase = dependencies.albumDetailUseCase,
             collectionName = collectionName
         )
     }

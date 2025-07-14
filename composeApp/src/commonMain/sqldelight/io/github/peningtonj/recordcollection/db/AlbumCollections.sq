@@ -2,24 +2,32 @@ CREATE TABLE album_collections (
     name TEXT PRIMARY KEY NOT NULL,
     description TEXT,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    parent_name TEXT,
+    FOREIGN KEY (parent_name) REFERENCES collection_folders(folder_name) ON DELETE SET NULL
 );
 
 -- Queries
 selectAll:
 SELECT * FROM album_collections ORDER BY created_at DESC;
 
+selectByParent:
+SELECT * FROM album_collections WHERE parent_name = ?;
+
+selectAllTopLevelCollections:
+SELECT * FROM album_collections WHERE parent_name IS NULL;
+
 selectByName:
 SELECT * FROM album_collections WHERE name = ?;
 
 insert:
-INSERT OR REPLACE INTO album_collections (name, description)
-VALUES (?, ?);
+INSERT OR REPLACE INTO album_collections (name, description, parent_name)
+VALUES (?, ?, ?);
 
 update:
 UPDATE album_collections
-SET name = ?, description = ?, updated_at = strftime('%s', 'now')
-WHERE name = ?;
+SET name = :new_name, description = :new_description, parent_name = :new_parent, updated_at = strftime('%s', 'now')
+WHERE name = :existing_name;
 
 delete:
 DELETE FROM album_collections WHERE name = ?;

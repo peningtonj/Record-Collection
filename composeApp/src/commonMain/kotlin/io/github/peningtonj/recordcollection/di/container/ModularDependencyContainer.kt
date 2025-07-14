@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.di.container
 
+import PlaybackQueueService
 import io.github.peningtonj.recordcollection.di.module.DatabaseModule
 import io.github.peningtonj.recordcollection.di.module.EventModule
 import io.github.peningtonj.recordcollection.di.module.NetworkModule
@@ -85,7 +86,14 @@ class ModularDependencyContainer(
     override val libraryService by lazy {
         LibraryService(albumRepository, artistRepository, ratingRepository)
     }
-    
+
+    override val playbackQueueService by lazy {
+        PlaybackQueueService(
+            playbackRepository,
+            albumRepository
+        )
+    }
+
     override val tagService by lazy {
         TagService()
     }

@@ -3,25 +3,25 @@ package io.github.peningtonj.recordcollection.ui.collection
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
-import io.github.peningtonj.recordcollection.db.domain.CollectionAlbum
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
-import io.github.peningtonj.recordcollection.repository.RatingRepository
-import io.github.peningtonj.recordcollection.ui.models.CollectionAlbumDisplayData
+import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
+import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 class CollectionDetailViewModel(
     private val collectionRepository: AlbumCollectionRepository,
     private val collectionAlbumRepository: CollectionAlbumRepository,
-    private val ratingRepository: RatingRepository,
+    private val getAlbumDetailUseCase: GetAlbumDetailUseCase,
     private val collectionName: String
 ) : ViewModel() {
-    
     private val _uiState = MutableStateFlow(CollectionDetailUiState())
     val uiState: StateFlow<CollectionDetailUiState> = _uiState.asStateFlow()
     
@@ -29,42 +29,44 @@ class CollectionDetailViewModel(
         loadCollectionDetails()
     }
 
-
     private fun loadCollectionDetails() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             combine(
                 collectionRepository.getCollectionByName(collectionName),
-                collectionAlbumRepository.getAlbumsInCollection(collectionName),
-                ratingRepository.getAllRatings()
-            ) { collection, albums, ratings -> // 'rating' is a List<Rating> here
-                val ratingsMap = ratings.associate { it.albumId to it.rating }
-
-                Pair(
-                    collection,
-                    albums.map { album ->
-                        CollectionAlbumDisplayData(
-                            album,
-                            ratingsMap[album.album.id] ?: 0
-                        )
+                collectionAlbumRepository.getAlbumsInCollection(collectionName)
+            ) { collection, albums ->
+                Pair(collection, albums)
+            }
+            .flatMapLatest { (collection, albums) ->
+                if (albums.isEmpty()) {
+                    flowOf(Pair(collection, emptyList<AlbumDetailUiState>()))
+                } else {
+                    // Get detailed album information using the use case
+                    combine(
+                        albums.map { album ->
+                            getAlbumDetailUseCase.execute(album.album.id)
+                        }
+                    ) { albumDetails ->
+                        Pair(collection, albumDetails.toList())
                     }
+                }
+            }
+            .catch { error ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = error.message
                 )
             }
-                .catch { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = error.message
-                    )
-                }
-                .collect { (collection, albums) ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        collection = collection,
-                        albums = albums,
-                        error = null
-                    )
-                }
+            .collect { (collection, albums) ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    collection = collection,
+                    albums = albums,
+                    error = null
+                )
+            }
         }
     }
     
@@ -101,10 +103,13 @@ class CollectionDetailViewModel(
         }
     }
     
-    fun updateCollection(name: String, description: String? = null) {
+    fun updateCollection(
+        existingName: String,
+        newCollectionDetails: AlbumCollection) {
         viewModelScope.launch {
             try {
-                collectionRepository.updateCollection(collectionName, name, description)
+                collectionRepository.updateCollectionByName(
+                    newCollectionDetails, existingName)
                 // Collection will automatically update via Flow
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
@@ -119,7 +124,7 @@ class CollectionDetailViewModel(
 
 data class CollectionDetailUiState(
     val collection: AlbumCollection? = null,
-    val albums: List<CollectionAlbumDisplayData> = emptyList(),
+    val albums: List<AlbumDetailUiState> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
 )

@@ -63,7 +63,7 @@ fun AlbumScreen(
             ) {
                 AlbumHeader(
                     albumDetailUiState = successState.albumDetail,
-                    onPlayClick = { playbackViewModel.playAlbum(album = successState.albumDetail.album) },
+                    onPlayClick = { playbackViewModel.playAlbum(album = successState.albumDetail) },
                     modifier = Modifier.fillMaxWidth(),
                     onRatingChange = { rating -> viewModel.setRating(albumId, rating) },
                     onRefreshClick = {
@@ -93,7 +93,9 @@ fun AlbumScreen(
                 TrackListing(
                     successState.albumDetail.tracks,
                     onPlayClick = { track ->
-                        playbackViewModel.playTrackFromAlbum(album = successState.albumDetail.album, track)
+                        playbackViewModel.playAlbum(
+                            album = successState.albumDetail,
+                            startFromTrack = track)
                     })
 
             }

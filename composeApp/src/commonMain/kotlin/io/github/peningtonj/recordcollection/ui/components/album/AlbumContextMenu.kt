@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.DropdownMenu
@@ -28,7 +27,8 @@ import androidx.compose.ui.window.PopupProperties
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
-import io.github.peningtonj.recordcollection.ui.collections.CollectionsViewModel
+import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
@@ -38,7 +38,7 @@ import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 data class AlbumContextMenuAction(
     val label: String,
     val icon: ImageVector,
-    val action: (Album) -> Unit,
+    val action: (AlbumDetailUiState) -> Unit,
     val hasSubmenu: Boolean = false
 )
 
@@ -77,9 +77,9 @@ fun rememberAlbumContextMenuActions(
 
                     defaultCollectionName?.let { collectionName ->
                         if (collectionDetailViewModel != null) {
-                            collectionDetailViewModel.removeAlbumFromCollection(album.id)
+                            collectionDetailViewModel.removeAlbumFromCollection(album.album.id)
                         } else {
-                            albumViewModel.removeAlbumFromCollection(album, collectionName)
+                            albumViewModel.removeAlbumFromCollection(album.album, collectionName)
                         }
                     }
                 }
@@ -90,7 +90,7 @@ fun rememberAlbumContextMenuActions(
 
 @Composable
 fun AlbumContextMenu(
-    album: Album,
+    album: AlbumDetailUiState,
     actions: Map<String, AlbumContextMenuAction>,
     onDismiss: () -> Unit,
     enabledActions: Set<String> = actions.keys,
@@ -137,8 +137,8 @@ fun AlbumContextMenu(
                             DropdownMenuItem(
                                 text = { Text(collection.name) },
                                 onClick = {
-                                    albumViewModel.addAlbumToCollection(album, collection.name)
-                                    Napier.d { "Added ${album.name} to ${collection.name}" }
+                                    albumViewModel.addAlbumToCollection(album.album, collection.name)
+                                    Napier.d { "Added ${album.album.name} to ${collection.name}" }
                                     showCollectionSubmenu = false
                                     onDismiss()
                                 }
@@ -149,8 +149,8 @@ fun AlbumContextMenu(
                         DropdownMenuItem(
                             text = { Text("Create New Collection...") },
                             onClick = {
-                                Napier.d { "Create new collection for ${album.name}" }
-                                collectionsViewModel.createCollection(album.name)
+                                Napier.d { "Create new collection for ${album.album.name}" }
+                                collectionsViewModel.createCollection(album.album.name)
                                 showCollectionSubmenu = false
                                 onDismiss()
                             },
@@ -179,7 +179,7 @@ fun AlbumContextMenu(
 // Convenience functions for common use cases
 @Composable
 fun StandardAlbumContextMenu(
-    album: Album,
+    album: AlbumDetailUiState,
     actions: Map<String, AlbumContextMenuAction>,
     onDismiss: () -> Unit
 ) {
@@ -193,7 +193,7 @@ fun StandardAlbumContextMenu(
 
 @Composable
 fun CollectionAlbumContextMenu(
-    album: Album,
+    album: AlbumDetailUiState,
     actions: Map<String, AlbumContextMenuAction>,
     onDismiss: () -> Unit,
     defaultCollectionName: String? = null

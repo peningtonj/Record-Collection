@@ -142,3 +142,10 @@ data class PlaybackOffset(
     val position: Int? = null,
     val uri: String? = null
 )
+
+@Serializable
+data class AddToQueueRequest(
+    val uri: String,
+    @SerialName("device_id")
+    val deviceId: String? = null,
+)

@@ -6,7 +6,6 @@ import app.cash.sqldelight.coroutines.mapToOne
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollectionInfo
 import io.github.peningtonj.recordcollection.db.domain.CollectionAlbum
-import io.github.peningtonj.recordcollection.db.domain.CollectionAlbumId
 import io.github.peningtonj.recordcollection.db.mapper.CollectionAlbumMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

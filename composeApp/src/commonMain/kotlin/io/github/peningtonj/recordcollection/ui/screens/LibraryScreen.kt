@@ -117,7 +117,8 @@ fun LibraryScreen(
                     val migration = DatabaseMigration()
                     migration.migrateDatabases(
                         "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection_bkup.db",
-                        "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection.db"
+                        "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection.db",
+                        specificTables = listOf("album_ratings")
                     )
 
                 },
@@ -172,7 +173,7 @@ fun LibraryScreen(
         Row() {
             IconButton(
                 onClick = {
-                    playbackViewModel.playAlbum(filteredAlbums.random().album)
+                    playbackViewModel.playAlbum(filteredAlbums.random())
                 }
             ) {
                 Icon(
@@ -193,7 +194,7 @@ fun LibraryScreen(
 
         AlbumGrid(filteredAlbums,
             onAlbumClick = { album ->
-                navigator.navigateTo(Screen.Album(album.id))
+                navigator.navigateTo(Screen.Album(album.album.id))
             },
             onPlayClick = { album ->
                 albumActions["play"]?.action?.invoke(album)
@@ -206,7 +207,7 @@ fun LibraryScreen(
                 )
             },
             onRatingChange = { album, rating ->
-                albumViewModel.setRating(album.id, rating)
+                albumViewModel.setRating(album.album.id, rating)
             }
         )
 

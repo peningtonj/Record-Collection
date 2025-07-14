@@ -12,13 +12,11 @@ import androidx.compose.ui.unit.dp
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Screen
-import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
 import io.github.peningtonj.recordcollection.ui.components.album.CollectionAlbumContextMenu
-import io.github.peningtonj.recordcollection.ui.components.album.StandardAlbumContextMenu
 import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumContextMenuActions
-import io.github.peningtonj.recordcollection.ui.components.collection.CollectionHeader
+import io.github.peningtonj.recordcollection.ui.components.collections.CollectionHeader
 import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
@@ -50,24 +48,30 @@ fun CollectionScreen(
             collectionName = collectionName,
             albumCount = uiState.albums.size,
             onPlayAllClick = {
-                Napier.d { "Play all albums in collection $collectionName" }
+                playbackViewModel.playAlbum(
+                    uiState.albums.first(),
+                    uiState.albums.drop(1))
             },
             onRandomClick =
                 {
-                    playbackViewModel.playAlbum(uiState.albums.random().album.album)
-                }
-        )
+                    val shuffledList = uiState.albums.shuffled()
+                    playbackViewModel.playAlbum(
+                        shuffledList.first(),
+                        shuffledList.drop(1)
+                    )
+                        }
+            )
 
         AlbumGrid(
-            uiState.albums.map { AlbumDisplayData(it.album.album, 0, it.rating) },
+            uiState.albums,
             onAlbumClick = { album ->
-                navigator.navigateTo(Screen.Album(album.id))
+                navigator.navigateTo(Screen.Album(album.album.id))
             },
             onPlayClick = { album ->
                 albumActions["play"]?.action?.invoke(album)
             },
             onRatingChange = { album, rating ->
-                albumViewModel.setRating(album.id, rating)
+                albumViewModel.setRating(album.album.id, rating)
             },
             contextMenuContent = { album, onDismiss ->
                 CollectionAlbumContextMenu(

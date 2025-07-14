@@ -3,12 +3,17 @@ package io.github.peningtonj.recordcollection.repository
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Playback
 import io.github.peningtonj.recordcollection.db.domain.Track
+import io.github.peningtonj.recordcollection.db.mapper.HistoryResponseMapper
 import io.github.peningtonj.recordcollection.db.mapper.PlaybackMapper
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
+import io.github.peningtonj.recordcollection.network.spotify.model.AddToQueueRequest
 import io.github.peningtonj.recordcollection.network.spotify.model.DevicePlaybackRequest
 import io.github.peningtonj.recordcollection.network.spotify.model.PlaybackOffset
 import io.github.peningtonj.recordcollection.network.spotify.model.ShufflePlaybackRequest
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyPlayHistoryRequest
 import io.github.peningtonj.recordcollection.network.spotify.model.StartPlaybackRequest
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 class PlaybackRepository(
     private val spotifyApi: SpotifyApi
@@ -44,6 +49,21 @@ class PlaybackRepository(
         )
     )
 
+    suspend fun fetchHistory(
+        limit: Int = 10,
+        after: Long? = Clock.System.now().toEpochMilliseconds() - (1000 * 60 * 60),
+        before: Long? = null
+    ) =
+        HistoryResponseMapper.toDomain(
+            spotifyApi.playback.getRecentlyPlayedTracks(
+            SpotifyPlayHistoryRequest(
+                limit = limit,
+                after = after,
+                before = before
+                )
+            )
+        )
+
     suspend fun resumePlayback() = spotifyApi.playback.startPlayback()
     suspend fun pausePlayback(
         deviceId: String? = null,
@@ -61,4 +81,12 @@ class PlaybackRepository(
         DevicePlaybackRequest(deviceId)
     )
     suspend fun seekToPosition(positionMs: Long) = spotifyApi.playback.seekToPosition(positionMs)
+
+    suspend fun addTrackToQueue(trackUri: String) =
+        spotifyApi.playback.addTrackToQueue(
+            AddToQueueRequest(
+                uri = trackUri
+            )
+        )
+
 }

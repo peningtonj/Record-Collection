@@ -116,7 +116,7 @@ class AlbumRepository(
         }
     }
 
-    private suspend fun fetchAndSaveTracks(albumId: String) {
+    suspend fun fetchAndSaveTracks(albumId: String) {
         Napier.d("Fetching tracks for album $albumId")
         spotifyApi.library.getAlbumTracks(albumId)
             .onSuccess { response ->
