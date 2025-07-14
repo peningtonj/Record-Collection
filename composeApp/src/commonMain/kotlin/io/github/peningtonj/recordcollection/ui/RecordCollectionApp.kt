@@ -25,12 +25,15 @@ import io.github.peningtonj.recordcollection.ui.screens.CollectionScreen
 import io.github.peningtonj.recordcollection.ui.screens.LibraryScreen
 import io.github.peningtonj.recordcollection.ui.screens.LoginScreen
 import io.github.peningtonj.recordcollection.ui.screens.ProfileScreen
+import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 
 @Composable
 fun RecordCollectionApp(
     navigator: Navigator,
 ) {
     Napier.d("RecordCollectionApp composable started")
+
+    val playbackViewModel = rememberPlaybackViewModel()
 
     CompositionLocalProvider(LocalNavigator provides navigator) {
         AuthNavigationWrapper {
@@ -71,9 +74,17 @@ fun RecordCollectionApp(
                             when (screen) {
                                 Screen.Login -> LoginScreen()
                                 Screen.Profile -> ProfileScreen()
-                                Screen.Library -> LibraryScreen()
-                                is Screen.Album -> AlbumScreen(albumId = screen.albumId)
-                                is Screen.Collection -> CollectionScreen(collectionName = screen.collectionName)
+                                Screen.Library -> LibraryScreen(
+                                    playbackViewModel = playbackViewModel
+                                )
+                                is Screen.Album -> AlbumScreen(
+                                    albumId = screen.albumId,
+                                    playbackViewModel = playbackViewModel
+                                )
+                                is Screen.Collection -> CollectionScreen(
+                                    collectionName = screen.collectionName,
+                                    playbackViewModel = playbackViewModel
+                                )
                             }
                         }
                     }
@@ -81,7 +92,7 @@ fun RecordCollectionApp(
 
                 // Playback bar at the bottom spanning full width
                 if (currentScreen != Screen.Login) {
-                    PlaybackBar()
+                    PlaybackBar(playbackViewModel)
                 }
             }
         }

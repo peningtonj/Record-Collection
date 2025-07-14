@@ -1,4 +1,5 @@
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.Playback
 import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
@@ -6,8 +7,8 @@ import io.github.peningtonj.recordcollection.repository.PlaybackRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.flow.first
 
-const val TRANSITION_TRIGGER_MS = 6000L // 6 seconds before track ends
-const val NEXT_ALBUM_TRIGGER_MS = 1000L // 1 seconds before track ends
+const val TRANSITION_TRIGGER_MS = 3000L // 6 seconds before track ends
+const val NEXT_ALBUM_TRIGGER_MS = 500L // 1 seconds before track ends
 
 class PlaybackQueueService(
     private val playbackRepository: PlaybackRepository,
@@ -19,17 +20,25 @@ class PlaybackQueueService(
         val startedFromTrackIndex: Int = 0,
         val hasAddedTransitionTrack: Boolean = false,
         val queue: List<AlbumDetailUiState> = emptyList(),
-        val transitionTrackUri: String = "spotify:track:6xXAl2w0mqyxsRB8ak2S7N"
+        val transitionTrackUri: String = "spotify:track:6xXAl2w0mqyxsRB8ak2S7N",
+        val playingFrom: AlbumCollection? = null
     )
 
-    suspend fun shouldAddTransitionTrack(session: QueueSession?, playback: Playback?): Boolean {
+    fun isLastTrackInAlbum(session: QueueSession?, playback: Playback?): Boolean {
         val currentSession = session ?: return false
         if (currentSession.queue.isEmpty()) return false
-        if (currentSession.hasAddedTransitionTrack) return false
-        
+
         val currentTrack = playback?.track ?: return false
-        if (currentTrack.id != currentSession.lastTrack.id) return false
-        
+        return currentTrack.id == currentSession.lastTrack.id
+    }
+    fun shouldAddTransitionTrack(session: QueueSession?, playback: Playback?): Boolean {
+        val currentSession = session ?: return false
+
+        if (!isLastTrackInAlbum(currentSession, playback)) return false
+        if (currentSession.hasAddedTransitionTrack) return false
+
+        val currentTrack = playback?.track ?: return false
+
         val progressMs = playback.progressMs ?: 0
         val remainingMs = currentTrack.durationMs - progressMs
         if (remainingMs > TRANSITION_TRIGGER_MS) return false
@@ -37,7 +46,7 @@ class PlaybackQueueService(
         return true
     }
 
-    suspend fun shouldTransitionToNextAlbum(session: QueueSession?, playback: Playback?): Boolean {
+     fun shouldTransitionToNextAlbum(session: QueueSession?, playback: Playback?): Boolean {
         val currentSession = session ?: return false
         if (!currentSession.hasAddedTransitionTrack) return false
         

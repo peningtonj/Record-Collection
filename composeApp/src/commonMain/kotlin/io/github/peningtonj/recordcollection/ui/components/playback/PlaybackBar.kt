@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Card
@@ -30,6 +31,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,18 +41,47 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
+import kotlinx.coroutines.delay
+import kotlinx.datetime.Clock
 
 @Composable
 fun PlaybackBar(
-    playbackViewModel: PlaybackViewModel = rememberPlaybackViewModel(),
+    playbackViewModel: PlaybackViewModel,
 ) {
 
     val playback by playbackViewModel.playbackState.collectAsState()
     val isLoading by playbackViewModel.isLoading.collectAsState()
     val error by playbackViewModel.error.collectAsState()
-    
+    val session by playbackViewModel.currentSession.collectAsState()
+
+
+    var interpolatedProgress by remember { mutableFloatStateOf(0f) }
+
+
+    LaunchedEffect(playback) {
+        val currentPlayback = playback // Capture the value to avoid smart cast issues
+        if (currentPlayback?.isPlaying == true && currentPlayback.progressMs != null && currentPlayback.track.durationMs > 0) {
+            while (true) {
+                val latestPlayback = playback // Re-check current state
+                if (latestPlayback?.isPlaying != true) break
+
+                val currentTime = Clock.System.now().toEpochMilliseconds()
+                val timeSinceLastUpdate = currentTime - latestPlayback.lastUpdated
+                val estimatedProgress = latestPlayback.progressMs!! + timeSinceLastUpdate
+
+                interpolatedProgress = (estimatedProgress.toFloat() / latestPlayback.track.durationMs.toFloat())
+                    .coerceIn(0f, 1f)
+
+                delay(100) // Update every 100 ms for smooth progress
+            }
+        } else if (currentPlayback?.progressMs != null && currentPlayback.track.durationMs > 0) {
+            // Use actual progress when paused
+            interpolatedProgress = (currentPlayback.progressMs.toFloat() / currentPlayback.track.durationMs.toFloat())
+                .coerceIn(0f, 1f)
+        }
+    }
     // Handle error display if needed
     LaunchedEffect(error) {
         error?.let {
@@ -56,14 +89,15 @@ fun PlaybackBar(
             playbackViewModel.clearError()
         }
     }
-    
+
     // Capture the current playback state in a local variable
     val currentPlayback = playback
-    
+    val currentSession = session
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp),
+            .height(100.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Column(
@@ -72,16 +106,8 @@ fun PlaybackBar(
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             // Progress bar
-            val progress = if (currentPlayback != null && 
-                currentPlayback.track.durationMs > 0 && 
-                currentPlayback.progressMs != null) {
-                (currentPlayback.progressMs.toFloat() / currentPlayback.track.durationMs.toFloat()).coerceIn(0f, 1f)
-            } else {
-                0f
-            }
-
             LinearProgressIndicator(
-                progress = { progress },
+                progress = { interpolatedProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(2.dp),
@@ -159,6 +185,23 @@ fun PlaybackBar(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        Text(
+                            text = currentPlayback?.track?.album?.name ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (currentSession?.playingFrom != null) {
+                            Text(
+                                text = "Playing From: ${currentSession.playingFrom.name}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
                     }
                 }
                 
@@ -227,6 +270,25 @@ fun PlaybackBar(
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             }
                         )
+                    }
+
+                    if (currentSession?.playingFrom != null) {
+                        IconButton(
+                            onClick = { playbackViewModel.skipToNextAlbumInQueue() },
+                            modifier = Modifier.size(40.dp),
+                            enabled = !isLoading && currentPlayback != null
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.QueuePlayNext,
+                                contentDescription = "Next",
+                                tint = if (currentPlayback != null) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                }
+                            )
+                        }
+
                     }
                 }
             }

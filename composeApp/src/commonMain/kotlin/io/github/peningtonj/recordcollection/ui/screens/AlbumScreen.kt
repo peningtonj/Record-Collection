@@ -21,7 +21,6 @@ import io.github.peningtonj.recordcollection.viewmodel.AlbumScreenUiState
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 import io.github.peningtonj.recordcollection.ui.components.common.LoadingIndicator
 import io.github.peningtonj.recordcollection.ui.components.common.ErrorMessage
 import io.github.peningtonj.recordcollection.ui.components.tag.AddTagDialog
@@ -30,8 +29,8 @@ import io.github.peningtonj.recordcollection.ui.components.tag.AddTagDialog
 @Composable
 fun AlbumScreen(
     albumId: String,
+    playbackViewModel: PlaybackViewModel,
     viewModel: AlbumViewModel = rememberAlbumViewModel(),
-    playbackViewModel: PlaybackViewModel = rememberPlaybackViewModel(),
 ) {
     LaunchedEffect(albumId) {
         viewModel.loadAlbum(albumId)

@@ -27,9 +27,9 @@ import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 @Composable
 fun CollectionScreen(
     collectionName: String,
+    playbackViewModel: PlaybackViewModel,
     viewModel: CollectionDetailViewModel = rememberCollectionDetailViewModel(collectionName),
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
-    playbackViewModel: PlaybackViewModel = rememberPlaybackViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val albumActions = rememberAlbumContextMenuActions(
@@ -50,14 +50,17 @@ fun CollectionScreen(
             onPlayAllClick = {
                 playbackViewModel.playAlbum(
                     uiState.albums.first(),
-                    uiState.albums.drop(1))
+                    uiState.albums.drop(1),
+                    collection = uiState.collection
+                )
             },
             onRandomClick =
                 {
                     val shuffledList = uiState.albums.shuffled()
                     playbackViewModel.playAlbum(
                         shuffledList.first(),
-                        shuffledList.drop(1)
+                        shuffledList.drop(1),
+                        collection = uiState.collection
                     )
                         }
             )

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.Playback
 import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.repository.PlaybackRepository
@@ -18,8 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-const val DEFAULT_POLLING_DELAY_MS = 3000L
-const val TRANSITIONING_POLLING_DELAY_MS = 500L
+const val DEFAULT_POLLING_DELAY_MS = 1000L
+const val TRANSITIONING_POLLING_DELAY_MS = 200L
 
 class PlaybackViewModel(
     private val playbackRepository: PlaybackRepository,
@@ -38,6 +39,8 @@ class PlaybackViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _isSessionAppInitialized = MutableStateFlow(true)
+
     private val playbackPoller = PlaybackPoller(
         playbackRepository = playbackRepository,
         onPlaybackUpdate = { playback ->
@@ -53,15 +56,23 @@ class PlaybackViewModel(
 
     private suspend fun handleQueueTransitions(playback: Playback?) {
         val session = _currentSession.value
-
-        // Check for transition track addition
-        if (queueManager.shouldAddTransitionTrack(session, playback)) {
-            addTransitionTrack(session!!)
+        if (
+            session != null &&
+            playback?.track?.album?.id != session.album.id
+        ) {
+            _isSessionAppInitialized.value = false
         }
 
-        // Check for transitioning to next album
-        if (queueManager.shouldTransitionToNextAlbum(session, playback)) {
-            transitionToNextAlbum(session!!)
+        if (_isSessionAppInitialized.value && session != null) {
+            // Check for transition track addition
+            if (queueManager.shouldAddTransitionTrack(session, playback)) {
+                addTransitionTrack(session)
+            }
+
+            // Check for transitioning to next album
+            if (queueManager.shouldTransitionToNextAlbum(session, playback)) {
+                transitionToNextAlbum(session)
+            }
         }
     }
 
@@ -80,7 +91,10 @@ class PlaybackViewModel(
 
     private fun transitionToNextAlbum(session: PlaybackQueueService.QueueSession) {
         if (session.queue.isNotEmpty()) {
-            playAlbum(session.queue.first(), session.queue.drop(1))
+            playAlbum(
+                session.queue.first(), session.queue.drop(1),
+                collection = session.playingFrom
+            )
             playbackPoller.setPollingDelay(DEFAULT_POLLING_DELAY_MS)
         }
     }
@@ -96,23 +110,43 @@ class PlaybackViewModel(
         }
     }
 
-    fun playAlbum(album: AlbumDetailUiState,
-                  queue: List<AlbumDetailUiState> = emptyList(),
-                  startFromTrack: Track? = null) {
+    fun playAlbum(
+        album: AlbumDetailUiState,
+        queue: List<AlbumDetailUiState> = emptyList(),
+        startFromTrack: Track? = null,
+        collection: AlbumCollection? = null
+    ) {
         viewModelScope.launch {
             executeWithLoading {
                 val albumWithTracks = queueManager.ensureTracksLoaded(album)
 
-                playbackRepository.turnOffShuffle()
-                startAlbumWithOrWithoutTrack(albumWithTracks.album, startFromTrack)
-
                 _currentSession.value = PlaybackQueueService.QueueSession(
                     album = albumWithTracks.album,
                     lastTrack = albumWithTracks.tracks.last(),
-                    queue = queue
+                    queue = queue,
+                    playingFrom = collection
                 )
+                _isSessionAppInitialized.value = true
+
+                playbackRepository.turnOffShuffle()
+                startAlbumWithOrWithoutTrack(albumWithTracks.album, startFromTrack)
 
                 updatePlaybackState()
+
+            }
+        }
+    }
+
+    fun skipToNextAlbumInQueue() {
+        viewModelScope.launch {
+            executeWithLoading {
+                val session = _currentSession.value ?: return@executeWithLoading
+                val nextAlbum = session.queue.firstOrNull() ?: return@executeWithLoading
+                playAlbum(
+                    nextAlbum,
+                    queue = session.queue.drop(1),
+                    collection = session.playingFrom
+                )
             }
         }
     }
@@ -139,15 +173,6 @@ class PlaybackViewModel(
         }
     }
 
-    // Simplified playback controls
-    fun play() = viewModelScope.launch {
-        executePlaybackAction { playbackRepository.resumePlayback() }
-    }
-
-    fun pause() = viewModelScope.launch {
-        executePlaybackAction { playbackRepository.pausePlayback() }
-    }
-
     fun togglePlayPause() = viewModelScope.launch {
         executePlaybackAction {
             val isPlaying = _playbackState.value?.isPlaying == true
@@ -156,10 +181,20 @@ class PlaybackViewModel(
         }
     }
 
-    fun next() = viewModelScope.launch {
-        executePlaybackAction {
-            playbackRepository.skipToNext()
-            delay(100)
+    fun next() = {
+        if (queueManager.isLastTrackInAlbum(
+                _currentSession.value,
+                _playbackState.value
+            )
+        ) {
+            skipToNextAlbumInQueue()
+        } else {
+            viewModelScope.launch {
+                executePlaybackAction {
+                    playbackRepository.skipToNext()
+                    delay(100)
+                }
+            }
         }
     }
 

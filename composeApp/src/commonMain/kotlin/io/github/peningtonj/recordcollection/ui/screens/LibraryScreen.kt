@@ -49,13 +49,12 @@ import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.SyncState
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 import kotlinx.datetime.LocalDate
 
 @Composable
 fun LibraryScreen(
+    playbackViewModel: PlaybackViewModel,
     viewModel: LibraryViewModel = rememberLibraryViewModel(),
-    playbackViewModel: PlaybackViewModel = rememberPlaybackViewModel(),
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
 ) {
     val syncState by viewModel.syncState.collectAsState()
