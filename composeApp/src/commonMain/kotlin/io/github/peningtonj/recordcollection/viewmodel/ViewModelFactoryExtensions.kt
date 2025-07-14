@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
+import ArtistDetailViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import io.github.peningtonj.recordcollection.di.container.DependencyContainer
@@ -98,6 +99,20 @@ fun rememberCollectionDetailViewModel(
             collectionAlbumRepository = dependencies.collectionAlbumRepository,
             getAlbumDetailUseCase = dependencies.albumDetailUseCase,
             collectionName = collectionName
+        )
+    }
+}
+
+@Composable
+fun rememberArtistDetailViewModel(
+    artistId: String,
+    dependencies: DependencyContainer = LocalDependencyContainer.current
+): ArtistDetailViewModel {
+    return remember(artistId, dependencies) {
+        ArtistDetailViewModel(
+            artistRepository = dependencies.artistRepository,
+            albumRepository = dependencies.albumRepository,
+            artistId = artistId
         )
     }
 }

@@ -53,6 +53,11 @@ FROM albums
 GROUP BY primary_artist
 ORDER BY COUNT(*) DESC;
 
+getAlbumsByArtist:
+SELECT *
+FROM albums
+WHERE artists LIKE '%' || :artist || '%';
+
 getAlbumById:
 SELECT *
 FROM albums

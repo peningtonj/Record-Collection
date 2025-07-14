@@ -34,3 +34,12 @@ data class FullArtistDto(
 data class ArtistsResponse(
     val artists: List<FullArtistDto>
 )
+
+@Serializable
+data class AristAlbumsRequest(
+    val artistId: String,
+    val limit: Int? = null,
+    val offset: Int? = null,
+    val market: String? = null,
+    val includeGroups: List<String>? = listOf("album", "single")
+)

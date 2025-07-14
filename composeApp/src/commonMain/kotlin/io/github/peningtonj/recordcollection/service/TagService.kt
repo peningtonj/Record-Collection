@@ -14,7 +14,7 @@ class TagService {
 
         // Example: Generate tags based on release year
         val albumType = album.albumType
-        tags.add(Tag(key = "Album Type", value = albumType.name, type = TagType.METADATA))
+        tags.add(Tag(key = "Album Type", value = albumType?.name ?: "", type = TagType.METADATA))
 
         Napier.d { "Adding tags for album: ${album.name} with artists: ${artists.map { it.name }}" }
         artists.forEach { artist ->

@@ -187,6 +187,15 @@ class AlbumRepository(
             }
     }
 
+    fun getAlbumsByArtist(artistName: String): Flow<List<Album>> {
+        return database.albumsQueries.getAlbumsByArtist(artistName)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { list ->
+                list.map(AlbumMapper::toDomain)
+            }
+    }
+
     fun getAlbumsByYear(year : String): Flow<List<Album>> {
         return database.albumsQueries.getByReleaseDate(year)
             .asFlow()

@@ -32,8 +32,34 @@ data class AlbumDto(
     val type: String,
     val genres: List<String>? = emptyList(),
     val tracks: TracksDto? = null
-
 )
+
+@Serializable
+data class SimplifiedAlbumDto(
+    val id: String,
+    val name: String,
+    @SerialName("album_type")
+    val albumType: AlbumTypeDto,
+    @SerialName("album_group")
+    val albumGroup: AlbumGroupDto? = null,
+    val artists: List<SimplifiedArtistDto>,
+    @SerialName("total_tracks")
+    val totalTracks: Int,
+    @SerialName("release_date")
+    val releaseDate: String,
+    @SerialName("release_date_precision")
+    val releaseDatePrecision: ReleaseDatePrecision,
+    val uri: String,
+    @SerialName("external_urls")
+    val externalUrls: Map<String, String>,
+    val images: List<ImageDto>,
+    @SerialName("available_markets")
+    val availableMarkets: List<String>,
+    val href: String,
+    val restrictions: Restrictions? = null,
+    val type: String
+)
+
 
 @Serializable
 enum class AlbumTypeDto {
@@ -61,3 +87,11 @@ data class SavedAlbumDto(
     val addedAt: String, // ISO 8601 timestamp
     val album: AlbumDto
 )
+
+@Serializable
+enum class AlbumGroupDto {
+    @SerialName("album") ALBUM,
+    @SerialName("single") SINGLE,
+    @SerialName("compilation") COMPILATION,
+    @SerialName("appears_on") APPEARS_ON
+}

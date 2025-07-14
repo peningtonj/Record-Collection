@@ -195,6 +195,10 @@ fun LibraryScreen(
             onAlbumClick = { album ->
                 navigator.navigateTo(Screen.Album(album.album.id))
             },
+
+            onArtistClick = { album ->
+                navigator.navigateTo(Screen.Artist(album.album.artists.first().id))
+            },
             onPlayClick = { album ->
                 albumActions["play"]?.action?.invoke(album)
             },

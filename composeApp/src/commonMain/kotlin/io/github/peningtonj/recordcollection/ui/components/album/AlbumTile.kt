@@ -1,6 +1,7 @@
 package io.github.peningtonj.recordcollection.ui.components.album
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,6 +58,7 @@ fun CompactAlbumTile(
     onPlayClick: () -> Unit = {},
     onContextMenu: () -> Unit = {},
     onRatingChange: (Int) -> Unit = {},
+    onArtistClick: () -> Unit = {},
     contextMenuContent: @Composable (onDismiss: () -> Unit) -> Unit = { _ -> }
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
@@ -139,6 +141,7 @@ fun CompactAlbumTile(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.fillMaxWidth(0.75f)
+                                .clickable { onArtistClick() }
                         )
 
                         StarRating(
@@ -184,6 +187,7 @@ fun AlbumGrid(
     onPlayClick: (AlbumDetailUiState) -> Unit,
     onContextMenu: (AlbumDetailUiState) -> Unit = {},
     onRatingChange: (AlbumDetailUiState, Int) -> Unit,
+    onArtistClick: (AlbumDetailUiState) -> Unit = {},
     contextMenuContent: @Composable (album: AlbumDetailUiState, onDismiss: () -> Unit) -> Unit = { _, _ -> }
 ) {
     LazyVerticalGrid(
@@ -204,7 +208,8 @@ fun AlbumGrid(
                 },
                 onRatingChange = { rating ->
                     onRatingChange(album, rating)
-                }
+                },
+                onArtistClick = { onArtistClick(album) }
             )
         }
     }

@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.ui
 
+import ArtistDetailScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,6 +80,10 @@ fun RecordCollectionApp(
                                 )
                                 is Screen.Album -> AlbumScreen(
                                     albumId = screen.albumId,
+                                    playbackViewModel = playbackViewModel
+                                )
+                                is Screen.Artist -> ArtistDetailScreen(
+                                    artistId = screen.artistId,
                                     playbackViewModel = playbackViewModel
                                 )
                                 is Screen.Collection -> CollectionScreen(

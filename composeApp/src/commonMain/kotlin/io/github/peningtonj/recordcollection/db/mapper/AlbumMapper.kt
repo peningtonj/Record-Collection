@@ -5,6 +5,7 @@ import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumType
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.ImageDto
+import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedArtistDto
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -43,6 +44,22 @@ object AlbumMapper {
             albumType = AlbumType.fromString(entity.albumType.name),
             images = entity.images
                 .map { ImageMapper.toDomain(it) },
+        )
+    }
+    
+    fun toDomain(entity: SimplifiedAlbumDto): Album {
+        return Album(
+            id = entity.id,
+            name = entity.name,
+            primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist",
+            artists = entity.artists.map { ArtistMapper.toDomain(it) },
+            releaseDate = parseReleaseDate(entity.releaseDate),
+            totalTracks = entity.totalTracks,
+            spotifyUri = entity.uri,
+            images = entity.images
+                .map { ImageMapper.toDomain(it) },
+            albumType = AlbumType.fromString(entity.albumType.name),
+
         )
     }
 

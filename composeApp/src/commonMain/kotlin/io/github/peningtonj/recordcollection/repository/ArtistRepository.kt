@@ -7,9 +7,11 @@ import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Artist
+import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.db.mapper.ArtistMapper
 import io.github.peningtonj.recordcollection.network.everynoise.EveryNoiseApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
+import io.github.peningtonj.recordcollection.network.spotify.model.AristAlbumsRequest
 import io.github.peningtonj.recordcollection.network.spotify.model.FullArtistDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -20,10 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 
-data class EnrichedArtist(
-    val artist: FullArtistDto,
-    val enhancedGenres: List<String>
-)
+
 
 class ArtistRepository(
     private val database: RecordCollectionDatabase,
@@ -124,16 +123,46 @@ class ArtistRepository(
         }
     }
 
-    suspend fun fetchArtist(artistId: String): Result<EnrichedArtist> =
+    suspend fun fetchArtist(artistId: String, saveToDb: Boolean = true): Result<EnrichedArtist> =
         fetchArtistWithEnhancedGenres(artistId)
             .onSuccess { enrichedArtist ->
-                database.transaction {
-                    saveArtist(enrichedArtist)
+                if (saveToDb) {
+                    database.transaction {
+                        saveArtist(enrichedArtist)
+                    }
                 }
             }
             .onFailure { error ->
                 Napier.e("Error fetching artist $artistId: ${error.message}", error)
             }
+
+    suspend fun fetchAlbumArtists(artistId: String, limit: Int = 20) : List<Album> {
+        var offset = 0
+        var hasMore = true
+
+        val albums = mutableListOf<Album>()
+
+        while (hasMore) {
+            spotifyApi.library.getArtistsAlbums(
+                AristAlbumsRequest(
+                    artistId, limit, offset
+                )
+            )
+                .onSuccess { response ->
+                    albums.addAll(
+                        response.items.map { AlbumMapper.toDomain(it) }
+                    )
+                    offset += response.items.size
+                    hasMore = response.next != null && response.next.isNotEmpty()
+                }
+                .onFailure { error ->
+                    throw error // Or handle error appropriately
+                }
+        }
+
+        return albums
+    }
+
     
     fun getArtistGenre(artist: Artist) = database.artistsQueries
         .selectArtistGenres(artist.id)
@@ -211,3 +240,8 @@ class ArtistRepository(
                 .map { it.first } // Extract just the genre names
         }
 }
+
+data class EnrichedArtist(
+    val artist: FullArtistDto,
+    val enhancedGenres: List<String>
+)

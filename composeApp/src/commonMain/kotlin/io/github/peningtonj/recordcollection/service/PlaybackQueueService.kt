@@ -1,3 +1,4 @@
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.Playback
@@ -40,6 +41,7 @@ class PlaybackQueueService(
         val currentTrack = playback?.track ?: return false
 
         val progressMs = playback.progressMs ?: 0
+        Napier.d("Getting close to adding transition track")
         val remainingMs = currentTrack.durationMs - progressMs
         if (remainingMs > TRANSITION_TRIGGER_MS) return false
         
@@ -63,6 +65,7 @@ class PlaybackQueueService(
             playbackRepository.addTrackToQueue(session.transitionTrackUri)
             Result.success(Unit)
         } catch (e: Exception) {
+            Napier.e("Failed to add transition track", e)
             Result.failure(e)
         }
     }

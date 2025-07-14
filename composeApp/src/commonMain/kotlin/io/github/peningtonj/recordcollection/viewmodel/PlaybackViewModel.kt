@@ -57,9 +57,12 @@ class PlaybackViewModel(
     private suspend fun handleQueueTransitions(playback: Playback?) {
         val session = _currentSession.value
         if (
+            _isSessionAppInitialized.value &&
             session != null &&
-            playback?.track?.album?.id != session.album.id
+            playback?.track?.album?.id != session.album.id &&
+            playback?.track?.spotifyUri != session.transitionTrackUri
         ) {
+            Napier.d("Not a local session because ${playback?.track?.album?.id} != ${session.album.id}")
             _isSessionAppInitialized.value = false
         }
 
@@ -126,13 +129,13 @@ class PlaybackViewModel(
                     queue = queue,
                     playingFrom = collection
                 )
-                _isSessionAppInitialized.value = true
 
                 playbackRepository.turnOffShuffle()
                 startAlbumWithOrWithoutTrack(albumWithTracks.album, startFromTrack)
 
                 updatePlaybackState()
 
+                _isSessionAppInitialized.value = true
             }
         }
     }

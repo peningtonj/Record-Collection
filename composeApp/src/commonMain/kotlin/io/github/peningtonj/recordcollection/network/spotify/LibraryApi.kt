@@ -3,10 +3,12 @@ package io.github.peningtonj.recordcollection.network.spotify
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumsResponse
+import io.github.peningtonj.recordcollection.network.spotify.model.AristAlbumsRequest
 import io.github.peningtonj.recordcollection.network.spotify.model.ArtistsResponse
 import io.github.peningtonj.recordcollection.network.spotify.model.FullArtistDto
 import io.github.peningtonj.recordcollection.network.spotify.model.PaginatedResponse
 import io.github.peningtonj.recordcollection.network.spotify.model.SavedAlbumDto
+import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedTrackDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -66,5 +68,19 @@ class LibraryApi(
 
         client.get(url).body()
     }
+
+    suspend fun getArtistsAlbums(
+        request: AristAlbumsRequest
+    ): Result<PaginatedResponse<SimplifiedAlbumDto>> = runCatching {
+        val url = URLBuilder("${SpotifyApi.BASE_URL}/artists/${request.artistId}/albums").apply {
+            parameters.append("limit", request.limit.toString())
+            parameters.append("offset", request.offset.toString())
+            request.includeGroups?.let { parameters.append("include_groups", it.joinToString(",")) }
+            request.market?.let { parameters.append("market", it) }
+        }.buildString()
+
+        client.get(url).body()
+    }
+
 
 }
