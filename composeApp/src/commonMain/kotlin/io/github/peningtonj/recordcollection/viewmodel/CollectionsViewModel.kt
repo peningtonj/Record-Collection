@@ -3,20 +3,27 @@ package io.github.peningtonj.recordcollection.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.CollectionFolder
-import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
+import io.github.peningtonj.recordcollection.service.ArticleImportService
+import io.github.peningtonj.recordcollection.service.OpenAiResponse
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 class CollectionsViewModel(
     private val repository: AlbumCollectionRepository,
-    private val openAiApi: OpenAiApi
+    private val articleImportService: ArticleImportService,
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(CollectionsUiState())
@@ -24,6 +31,9 @@ class CollectionsViewModel(
     
     private val _currentFolder = MutableStateFlow<String?>(null)
     val currentFolder: StateFlow<String?> = _currentFolder.asStateFlow()
+
+    private val _importResult = MutableStateFlow<ImportUiState>(ImportUiState())
+    val importResult: StateFlow<ImportUiState> = _importResult.asStateFlow()
     
     init {
         loadTopLevelItems()
@@ -160,6 +170,53 @@ class CollectionsViewModel(
     fun newFolder(name: String) {
 
     }
+
+    fun draftCollectionFromUrl(url: String) {
+        viewModelScope.launch {
+            _importResult.value = ImportUiState(isLoading = true)
+            val response = articleImportService.getResponseFromOpenAI(url)
+
+            try {
+                val albums = articleImportService.parseResponse(response)
+                _importResult.value = ImportUiState(
+                    isLoading = false,
+                    result = response,
+                    albumNames = albums,
+                )
+            } catch (e: Exception) {
+                _importResult.value = ImportUiState(
+                    isLoading = false,
+                    result = response,
+                    error = e.message
+                )
+            }
+        }
+    }
+
+    fun getAlbumsFromDraft() {
+        viewModelScope.launch {
+            Napier.d("Importing albums from draft")
+            _importResult.value = _importResult.value.copy(isLoading = true)
+            coroutineScope {
+                _importResult.value.albumNames.map { album ->
+                    launch {
+                        val result = articleImportService.lookupAlbum(album)
+                        _importResult.value = _importResult.value.copy(
+                            albums = _importResult.value.albums +
+                                AlbumLookUpResult(
+                                album,
+                                result
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun clearImportResult() {
+        _importResult.value = ImportUiState()
+    }
 }
 
 data class CollectionsUiState(
@@ -167,4 +224,17 @@ data class CollectionsUiState(
     val folders: List<CollectionFolder> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
+)
+
+data class ImportUiState(
+    val isLoading: Boolean = true,
+    val result: String? = null,
+    val albumNames: List<OpenAiResponse> = emptyList(),
+    val albums: List<AlbumLookUpResult> = emptyList(),
+    val error: String? = null,
+)
+
+data class AlbumLookUpResult(
+    val query: OpenAiResponse,
+    val album: Album?
 )

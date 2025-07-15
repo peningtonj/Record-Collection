@@ -84,7 +84,7 @@ fun rememberCollectionsViewModel(
     return remember(dependencies) {
         CollectionsViewModel(
             repository = dependencies.albumCollectionRepository,
-            openAiApi = dependencies.openAiApi
+            articleImportService = dependencies.articleImportService
         )
     }
 }

@@ -61,6 +61,7 @@ kotlin {
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.2.0")
             implementation(compose.materialIconsExtended)
             implementation("io.ktor:ktor-client-auth:3.1.0")
+            implementation("net.dankito.readability4j:readability4j:1.0.8")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -130,10 +130,10 @@ class ProductionNetworkModule : NetworkModule {
         return EveryNoiseApi(provideHttpClient())
     }
 
-    val apiKey = System.getenv("OPENAI_API_KEY")
+    val apiKey = System.getenv("OPENAI_API_KEY")!!
 
     override fun provideOpenAiApi(): OpenAiApi {
-        return OpenAiApi(provideHttpClient(), System.getenv("OPENAI_API_KEY"))
+        return OpenAiApi(provideHttpClient(), apiKey)
     }
 
     override fun provideSpotifyApi(authRepository: SpotifyAuthRepository): SpotifyApi {

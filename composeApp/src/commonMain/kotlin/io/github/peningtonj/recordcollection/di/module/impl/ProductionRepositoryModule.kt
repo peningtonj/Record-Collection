@@ -7,6 +7,7 @@ import io.github.peningtonj.recordcollection.di.module.RepositoryModule
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.everynoise.EveryNoiseApi
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
+import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.repository.*
 
@@ -41,8 +42,9 @@ class ProductionRepositoryModule : RepositoryModule {
     ): RatingRepository = RatingRepository(database)
 
     override fun provideAlbumCollectionRepository(
-        database: RecordCollectionDatabase
-    ): AlbumCollectionRepository = AlbumCollectionRepository(database)
+        database: RecordCollectionDatabase,
+        openAiApi: OpenAiApi
+    ): AlbumCollectionRepository = AlbumCollectionRepository(database, openAiApi)
 
 
     override fun provideCollectionAlbumRepository(

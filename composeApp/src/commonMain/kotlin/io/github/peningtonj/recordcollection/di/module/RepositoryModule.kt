@@ -6,6 +6,7 @@ import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.everynoise.EveryNoiseApi
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
+import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.repository.*
 
@@ -40,7 +41,8 @@ interface RepositoryModule {
     ): RatingRepository
 
     fun provideAlbumCollectionRepository(
-        database: RecordCollectionDatabase
+        database: RecordCollectionDatabase,
+        openAiApi: OpenAiApi
     ): AlbumCollectionRepository
 
     fun provideCollectionAlbumRepository(

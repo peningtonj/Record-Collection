@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -29,7 +28,9 @@ import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.ui.components.common.TextInputDialog
+import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 
 @Composable
@@ -37,18 +38,21 @@ fun CollectionsSection(
     currentScreen: Screen,
     navigator: Navigator,
     viewModel: CollectionsViewModel = rememberCollectionsViewModel(),
+    albumViewModel: AlbumViewModel = rememberAlbumViewModel()
 ) {
     var showDropdown by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
+    var showCollectionFromArticleDialog by remember { mutableStateOf(false) }
+    var showCollectionFromArticle by remember { mutableStateOf(false) }
     var showFolderDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var collectionToRename by remember { mutableStateOf<AlbumCollection?>(null) }
     var collectionToDelete by remember { mutableStateOf<AlbumCollection?>(null) }
-    
     // Use the same viewModel instance for both state and actions
     val collectionsUiState by viewModel.uiState.collectAsState()
     val currentFolder by viewModel.currentFolder.collectAsState()
+    val importResult by viewModel.importResult.collectAsState()
 
     Napier.d("CollectionsSection: currentFolder: $currentFolder")
     Napier.d("CollectionsSection: collectionsUiState: $collectionsUiState")
@@ -102,6 +106,13 @@ fun CollectionsSection(
                     }
                 )
                 DropdownMenuItem(
+                    text = { Text("Collection From Article") },
+                    onClick = {
+                        showDropdown = false
+                        showCollectionFromArticleDialog = true
+                    }
+                )
+                DropdownMenuItem(
                     text = { Text("New Folder") },
                     onClick = {
                         showDropdown = false
@@ -123,6 +134,37 @@ fun CollectionsSection(
             viewModel.createCollection(name)
         },
         confirmButtonText = "Create"
+    )
+
+    TextInputDialog(
+        title = "Collection From Article",
+        label = "Article URL",
+        placeholder = "Enter Article URL",
+        isVisible = showCollectionFromArticleDialog,
+        onDismiss = { showCollectionFromArticleDialog = false },
+        onConfirm = { name ->
+            showCollectionFromArticle = true
+            viewModel.draftCollectionFromUrl(name)
+        },
+        confirmButtonText = "Create"
+    )
+
+    ImportCollectionDialog(
+        isVisible = showCollectionFromArticle,
+        content = importResult,
+        onDismiss = { showCollectionFromArticle = false },
+        onSearch = {
+            Napier.d("Importing collection from draft????")
+            viewModel.getAlbumsFromDraft() },
+        onMakeCollection = { collectionName ->
+            viewModel.createCollection(collectionName)
+            importResult.albums.forEach { album ->
+                if (album.album != null) {
+                    albumViewModel.addAlbumToCollection(album.album, collectionName)
+                }
+            }
+            showCollectionFromArticle = false
+        }
     )
 
     // Folder dialog
