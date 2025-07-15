@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.CollectionFolder
+import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +15,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class CollectionsViewModel(
-    private val repository: AlbumCollectionRepository
+    private val repository: AlbumCollectionRepository,
+    private val openAiApi: OpenAiApi
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(CollectionsUiState())

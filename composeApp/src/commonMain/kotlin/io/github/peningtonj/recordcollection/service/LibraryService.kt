@@ -20,7 +20,7 @@ class LibraryService(
 ) {
     // Core data operations
     fun getAllAlbumsEnriched(): Flow<List<AlbumDisplayData>> = combine(
-        albumRepository.getAllAlbums(),
+        albumRepository.getAllAlbumsInLibrary(),
         artistRepository.getAllArtists(),
         ratingRepository.getAllRatings()
     ) { albums, artists, ratings ->
@@ -39,7 +39,7 @@ class LibraryService(
 
     // Library statistics
     fun getLibraryStats(): Flow<LibraryStats> = combine(
-        albumRepository.getAlbumCount(),
+        albumRepository.getLibraryCount(),
         albumRepository.getAllAlbums(),
         artistRepository.getAllGenres()
     ) { count, albums, genres ->

@@ -55,4 +55,7 @@ interface RepositoryModule {
         database: RecordCollectionDatabase
     ): TagRepository
 
+    fun provideSearchRepository(
+        spotifyApi: SpotifyApi
+    ): SearchRepository
 }

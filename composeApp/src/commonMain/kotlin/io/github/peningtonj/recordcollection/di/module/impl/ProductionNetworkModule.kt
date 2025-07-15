@@ -3,6 +3,7 @@ package io.github.peningtonj.recordcollection.di.module.impl
 import io.github.aakira.napier.LogLevel
 import io.github.peningtonj.recordcollection.di.module.NetworkModule
 import io.github.peningtonj.recordcollection.network.everynoise.EveryNoiseApi
+import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
 import io.github.peningtonj.recordcollection.util.Logger
@@ -127,6 +128,12 @@ class ProductionNetworkModule : NetworkModule {
 
     override fun provideEveryNoiseApi(): EveryNoiseApi {
         return EveryNoiseApi(provideHttpClient())
+    }
+
+    val apiKey = System.getenv("OPENAI_API_KEY")
+
+    override fun provideOpenAiApi(): OpenAiApi {
+        return OpenAiApi(provideHttpClient(), System.getenv("OPENAI_API_KEY"))
     }
 
     override fun provideSpotifyApi(authRepository: SpotifyAuthRepository): SpotifyApi {

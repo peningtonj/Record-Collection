@@ -6,8 +6,8 @@ import io.github.peningtonj.recordcollection.di.module.EventModule
 import io.github.peningtonj.recordcollection.di.module.NetworkModule
 import io.github.peningtonj.recordcollection.di.module.RepositoryModule
 import io.github.peningtonj.recordcollection.di.module.UseCaseModule
-import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
+import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.repository.*
 import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
@@ -129,6 +129,14 @@ class ModularDependencyContainer(
 
     override val collectionsService: CollectionsService by lazy {
         CollectionsService(collectionAlbumRepository, albumCollectionRepository, albumRepository)
+    }
+
+    override val searchRepository by lazy {
+        SearchRepository(spotifyApi)
+    }
+
+    override val openAiApi: OpenAiApi by lazy {
+        networkModule.provideOpenAiApi()
     }
 
     override fun close() {

@@ -39,6 +39,8 @@ import io.github.peningtonj.recordcollection.db.domain.AlbumType
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
+import io.github.peningtonj.recordcollection.ui.components.album.StandardAlbumContextMenu
+import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumContextMenuActions
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberArtistDetailViewModel
@@ -50,6 +52,7 @@ fun ArtistDetailScreen(
     viewModel: ArtistDetailViewModel = rememberArtistDetailViewModel(artistId = artistId),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
 
     Column(
         modifier = Modifier
@@ -83,6 +86,8 @@ private fun ArtistDetailContent(
     modifier: Modifier = Modifier
 ) {
     val navigator = LocalNavigator.current
+    val albumActions = rememberAlbumContextMenuActions()
+
     
     // Group albums by type
     val albumsByType = albums.groupBy { it.album.albumType }
@@ -140,8 +145,16 @@ private fun ArtistDetailContent(
                     },
                     onPlayClick = { album -> },
                     onRatingChange = { album, rating -> },
-                    modifier = Modifier.fillMaxSize()
-                )
+                    modifier = Modifier.fillMaxSize(),
+                    contextMenuContent = { album, onDismiss ->
+                        StandardAlbumContextMenu(
+                            album = album,
+                            actions = albumActions,
+                            onDismiss = onDismiss
+                        )
+                    },
+
+                    )
             }
         } else {
             // No albums found

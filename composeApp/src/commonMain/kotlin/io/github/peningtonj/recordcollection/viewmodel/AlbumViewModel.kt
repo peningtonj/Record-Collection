@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 
 class AlbumViewModel (
     private val albumRepository: AlbumRepository,
@@ -55,8 +56,14 @@ class AlbumViewModel (
         }
     }
 
-    fun addAlbumToCollection(album: Album, collectionName: String) = viewModelScope.launch {
-        collectionAlbumRepository.addAlbumToCollection(collectionName, album.id)
+    fun addAlbumToCollection(album: Album, collectionName: String) {
+        viewModelScope.launch {
+            Napier.d { "Adding album ${album.id} to collection $collectionName" }
+            if (albumRepository.getAlbumByIdIfPresent(album.id).first() == null) {
+                albumRepository.saveAlbum(album)
+            }
+            collectionAlbumRepository.addAlbumToCollection(collectionName, album.id)
+        }
     }
 
     fun removeAlbumFromCollection(album: Album, collectionName: String) = viewModelScope.launch {
@@ -64,7 +71,7 @@ class AlbumViewModel (
     }
 
     fun refreshAlbum(album: Album) = viewModelScope.launch {
-        albumRepository.fetchAlbum(album.id, true)
+        albumRepository.fetchAndSaveAlbum(album.id, true)
     }
 
     fun removeTagFromAlbum(albumId: String, tagId: String) = viewModelScope.launch {

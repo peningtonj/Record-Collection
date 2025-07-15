@@ -83,7 +83,8 @@ fun rememberCollectionsViewModel(
 ): CollectionsViewModel {
     return remember(dependencies) {
         CollectionsViewModel(
-            repository = dependencies.albumCollectionRepository
+            repository = dependencies.albumCollectionRepository,
+            openAiApi = dependencies.openAiApi
         )
     }
 }
@@ -113,6 +114,17 @@ fun rememberArtistDetailViewModel(
             artistRepository = dependencies.artistRepository,
             albumRepository = dependencies.albumRepository,
             artistId = artistId
+        )
+    }
+}
+
+@Composable
+fun rememberSearchViewModel(
+    dependencies: DependencyContainer = LocalDependencyContainer.current
+): SearchViewModel {
+    return remember(dependencies) {
+        SearchViewModel(
+            searchRepository = dependencies.searchRepository
         )
     }
 }

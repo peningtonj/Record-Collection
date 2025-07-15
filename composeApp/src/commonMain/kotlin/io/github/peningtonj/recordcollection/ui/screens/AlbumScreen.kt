@@ -15,6 +15,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.aakira.napier.Napier
+import io.github.peningtonj.recordcollection.navigation.LocalNavigator
+import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumHeader
 import io.github.peningtonj.recordcollection.ui.components.album.TrackListing
 import io.github.peningtonj.recordcollection.viewmodel.AlbumScreenUiState
@@ -38,6 +40,7 @@ fun AlbumScreen(
     var showAddTagDialog by remember { mutableStateOf(false) }
 
     Napier.d { "AlbumScreen: albumId = $albumId" }
+    val navigator = LocalNavigator.current
 
     val uiState by viewModel.uiState.collectAsState()
 
@@ -68,6 +71,9 @@ fun AlbumScreen(
                     onRefreshClick = {
                         Napier.d { "Refreshing album ${successState.albumDetail.album.name}" }
                         viewModel.refreshAlbum(albumDetail.album)
+                    },
+                    onArtistClick = {
+                        navigator.navigateTo(Screen.Artist(albumDetail.album.artists.first().id))
                     },
                     removeTag = { tagId ->
                         viewModel.removeTagFromAlbum(albumId, tagId)

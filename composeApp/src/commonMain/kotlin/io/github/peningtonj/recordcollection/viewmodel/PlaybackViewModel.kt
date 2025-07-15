@@ -19,7 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-const val DEFAULT_POLLING_DELAY_MS = 1000L
+const val PLAYBACK_ACTIVE_POLLING_DELAY = 1000L
+const val PLAYBACK_INACTIVE_POLLING_DELAY = 1000L
 const val TRANSITIONING_POLLING_DELAY_MS = 200L
 
 class PlaybackViewModel(
@@ -98,7 +99,7 @@ class PlaybackViewModel(
                 session.queue.first(), session.queue.drop(1),
                 collection = session.playingFrom
             )
-            playbackPoller.setPollingDelay(DEFAULT_POLLING_DELAY_MS)
+            playbackPoller.setPollingDelay(PLAYBACK_ACTIVE_POLLING_DELAY)
         }
     }
 
@@ -249,7 +250,7 @@ class PlaybackViewModel(
         private val onError: (String?) -> Unit
     ) {
         private var pollingJob: Job? = null
-        private var _delayMs = MutableStateFlow(DEFAULT_POLLING_DELAY_MS)
+        private var _delayMs = MutableStateFlow(PLAYBACK_ACTIVE_POLLING_DELAY)
 
         fun start(scope: CoroutineScope) {
             pollingJob?.cancel()
@@ -258,6 +259,11 @@ class PlaybackViewModel(
                     try {
                         val playback = playbackRepository.getCurrentPlayback()
                         onPlaybackUpdate(playback)
+                        if (playback == null || !playback.isPlaying) {
+                            _delayMs.value = PLAYBACK_INACTIVE_POLLING_DELAY
+                        } else if (_delayMs.value == PLAYBACK_INACTIVE_POLLING_DELAY) {
+                            _delayMs.value = PLAYBACK_ACTIVE_POLLING_DELAY
+                        }
                         onError(null)
                     } catch (e: Exception) {
                         onError(e.message)

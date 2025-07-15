@@ -57,5 +57,8 @@ class ProductionRepositoryModule : RepositoryModule {
         database: RecordCollectionDatabase
     ): TagRepository = TagRepository(database)
 
+    override fun provideSearchRepository(
+        spotifyApi: SpotifyApi
+    ): SearchRepository = SearchRepository(spotifyApi)
 
 }

@@ -79,7 +79,7 @@ class PlaybackApi(
 
     suspend fun startPlayback(request: StartPlaybackRequest? = null): Result<Unit> = runCatching {
         Napier.d { "Starting playback of ${request?.contextUri}" }
-        val response = client.put("${SpotifyApi.BASE_URL}/me/player/play") {
+        val response = client.put("${BASE_URL}/me/player/play") {
             contentType(ContentType.Application.Json)
             if (request != null) {
                 setBody(request)
@@ -99,7 +99,7 @@ class PlaybackApi(
 
     suspend fun pausePlayback(request: DevicePlaybackRequest) {
         Napier.d { "Pausing playback" }
-        val response = client.put("${SpotifyApi.BASE_URL}/me/player/pause") {
+        val response = client.put("${BASE_URL}/me/player/pause") {
             url {
                 request.deviceId?.let {
                     parameters.append("device_id", it)

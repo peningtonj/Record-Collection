@@ -43,7 +43,7 @@ data class SimplifiedTrackDto(
 
 @Serializable
 data class TrackDto(
-    val album: AlbumDto?,
+    val album: AlbumDto,
     val artists: List<SimplifiedArtistDto>,
     @SerialName("available_markets")
     val availableMarkets: List<String>?,
@@ -61,8 +61,8 @@ data class TrackDto(
     @SerialName("is_playable")
     val isPlayable: Boolean?,
     @SerialName("linked_from")
-    val linkedFrom: LinkedTrackDto?,
-    val restrictions: Restrictions?,
+    val linkedFrom: LinkedTrackDto? = null,
+    val restrictions: Restrictions? = null,
     val name: String,
     val popularity: Int,
     @SerialName("preview_url")

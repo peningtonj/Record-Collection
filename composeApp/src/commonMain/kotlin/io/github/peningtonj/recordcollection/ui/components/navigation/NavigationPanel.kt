@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocalLibrary
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -72,6 +73,13 @@ fun NavigationPanel(
             icon = Icons.Default.Person,
             isSelected = currentScreen is Screen.Profile,
             onClick = { navigator.navigateTo(Screen.Profile) }
+        )
+
+        NavigationItem(
+            title = "Search",
+            icon = Icons.Default.Search,
+            isSelected = currentScreen is Screen.Search,
+            onClick = { navigator.navigateTo(Screen.Search) }
         )
 
         // Collections section

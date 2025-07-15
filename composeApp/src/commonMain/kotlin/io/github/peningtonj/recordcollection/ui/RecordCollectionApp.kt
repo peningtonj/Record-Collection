@@ -26,6 +26,7 @@ import io.github.peningtonj.recordcollection.ui.screens.CollectionScreen
 import io.github.peningtonj.recordcollection.ui.screens.LibraryScreen
 import io.github.peningtonj.recordcollection.ui.screens.LoginScreen
 import io.github.peningtonj.recordcollection.ui.screens.ProfileScreen
+import io.github.peningtonj.recordcollection.ui.screens.SearchScreen
 import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 
 @Composable
@@ -78,6 +79,7 @@ fun RecordCollectionApp(
                                 Screen.Library -> LibraryScreen(
                                     playbackViewModel = playbackViewModel
                                 )
+                                Screen.Search -> SearchScreen()
                                 is Screen.Album -> AlbumScreen(
                                     albumId = screen.albumId,
                                     playbackViewModel = playbackViewModel

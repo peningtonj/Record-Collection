@@ -1,6 +1,7 @@
 package io.github.peningtonj.recordcollection.ui.components.album
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,6 +29,7 @@ fun AlbumHeader(
     modifier: Modifier = Modifier,
     onRefreshClick: () -> Unit = {},
     removeTag: (String) -> Unit = {},
+    onArtistClick: () -> Unit = {},
     addTag: () -> Unit = {},
 ) {
     Column(
@@ -88,7 +90,8 @@ fun AlbumHeader(
                 // Artist Name
                 Text(
                     text = albumDetailUiState.album.primaryArtist,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.clickable { onArtistClick() },
                 )
 
                 // Release Year and Track Count

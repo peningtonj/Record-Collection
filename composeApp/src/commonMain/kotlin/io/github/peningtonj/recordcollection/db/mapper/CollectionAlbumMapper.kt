@@ -42,7 +42,8 @@ object CollectionAlbumMapper {
             added_at = this.added_at,
             album_type = this.album_type,
             images = this.images,
-            updated_at = this.updated_at
+            updated_at = this.updated_at,
+            in_library = this.in_library
         )
     }
 

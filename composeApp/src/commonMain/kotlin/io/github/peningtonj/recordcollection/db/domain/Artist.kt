@@ -1,5 +1,8 @@
 package io.github.peningtonj.recordcollection.db.domain
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
 data class Artist(
     val followers: Long,
     val genres: List<String>,
@@ -11,10 +14,15 @@ data class Artist(
     val type: String,
     val uri: String
 )
+
+@Serializable
 data class SimplifiedArtist(
     val id: String,
     val name: String,
     val uri: String,
-    val externalUrls: Map<String, String>
-)
+    @SerialName("external_urls")
+    val externalUrls: Map<String, String>,
+    val href: String,
+    val type: String,
+    )
 

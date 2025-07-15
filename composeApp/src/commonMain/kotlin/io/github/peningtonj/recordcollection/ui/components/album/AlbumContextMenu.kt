@@ -137,6 +137,7 @@ fun AlbumContextMenu(
                             DropdownMenuItem(
                                 text = { Text(collection.name) },
                                 onClick = {
+                                    Napier.d { "Adding ${album.album.name} to ${collection.name}" }
                                     albumViewModel.addAlbumToCollection(album.album, collection.name)
                                     Napier.d { "Added ${album.album.name} to ${collection.name}" }
                                     showCollectionSubmenu = false
@@ -151,6 +152,7 @@ fun AlbumContextMenu(
                             onClick = {
                                 Napier.d { "Create new collection for ${album.album.name}" }
                                 collectionsViewModel.createCollection(album.album.name)
+                                albumViewModel.addAlbumToCollection(album.album, album.album.name)
                                 showCollectionSubmenu = false
                                 onDismiss()
                             },

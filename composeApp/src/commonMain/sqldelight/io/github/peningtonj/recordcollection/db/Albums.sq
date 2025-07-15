@@ -9,7 +9,8 @@ CREATE TABLE albums (
     added_at TEXT NOT NULL,
     album_type TEXT NOT NULL,
     images TEXT NOT NULL,
-    updated_at INTEGER NOT NULL
+    updated_at INTEGER NOT NULL,
+    in_library INTEGER NOT NULL
 );
 
 selectAll:
@@ -29,8 +30,9 @@ INSERT OR REPLACE INTO albums(
     added_at,
     album_type,
     images,
-    updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    updated_at,
+    in_library
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 deleteAll:
 DELETE FROM albums;
@@ -62,3 +64,13 @@ getAlbumById:
 SELECT *
 FROM albums
 WHERE id = :albumId;
+
+selectAllAlbumsInLibrary:
+SELECT *
+FROM albums
+WHERE in_library = 1;
+
+getLibraryCount:
+SELECT COUNT(*) FROM albums
+WHERE in_library = 1;
+

@@ -29,7 +29,7 @@ class AlbumRepository(
     private val eventDispatcher: AlbumEventDispatcher
 
 ) {
-    fun saveAlbum(album: AlbumDto) {
+    fun saveAlbum(album: AlbumDto, addToUsersLibrary: Boolean = true) {
         database.albumsQueries.insert(
             id = album.id,
             name = album.name,
@@ -41,11 +41,29 @@ class AlbumRepository(
             added_at = Clock.System.now().toString(),
             album_type = album.albumType.toString(),
             images = Json.encodeToString(album.images),
-            updated_at = System.currentTimeMillis()
+            updated_at = System.currentTimeMillis(),
+            in_library = if (addToUsersLibrary) 1 else 0,
         )
     }
 
-    suspend fun fetchAlbum(albumId: String, replaceArtist : Boolean = false) {
+    fun saveAlbum(album: Album, addToUsersLibrary: Boolean = true) {
+        database.albumsQueries.insert(
+            id = album.id,
+            name = album.name,
+            primary_artist = album.artists.firstOrNull()?.name ?: "Unknown Artist",
+            artists = Json.encodeToString(album.artists),
+            release_date = album.releaseDate.toString(),
+            total_tracks = album.totalTracks.toLong(),
+            spotify_uri = album.spotifyUri,
+            added_at = Clock.System.now().toString(),
+            album_type = album.albumType.toString(),
+            images = Json.encodeToString(album.images),
+            updated_at = System.currentTimeMillis(),
+            in_library = if (addToUsersLibrary) 1 else 0,
+        )
+    }
+
+    suspend fun fetchAndSaveAlbum(albumId: String, replaceArtist: Boolean = false) {
         Napier.d("Fetching Album $albumId")
         spotifyApi.library.getAlbum(albumId)
             .onSuccess { response ->
@@ -55,6 +73,18 @@ class AlbumRepository(
                 val album = AlbumMapper.toDomain(response)
                 eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album, replaceArtist))
             }
+    }
+
+    suspend fun fetchAlbum(albumId: String) : Album? {
+        spotifyApi.library.getAlbum(albumId)
+            .onSuccess {
+                response ->
+                return AlbumMapper.toDomain(response)
+        }.onFailure { error ->
+            throw(error)
+        }
+        return null
+
     }
     suspend fun syncSavedAlbums() {
         Napier.d("Syncing Albums")
@@ -79,7 +109,8 @@ class AlbumRepository(
                             added_at = savedAlbum.addedAt,
                             album_type = savedAlbum.album.albumType.toString(),
                             images = Json.encodeToString(savedAlbum.album.images),
-                            updated_at = System.currentTimeMillis()
+                            updated_at = System.currentTimeMillis(),
+                            in_library = 1,
                         )
                         val album = AlbumMapper.toDomain(savedAlbum.album)
                         eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album, true))
@@ -116,6 +147,22 @@ class AlbumRepository(
         }
     }
 
+    fun albumExists(albumId: String) =
+        database.albumsQueries
+            .getAlbumById(albumId)
+            .executeAsOneOrNull() != null
+
+    suspend fun fetchTracksForAlbum(album: Album) : List<Track>{
+        Napier.d("Fetching tracks for album ${album.id}")
+        spotifyApi.library.getAlbumTracks(album.id)
+            .onSuccess { response ->
+                return response.items.map { track ->
+                    TrackMapper.toDomain(track, album)
+                    }
+                }
+        return emptyList()
+        }
+
     suspend fun fetchAndSaveTracks(albumId: String) {
         Napier.d("Fetching tracks for album $albumId")
         spotifyApi.library.getAlbumTracks(albumId)
@@ -145,11 +192,20 @@ class AlbumRepository(
             }
     }
 
+    fun getAlbumByIdIfPresent(id: String) : Flow<Album?> = database.albumsQueries
+        .getAlbumById(id)
+        .asFlow()
+        .mapToOneOrNull(Dispatchers.IO)
+        .map { it?.let { AlbumMapper.toDomain(it) } }
+
     fun getAlbumById(id: String) : Flow<Album> = database.albumsQueries
         .getAlbumById(id)
         .asFlow()
-        .mapToOne(Dispatchers.IO)
-        .map { AlbumMapper.toDomain(it) }
+        .mapToOneOrNull(Dispatchers.IO)
+        .map {
+            it?.let { AlbumMapper.toDomain(it) }
+                ?: throw NoSuchElementException("Album with id '$id' not found")
+        }
 
 
 
@@ -166,13 +222,19 @@ class AlbumRepository(
         .mapToList(Dispatchers.IO)
         .map { it.map(AlbumMapper::toDomain) }
 
+    fun getAllAlbumsInLibrary(): Flow<List<Album>> = database.albumsQueries
+        .selectAllAlbumsInLibrary()
+        .asFlow()
+        .mapToList(Dispatchers.IO)
+        .map { it.map(AlbumMapper::toDomain) }
+
     fun getAllArtists(): Flow<List<String>> = database.albumsQueries
         .getAllArtists()
         .asFlow()
         .mapToList(Dispatchers.IO)
 
-    fun getAlbumCount(): Flow<Long> = database.albumsQueries
-        .getCount()
+    fun getLibraryCount(): Flow<Long> = database.albumsQueries
+        .getLibraryCount()
         .asFlow()
         .mapToOne(Dispatchers.IO)
 
@@ -215,31 +277,31 @@ class AlbumRepository(
         return playlists.associateWith { playlist -> spotifyApi.temp.extractAlbumsFromPlaylist(playlist) }
     }
 
-suspend fun fetchMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = runCatching {
-    if (ids.isEmpty()) return@runCatching emptyList()
-    
-    val albums = mutableListOf<Album>()
-    
-    // Process in batches of 20 (Spotify API limit)
-    ids.chunked(20).forEach { batch ->
-        spotifyApi.library.getMultipleAlbums(batch)
-            .onSuccess { response ->
-                response.albums.forEach { albumDto ->
-                    albums.add(AlbumMapper.toDomain(albumDto))
-                    
-                    if (saveToDb) {
-                        saveAlbum(albumDto)
+    suspend fun fetchMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = runCatching {
+        if (ids.isEmpty()) return@runCatching emptyList()
+
+        val albums = mutableListOf<Album>()
+
+        // Process in batches of 20 (Spotify API limit)
+        ids.chunked(20).forEach { batch ->
+            spotifyApi.library.getMultipleAlbums(batch)
+                .onSuccess { response ->
+                    response.albums.forEach { albumDto ->
+                        albums.add(AlbumMapper.toDomain(albumDto))
+
+                        if (saveToDb) {
+                            saveAlbum(albumDto)
+                        }
+                        val album = AlbumMapper.toDomain(albumDto)
+                        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
                     }
-                    val album = AlbumMapper.toDomain(albumDto)
-                    eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
+
                 }
+                .onFailure { error ->
+                    throw error
+                }
+        }
 
-            }
-            .onFailure { error ->
-                throw error
-            }
+        albums
     }
-
-    albums
-}
 }

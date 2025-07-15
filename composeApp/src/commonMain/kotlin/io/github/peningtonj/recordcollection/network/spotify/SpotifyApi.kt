@@ -15,4 +15,5 @@ class SpotifyApi(
     val user = UserApi(client)
     val playback = PlaybackApi(client)
     val temp = PlaylistAlbumExtractor(client)
+    val search = SearchApi(client)
 }
