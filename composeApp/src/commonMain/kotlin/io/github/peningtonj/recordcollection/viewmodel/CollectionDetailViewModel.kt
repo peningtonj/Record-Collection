@@ -7,6 +7,7 @@ import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepositor
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,7 @@ class CollectionDetailViewModel(
         loadCollectionDetails()
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun loadCollectionDetails() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)

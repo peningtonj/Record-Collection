@@ -13,6 +13,7 @@ import io.github.peningtonj.recordcollection.service.ArticleImportService
 import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.TagService
+import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -42,8 +43,8 @@ class ModularDependencyContainer(
         networkModule.provideSpotifyApi(authRepository)
     }
 
-    private val everyNoiseApi by lazy {
-        networkModule.provideEveryNoiseApi()
+    private val miscApi by lazy {
+        networkModule.provideMiscApi()
     }
 
     override val openAiApi: OpenAiApi by lazy {
@@ -52,7 +53,10 @@ class ModularDependencyContainer(
 
     // Create the event dispatcher
     private val albumEventDispatcher by lazy {
-        val tagService = eventModule.provideTagService()
+        val tagService = eventModule.provideTagService(
+            tagRepository,
+            albumTagRepository
+        )
         val albumTagRepository = repositoryModule.provideAlbumTagRepository(database)
         val eventHandlers = eventModule.provideAlbumEventHandlers(
             tagService,
@@ -67,6 +71,7 @@ class ModularDependencyContainer(
     override val albumRepository by lazy {
         repositoryModule.provideAlbumRepository(
             database = database,
+            miscApi = miscApi,
             spotifyApi = spotifyApi,
             eventDispatcher = albumEventDispatcher
         )
@@ -76,7 +81,7 @@ class ModularDependencyContainer(
         repositoryModule.provideArtistRepository(
             database = database,
             spotifyApi = spotifyApi,
-            everyNoiseApi = everyNoiseApi
+            miscApi = miscApi
         )
     }
     
@@ -104,7 +109,10 @@ class ModularDependencyContainer(
     }
 
     override val tagService by lazy {
-        TagService()
+        TagService(
+            tagRepository = tagRepository,
+            albumTagRepository = albumTagRepository
+        )
     }
 
     override val ratingRepository by lazy {
@@ -148,5 +156,12 @@ class ModularDependencyContainer(
     override fun close() {
         networkModule.close()
         databaseModule.close()
+    }
+
+    override val releaseGroupUseCase by lazy {
+        useCaseModule.provideReleaseGroupUseCase(
+            albumRepository,
+            searchRepository
+        )
     }
 }

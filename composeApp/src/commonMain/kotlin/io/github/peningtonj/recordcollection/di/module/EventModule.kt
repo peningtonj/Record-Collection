@@ -11,7 +11,10 @@ import io.github.peningtonj.recordcollection.service.TagService
 import kotlinx.coroutines.CoroutineScope
 
 interface EventModule {
-    fun provideTagService(): TagService
+    fun provideTagService(
+        tagRepository: TagRepository,
+        albumTagRepository: AlbumTagRepository
+    ): TagService
     
     fun provideAlbumEventHandlers(
         tagService: TagService,

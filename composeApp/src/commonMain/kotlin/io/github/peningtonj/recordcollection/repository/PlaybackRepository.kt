@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.repository
 
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Playback
 import io.github.peningtonj.recordcollection.db.domain.Track
@@ -31,7 +32,8 @@ class PlaybackRepository(
         )
     )
 
-    suspend fun getCurrentPlayback(): Playback? {
+    suspend fun getCurrentPlayback(pollerName: String): Playback? {
+//        Napier.d { "Getting current playback for $pollerName" }
         return spotifyApi.playback.getPlaybackState()
             .getOrNull()
             ?.let { PlaybackMapper.toDomain(it) }

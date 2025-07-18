@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SwapVerticalCircle
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -20,190 +21,169 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
-import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
+import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
-import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
-import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
-
-data class AlbumContextMenuAction(
-    val label: String,
-    val icon: ImageVector,
-    val action: (AlbumDetailUiState) -> Unit,
-    val hasSubmenu: Boolean = false
-)
 
 @Composable
-fun rememberAlbumContextMenuActions(
-    playbackViewModel: PlaybackViewModel = rememberPlaybackViewModel(),
-    albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
-    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
-    defaultCollectionName: String? = null,
-    collectionDetailViewModel: CollectionDetailViewModel? = null
-): Map<String, AlbumContextMenuAction> {
-    return remember(
-        playbackViewModel,
-        collectionsViewModel,
-        albumViewModel,
-        collectionDetailViewModel,
-        defaultCollectionName
-    ) {
-        mapOf(
-            "play" to AlbumContextMenuAction(
-                label = "Play Album",
-                icon = Icons.Default.PlayArrow,
-                action = { album -> playbackViewModel.playAlbum(album) }
-            ),
-            "add_to_collection" to AlbumContextMenuAction(
-                label = "Add to Collection",
-                icon = Icons.Default.Add,
-                action = { album -> /* This will be handled by the submenu */ },
-                hasSubmenu = true
-            ),
-            "remove_from_collection" to AlbumContextMenuAction(
-                label = "Remove from Collection",
-                icon = Icons.Default.Delete,
-                action = { album ->
-                    Napier.d { "Trying to remove from $defaultCollectionName collection" }
+fun DefaultAlbumContextMenu(
+    album: AlbumDetailUiState,
+    actions: AlbumActions,
+    onDismiss: () -> Unit,
+    collectionAlbumActions: CollectionAlbumActions? = null,
+    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel()
+) {
+    val collectionsState by collectionsViewModel.uiState.collectAsState()
 
-                    defaultCollectionName?.let { collectionName ->
-                        if (collectionDetailViewModel != null) {
-                            collectionDetailViewModel.removeAlbumFromCollection(album.album.id)
-                        } else {
-                            albumViewModel.removeAlbumFromCollection(album.album, collectionName)
-                        }
-                    }
+    DropdownMenuItem(
+        text = { Text("Play Album") },
+        onClick = {
+            collectionAlbumActions?.playFromCollection(album) ?: actions.play(album)
+            onDismiss()
+        },
+        leadingIcon = { Icon(Icons.Default.PlayArrow, contentDescription = null) }
+    )
+
+    DropdownMenuItem(
+        text = { Text(if (album.album.inLibrary) "Remove from Library" else "Add to Library") },
+        onClick = {
+            actions.toggleLibraryStatus(album)
+            onDismiss()
+        },
+        leadingIcon = {
+            Icon(
+                if (album.album.inLibrary) Icons.Default.Delete else Icons.Default.Add,
+                contentDescription = null
+            )
+        }
+    )
+
+    if (collectionAlbumActions != null) {
+        if (album.releaseGroup.size > 1) {
+            SwapReleaseMenu(
+                releases = album.releaseGroup.filter { it.id != album.album.id },
+                swapRelease = { release ->
+                    collectionAlbumActions.swapWithRelease(album, release)
+                },
+                onDismiss = onDismiss
+            )
+        }
+
+        DropdownMenuItem(
+            text = { Text("Remove from this collection") },
+            onClick = {
+                collectionAlbumActions.removeFromCollection(album)
+                onDismiss()
+            },
+            leadingIcon = {
+                Icon(Icons.Default.Delete,
+                    contentDescription = "Remove from collection"
+                )
+            }
+
+        )
+    }
+
+
+    // Submenu
+    AddToCollectionDropdown(
+        collections = collectionsState.collections,
+        album = album.album,
+        addAlbumToCollection = { name -> actions.addToCollection(album, name) },
+        createCollectionWithAlbum = { actions.addToNewCollection(album) },
+        onDismiss = onDismiss
+    )
+
+}
+
+@Composable
+fun AddToCollectionDropdown(
+    collections: List<AlbumCollection>,
+    album: Album,
+    addAlbumToCollection: (String) -> Unit,
+    createCollectionWithAlbum: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var showDropdown by remember { mutableStateOf(false) }
+
+    Box {
+        DropdownMenuItem(
+            text = {
+                Row {
+                    Text("Add to Collection")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowRight, contentDescription = null)
                 }
-            ),
+            },
+            onClick = { showDropdown = true },
+            leadingIcon = {
+                Icon(Icons.Default.Add, contentDescription = null)
+            }
+        )
+
+        CollectionDropdownContent(
+            expanded = showDropdown,
+            onDismissRequest = {
+                showDropdown = false
+                onDismiss()
+            },
+            collections = collections,
+            album = album,
+            addAlbumToCollection = addAlbumToCollection,
+            createCollectionWithAlbum = createCollectionWithAlbum
         )
     }
 }
 
+
 @Composable
-fun AlbumContextMenu(
-    album: AlbumDetailUiState,
-    actions: Map<String, AlbumContextMenuAction>,
-    onDismiss: () -> Unit,
-    enabledActions: Set<String> = actions.keys,
-    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
-    albumViewModel: AlbumViewModel = rememberAlbumViewModel()
+fun CollectionDropdownContent(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    collections: List<AlbumCollection>,
+    album: Album,
+    addAlbumToCollection: (String) -> Unit,
+    createCollectionWithAlbum: () -> Unit
 ) {
-    var showCollectionSubmenu by remember { mutableStateOf(false) }
-    val collectionsState by collectionsViewModel.uiState.collectAsState()
-
-    enabledActions.forEach { actionKey ->
-        actions[actionKey]?.let { menuAction ->
-            if (menuAction.hasSubmenu && actionKey == "add_to_collection") {
-                Box {
-                    DropdownMenuItem(
-                        text = {
-                            Row {
-                                Text(menuAction.label)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowRight,
-                                    contentDescription = null
-                                )
-                            }
-                        },
-                        onClick = { showCollectionSubmenu = true },
-                        leadingIcon = {
-                            Icon(menuAction.icon, contentDescription = null)
-                        }
-                    )
-
-                    // Collections submenu with reliable positioning
-                    DropdownMenu(
-                        expanded = showCollectionSubmenu,
-                        onDismissRequest = { showCollectionSubmenu = false },
-                        offset = DpOffset(x = 180.dp, y = (-32).dp), // Position to the right and slightly up
-                        properties = PopupProperties(
-                            focusable = true,
-                            dismissOnBackPress = true,
-                            dismissOnClickOutside = true,
-                            clippingEnabled = false // Allow menu to extend beyond parent bounds
-                        )
-                    ) {
-                        collectionsState.collections.forEach { collection ->
-                            DropdownMenuItem(
-                                text = { Text(collection.name) },
-                                onClick = {
-                                    Napier.d { "Adding ${album.album.name} to ${collection.name}" }
-                                    albumViewModel.addAlbumToCollection(album.album, collection.name)
-                                    Napier.d { "Added ${album.album.name} to ${collection.name}" }
-                                    showCollectionSubmenu = false
-                                    onDismiss()
-                                }
-                            )
-                        }
-                        
-                        // Option to create new collection
-                        DropdownMenuItem(
-                            text = { Text("Create New Collection...") },
-                            onClick = {
-                                Napier.d { "Create new collection for ${album.album.name}" }
-                                collectionsViewModel.createCollection(album.album.name)
-                                albumViewModel.addAlbumToCollection(album.album, album.album.name)
-                                showCollectionSubmenu = false
-                                onDismiss()
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Add, contentDescription = null)
-                            }
-                        )
-                    }
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        offset = DpOffset(x = 0.dp, y = 0.dp),
+        properties = PopupProperties(
+            focusable = true,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            clippingEnabled = false
+        )
+    ) {
+        collections.forEach { collection ->
+            DropdownMenuItem(
+                text = { Text(collection.name) },
+                onClick = {
+                    addAlbumToCollection(collection.name)
+                    onDismissRequest()
                 }
-            } else {
-                DropdownMenuItem(
-                    text = { Text(menuAction.label) },
-                    onClick = {
-                        menuAction.action(album)
-                        onDismiss()
-                    },
-                    leadingIcon = {
-                        Icon(menuAction.icon, contentDescription = null)
-                    }
-                )
-            }
+            )
         }
+
+        DropdownMenuItem(
+            text = { Text("Create New Collection...") },
+            onClick = {
+                Napier.d { "Create new collection for ${album.name}" }
+                createCollectionWithAlbum()
+                onDismissRequest()
+            },
+            leadingIcon = {
+                Icon(Icons.Default.Add, contentDescription = null)
+            }
+        )
     }
 }
 
-// Convenience functions for common use cases
-@Composable
-fun StandardAlbumContextMenu(
-    album: AlbumDetailUiState,
-    actions: Map<String, AlbumContextMenuAction>,
-    onDismiss: () -> Unit
-) {
-    AlbumContextMenu(
-        album = album,
-        actions = actions,
-        onDismiss = onDismiss,
-        enabledActions = setOf("play", "add_to_collection")
-    )
-}
 
-@Composable
-fun CollectionAlbumContextMenu(
-    album: AlbumDetailUiState,
-    actions: Map<String, AlbumContextMenuAction>,
-    onDismiss: () -> Unit,
-    defaultCollectionName: String? = null
-) {
-    AlbumContextMenu(
-        album = album,
-        actions = actions,
-        onDismiss = onDismiss,
-        enabledActions = setOf("play", "remove_from_collection", "add_to_collection")
-    )
-}

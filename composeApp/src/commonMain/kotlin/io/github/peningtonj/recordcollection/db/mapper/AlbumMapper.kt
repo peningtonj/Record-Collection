@@ -28,7 +28,10 @@ object AlbumMapper {
             albumType = AlbumType.fromString(entity.album_type),
             images = Json.decodeFromString<List<ImageDto>>(entity.images)
                 .map { ImageMapper.toDomain(it) },
-            updatedAt = entity.updated_at
+            updatedAt = entity.updated_at,
+            externalIds = entity.external_ids?.let { Json.decodeFromString(it) },
+            inLibrary = entity.in_library == 1L,
+            releaseGroupId = entity.release_group_id
         )
     }
 
@@ -44,6 +47,7 @@ object AlbumMapper {
             albumType = AlbumType.fromString(entity.albumType.name),
             images = entity.images
                 .map { ImageMapper.toDomain(it) },
+            externalIds = entity.externalIds
         )
     }
     

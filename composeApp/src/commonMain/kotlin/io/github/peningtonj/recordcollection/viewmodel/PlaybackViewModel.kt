@@ -18,9 +18,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
-const val PLAYBACK_ACTIVE_POLLING_DELAY = 1000L
-const val PLAYBACK_INACTIVE_POLLING_DELAY = 1000L
+const val PLAYBACK_ACTIVE_POLLING_DELAY = 1500L
+const val PLAYBACK_INACTIVE_POLLING_DELAY = 5000L
 const val TRANSITIONING_POLLING_DELAY_MS = 200L
 
 class PlaybackViewModel(
@@ -54,6 +55,19 @@ class PlaybackViewModel(
     init {
         playbackPoller.start(viewModelScope)
     }
+
+    private fun checkIfResumingCurrentPlayback(track: Track) : Boolean {
+        if (_playbackState.value?.isPlaying ?: false) return false
+        if (_playbackState.value?.track?.id == track.id) return true
+        return false
+    }
+
+    private fun checkIfResumingCurrentPlayback(album: Album) : Boolean {
+        if (_playbackState.value?.isPlaying ?: false) return false
+        if (_playbackState.value?.track?.album?.id == album.id) return true
+        return false
+    }
+
 
     private suspend fun handleQueueTransitions(playback: Playback?) {
         val session = _currentSession.value
@@ -108,9 +122,17 @@ class PlaybackViewModel(
         track: Track? = null
     ) {
         if (track != null) {
-            playbackRepository.startAlbumPlaybackFromTrack(album, track)
+            if (checkIfResumingCurrentPlayback((track))) {
+                playbackRepository.resumePlayback()
+            } else {
+                playbackRepository.startAlbumPlaybackFromTrack(album, track)
+            }
         } else {
-            playbackRepository.startAlbumPlayback(album)
+            if (checkIfResumingCurrentPlayback((album))) {
+                playbackRepository.resumePlayback()
+            } else {
+                playbackRepository.startAlbumPlayback(album)
+            }
         }
     }
 
@@ -118,7 +140,8 @@ class PlaybackViewModel(
         album: AlbumDetailUiState,
         queue: List<AlbumDetailUiState> = emptyList(),
         startFromTrack: Track? = null,
-        collection: AlbumCollection? = null
+        collection: AlbumCollection? = null,
+        isShuffled: Boolean = false
     ) {
         viewModelScope.launch {
             executeWithLoading {
@@ -128,7 +151,8 @@ class PlaybackViewModel(
                     album = albumWithTracks.album,
                     lastTrack = albumWithTracks.tracks.last(),
                     queue = queue,
-                    playingFrom = collection
+                    playingFrom = collection,
+                    isShuffled = isShuffled
                 )
 
                 playbackRepository.turnOffShuffle()
@@ -139,6 +163,36 @@ class PlaybackViewModel(
                 _isSessionAppInitialized.value = true
             }
         }
+    }
+
+    fun toggleShuffle(albums: List<AlbumDetailUiState>) {
+        val currentAlbum = _playbackState.value?.track?.album
+        if (currentAlbum == null) return
+
+        Napier.d { "Currently playing: ${currentAlbum.name}" }
+        if (_currentSession.value?.isShuffled ?: false) {
+            Napier.d { "Switching shuffle off" }
+            val startIndex =  albums.indexOfFirst { it.album.id == currentAlbum.id }
+            val queue = albums.drop(startIndex + 1)
+            Napier.d { "Next album will be ${queue.first().album.name}" }
+            setQueue(queue, false)
+        } else {
+            Napier.d { "Switching shuffle on" }
+            val queue = albums.filter {
+                it.album.id != playbackState.value?.track?.album?.id
+            }.shuffled()
+            Napier.d { "Next album will be ${queue.first().album.name}" }
+            setQueue(queue, true)
+        }
+    }
+    fun setQueue(
+        queue: List<AlbumDetailUiState>,
+        isShuffled: Boolean
+    ) {
+        _currentSession.value = _currentSession.value?.copy(
+            queue = queue,
+            isShuffled = isShuffled
+        )
     }
 
     fun skipToNextAlbumInQueue() {
@@ -185,16 +239,19 @@ class PlaybackViewModel(
         }
     }
 
-    fun next() = {
+    fun next() {
+        Napier.d("Next called")
         if (queueManager.isLastTrackInAlbum(
                 _currentSession.value,
                 _playbackState.value
             )
         ) {
+            Napier.d { "Going to next Album" }
             skipToNextAlbumInQueue()
         } else {
             viewModelScope.launch {
                 executePlaybackAction {
+                    Napier.d("Next track called")
                     playbackRepository.skipToNext()
                     delay(100)
                 }
@@ -233,7 +290,7 @@ class PlaybackViewModel(
     }
 
     private suspend fun updatePlaybackState() {
-        _playbackState.value = playbackRepository.getCurrentPlayback()
+        _playbackState.value = playbackRepository.getCurrentPlayback("From ViewModel")
     }
 
     override fun onCleared() {
@@ -247,7 +304,8 @@ class PlaybackViewModel(
     class PlaybackPoller(
         private val playbackRepository: PlaybackRepository,
         private val onPlaybackUpdate: suspend (Playback?) -> Unit,
-        private val onError: (String?) -> Unit
+        private val onError: (String?) -> Unit,
+        private val pollerName: String = "PlaybackPoller ${Random.nextInt(100)}"
     ) {
         private var pollingJob: Job? = null
         private var _delayMs = MutableStateFlow(PLAYBACK_ACTIVE_POLLING_DELAY)
@@ -255,9 +313,12 @@ class PlaybackViewModel(
         fun start(scope: CoroutineScope) {
             pollingJob?.cancel()
             pollingJob = scope.launch {
+                Napier.d("Starting polling for $pollerName")
                 while (isActive) {
                     try {
-                        val playback = playbackRepository.getCurrentPlayback()
+//                        Napier.d("Polling for playback updates ($pollerName) ...")
+                        val playback = playbackRepository.getCurrentPlayback(pollerName = pollerName)
+//                        Napier.d("Playback update received: $playback")
                         onPlaybackUpdate(playback)
                         if (playback == null || !playback.isPlaying) {
                             _delayMs.value = PLAYBACK_INACTIVE_POLLING_DELAY
@@ -266,10 +327,15 @@ class PlaybackViewModel(
                         }
                         onError(null)
                     } catch (e: Exception) {
+                        Napier.e("Error polling for playback updates ($pollerName): ${e.message}", e)
                         onError(e.message)
                     }
+//                    Napier.d("Polling for playback updates ($pollerName) complete, delaying ${_delayMs.value}ms ...")
                     delay(_delayMs.value)
+//                    Napier.d("Delay done ($pollerName) complete")
+
                 }
+                Napier.d("Polling stopped for $pollerName")
             }
         }
 
@@ -278,6 +344,8 @@ class PlaybackViewModel(
         }
 
         fun stop() {
+            Napier.d("Stopping polling for $pollerName")
+//            Napier.(stackTrace = Throwable("Stack trace for debugging").fillInStackTrace())
             pollingJob?.cancel()
         }
     }

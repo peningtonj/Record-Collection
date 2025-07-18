@@ -1,13 +1,20 @@
 package io.github.peningtonj.recordcollection.service
 
 import androidx.compose.ui.text.capitalize
+import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Artist
 import io.github.peningtonj.recordcollection.db.domain.Tag
 import io.github.peningtonj.recordcollection.db.domain.TagType
+import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.repository.TagRepository
+import kotlinx.coroutines.launch
 
-class TagService {
+class TagService(
+    private val tagRepository: TagRepository,
+    private val albumTagRepository: AlbumTagRepository,
+) {
     fun generateTagsForAlbum(album: Album, artists: List<Artist>): List<Tag> {
         // Your tag generation logic here
         val tags = mutableListOf<Tag>()
@@ -26,7 +33,38 @@ class TagService {
         }
         return tags
     }
+
+    fun removeTagFromAlbum(albumId: String, tagId: String) {
+        try {
+            albumTagRepository.removeTagFromAlbum(albumId, tagId)
+            Napier.d { "Removed tag $tagId from album $albumId" }
+        } catch (e: Exception) {
+            Napier.e(e) { "Error removing tag from album" }
+        }
+    }
+
+    fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) {
+        try {
+            val newTag = Tag(
+                key = tagKey,
+                value = tagValue,
+                type = TagType.USER // Adjust based on your TagType enum
+            )
+
+            // Insert the tag first
+            tagRepository.insertTag(newTag)
+
+            // Then add it to the album
+            albumTagRepository.addTagToAlbum(albumId, newTag.id)
+
+            Napier.d { "Added tag ${newTag.key}:${newTag.value} to album $albumId" }
+        } catch (e: Exception) {
+            Napier.e(e) { "Error adding tag to album" }
+        }
+    }
 }
+
+
 
 fun String.capitalizeWords(): String = split(" ").joinToString(" ") { it.replaceFirstChar { firstChar -> firstChar.uppercase() } }
 

@@ -43,7 +43,9 @@ object CollectionAlbumMapper {
             album_type = this.album_type,
             images = this.images,
             updated_at = this.updated_at,
-            in_library = this.in_library
+            in_library = this.in_library,
+            external_ids = this.external_ids,
+            release_group_id = this.release_group_id
         )
     }
 

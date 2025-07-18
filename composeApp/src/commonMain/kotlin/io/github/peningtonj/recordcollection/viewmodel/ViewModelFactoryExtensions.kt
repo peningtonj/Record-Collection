@@ -7,6 +7,7 @@ import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalDependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Navigator
+import io.github.peningtonj.recordcollection.service.ArticleImportService
 import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
 
 @Composable
@@ -70,9 +71,22 @@ fun rememberAlbumViewModel(
             dependencies.albumRepository,
             dependencies.ratingRepository,
             dependencies.collectionAlbumRepository,
+            dependencies.tagService,
+            dependencies.releaseGroupUseCase
+        )
+    }
+}
+
+@Composable
+fun rememberAlbumDetailViewModel(
+    albumId: String,
+    dependencies: DependencyContainer = LocalDependencyContainer.current
+): AlbumDetailViewModel {
+    return remember {
+        AlbumDetailViewModel(
+            albumId = albumId,
             getAlbumDetailUseCase = dependencies.albumDetailUseCase,
-            tagRepository = dependencies.tagRepository,
-            albumTagRepository = dependencies.albumTagRepository,
+            albumRepository = dependencies.albumRepository
         )
     }
 }
@@ -84,10 +98,21 @@ fun rememberCollectionsViewModel(
     return remember(dependencies) {
         CollectionsViewModel(
             repository = dependencies.albumCollectionRepository,
+        )
+    }
+}
+
+@Composable
+fun rememberArticleImportViewModel(
+    dependencies: DependencyContainer = LocalDependencyContainer.current
+): ArticleImportViewModel {
+    return remember(dependencies) {
+        ArticleImportViewModel(
             articleImportService = dependencies.articleImportService
         )
     }
 }
+
 
 @Composable
 fun rememberCollectionDetailViewModel(

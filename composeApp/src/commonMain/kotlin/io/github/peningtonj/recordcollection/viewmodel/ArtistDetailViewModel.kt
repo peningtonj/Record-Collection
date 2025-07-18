@@ -66,7 +66,8 @@ class ArtistDetailViewModel(
                             totalDuration = 0L,
                             rating = null,
                             isLoading = false,
-                            error = null
+                            error = null,
+                            releaseGroup = emptyList()
                         )
                     }
 

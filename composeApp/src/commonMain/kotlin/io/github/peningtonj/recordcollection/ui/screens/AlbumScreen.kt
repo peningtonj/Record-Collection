@@ -19,30 +19,55 @@ import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumHeader
 import io.github.peningtonj.recordcollection.ui.components.album.TrackListing
+import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumActions
 import io.github.peningtonj.recordcollection.viewmodel.AlbumScreenUiState
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.ui.components.common.LoadingIndicator
 import io.github.peningtonj.recordcollection.ui.components.common.ErrorMessage
+import io.github.peningtonj.recordcollection.ui.components.playback.rememberPlaybackActions
 import io.github.peningtonj.recordcollection.ui.components.tag.AddTagDialog
+import io.github.peningtonj.recordcollection.viewmodel.AlbumDetailViewModel
+import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
+import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumDetailViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
 
 
 @Composable
 fun AlbumScreen(
     albumId: String,
     playbackViewModel: PlaybackViewModel,
-    viewModel: AlbumViewModel = rememberAlbumViewModel(),
+    viewModel: AlbumDetailViewModel = rememberAlbumDetailViewModel(albumId),
+    albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
+    collectionViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
+    libraryViewModel: LibraryViewModel = rememberLibraryViewModel()
 ) {
     LaunchedEffect(albumId) {
-        viewModel.loadAlbum(albumId)
+        viewModel.loadAlbum()
     }
     var showAddTagDialog by remember { mutableStateOf(false) }
+    val playbackState by playbackViewModel.playbackState.collectAsState()
 
     Napier.d { "AlbumScreen: albumId = $albumId" }
     val navigator = LocalNavigator.current
 
     val uiState by viewModel.uiState.collectAsState()
+    val releaseGroupStatus by albumViewModel.releaseGroupStatus.collectAsState()
+    val collectionState by collectionViewModel.uiState.collectAsState()
+    val albumActions = rememberAlbumActions(
+        playbackViewModel = playbackViewModel,
+        albumViewModel = albumViewModel,
+        libraryViewModel = libraryViewModel,
+        collectionsViewModel = collectionViewModel,
+        navigator = navigator
+    )
+
+    val playbackActions = rememberPlaybackActions(
+        playbackViewModel
+    )
 
     when (uiState) {
         is AlbumScreenUiState.Loading -> {
@@ -65,29 +90,28 @@ fun AlbumScreen(
             ) {
                 AlbumHeader(
                     albumDetailUiState = successState.albumDetail,
-                    onPlayClick = { playbackViewModel.playAlbum(album = successState.albumDetail) },
+                    releaseGroupStatus = releaseGroupStatus,
+                    collections = collectionState.collections,
                     modifier = Modifier.fillMaxWidth(),
-                    onRatingChange = { rating -> viewModel.setRating(albumId, rating) },
-                    onRefreshClick = {
-                        Napier.d { "Refreshing album ${successState.albumDetail.album.name}" }
-                        viewModel.refreshAlbum(albumDetail.album)
-                    },
-                    onArtistClick = {
-                        navigator.navigateTo(Screen.Artist(albumDetail.album.artists.first().id))
-                    },
-                    removeTag = { tagId ->
-                        viewModel.removeTagFromAlbum(albumId, tagId)
-                    },
-                    addTag = {
+                    showAddTagDialogClick = {
                         showAddTagDialog = true
                     },
+                    isPlaying = {
+                        playbackState?.track?.album?.id == albumDetail.album.id &&
+                                playbackState?.isPlaying == true
+                    },
+                    onReleaseSelect = { albumId ->
+                        navigator.navigateTo(Screen.Album(albumId))
+                    },
+                    albumActions = albumActions,
+                    playbackActions = playbackActions
                 )
 
                 if (showAddTagDialog) {
                     AddTagDialog(
                         onDismiss = { showAddTagDialog = false },
                         onConfirm = { tagKey, tagValue ->
-                            viewModel.addTagToAlbum(albumId, tagKey, tagValue)
+                            albumViewModel.addTagToAlbum(albumId, tagKey, tagValue)
                             showAddTagDialog = false
                         }
                     )
@@ -98,10 +122,22 @@ fun AlbumScreen(
                 TrackListing(
                     successState.albumDetail.tracks,
                     onPlayClick = { track ->
-                        playbackViewModel.playAlbum(
-                            album = successState.albumDetail,
-                            startFromTrack = track)
-                    })
+                        if (playbackState?.track?.id == track.id && playbackState?.isPlaying == true) {
+                            playbackViewModel.togglePlayPause()
+                        } else {
+                            playbackViewModel.playAlbum(
+                                album = successState.albumDetail,
+                                startFromTrack = track
+                            )
+                        }
+                    },
+                    onPauseClick = {
+                        playbackViewModel.togglePlayPause()
+                    },
+                    isPlaying = { track ->
+                            playbackState?.track?.id == track.id && playbackState?.isPlaying == true
+                    }
+                )
 
             }
         }

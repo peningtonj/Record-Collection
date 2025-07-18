@@ -11,7 +11,9 @@ import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyPlayHi
 import io.github.peningtonj.recordcollection.network.spotify.model.StartPlaybackRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -25,9 +27,11 @@ class PlaybackApi(
     private val client: HttpClient,
 ) {
     suspend fun getPlaybackState() : Result<PlaybackDto> = runCatching {
-
-        val response = client.get("${SpotifyApi.BASE_URL}/me/player")
-
+//        Napier.d { "Getting playback state" }
+        val response = client.get("${BASE_URL}/me/player") {
+            header("X-No-Retry", "true")
+        }
+//        Napier.d { "Playback response ${response.status}" }
 
         when (response.status) {
             HttpStatusCode.OK -> {
@@ -57,7 +61,7 @@ class PlaybackApi(
     suspend fun toggleShuffle(request: ShufflePlaybackRequest) {
         Napier.d { "Setting shuffle to ${request.state}" }
 
-        val response = client.put("${SpotifyApi.BASE_URL}/me/player/shuffle") {
+        val response = client.put("${BASE_URL}/me/player/shuffle") {
             url {
                 parameters.append("state", request.state.toString())
                 request.deviceId?.let {
@@ -110,7 +114,7 @@ class PlaybackApi(
 
     suspend fun skipToNextTrack(request: DevicePlaybackRequest) {
         Napier.d { "Skipping to next track" }
-        val response = client.post("${SpotifyApi.BASE_URL}/me/player/next") {
+        val response = client.post("${BASE_URL}/me/player/next") {
             url {
                 request.deviceId?.let {
                     parameters.append("device_id", it)

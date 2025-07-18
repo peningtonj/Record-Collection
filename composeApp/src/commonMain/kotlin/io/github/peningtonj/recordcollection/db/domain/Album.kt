@@ -15,7 +15,10 @@ data class Album(
     val albumType: AlbumType,
     val images: List<Image>,
     val updatedAt: Long? = null,
-    val genres: List<String> = emptyList()
+    val genres: List<String> = emptyList(),
+    val externalIds: Map<String, String>? = emptyMap(),
+    val inLibrary: Boolean = false,
+    val releaseGroupId: String? = null,
 )
 
 enum class AlbumType {

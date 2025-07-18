@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DataArray
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shuffle
@@ -27,27 +26,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
-import io.github.peningtonj.recordcollection.navigation.Screen
-import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.ui.components.CreateCollectionButton
 import io.github.peningtonj.recordcollection.ui.components.Temp
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
-import io.github.peningtonj.recordcollection.ui.components.album.CollectionAlbumContextMenu
-import io.github.peningtonj.recordcollection.ui.components.album.StandardAlbumContextMenu
-import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumContextMenuActions
+import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumActions
 import io.github.peningtonj.recordcollection.ui.components.filter.ActiveChips
 import io.github.peningtonj.recordcollection.ui.components.filter.HorizontalFilterBar
-import io.github.peningtonj.recordcollection.ui.components.filter.RatingFilter
-import io.github.peningtonj.recordcollection.ui.components.filter.ReleaseYearFilter
 import io.github.peningtonj.recordcollection.ui.components.filter.TextSearchBar
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
+import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.SyncState
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
 import kotlinx.datetime.LocalDate
 
@@ -56,6 +50,7 @@ fun LibraryScreen(
     playbackViewModel: PlaybackViewModel,
     viewModel: LibraryViewModel = rememberLibraryViewModel(),
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
+    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel()
 ) {
     val syncState by viewModel.syncState.collectAsState()
     val libraryStats by viewModel.libraryStats.collectAsState()
@@ -67,8 +62,13 @@ fun LibraryScreen(
 
     val navigator = LocalNavigator.current
 
-    // Get centralized album actions
-    val albumActions = rememberAlbumContextMenuActions()
+    val albumTileActions = rememberAlbumActions(
+        playbackViewModel,
+        albumViewModel,
+        viewModel,
+        collectionsViewModel,
+        navigator,
+    )
 
     val filterOptions by remember(artists, genres) {
         derivedStateOf {
@@ -191,27 +191,10 @@ fun LibraryScreen(
             )
         }
 
-        AlbumGrid(filteredAlbums,
-            onAlbumClick = { album ->
-                navigator.navigateTo(Screen.Album(album.album.id))
-            },
 
-            onArtistClick = { album ->
-                navigator.navigateTo(Screen.Artist(album.album.artists.first().id))
-            },
-            onPlayClick = { album ->
-                albumActions["play"]?.action?.invoke(album)
-            },
-            contextMenuContent = { album, onDismiss ->
-                StandardAlbumContextMenu(
-                    album = album,
-                    actions = albumActions,
-                    onDismiss = onDismiss
-                )
-            },
-            onRatingChange = { album, rating ->
-                albumViewModel.setRating(album.album.id, rating)
-            }
+        AlbumGrid(
+            filteredAlbums,
+            albumActions = albumTileActions
         )
 
         if (syncState is SyncState.Error) {

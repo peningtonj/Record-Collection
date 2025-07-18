@@ -19,6 +19,7 @@ import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.TagService
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
+import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
 
 interface DependencyContainer : AutoCloseable {
     val profileRepository: ProfileRepository
@@ -37,6 +38,7 @@ interface DependencyContainer : AutoCloseable {
     val albumTagRepository: AlbumTagRepository
     val tagRepository: TagRepository
     val albumDetailUseCase : GetAlbumDetailUseCase
+    val releaseGroupUseCase : ReleaseGroupUseCase
     val playbackQueueService: PlaybackQueueService
     val searchRepository: SearchRepository
     val openAiApi: OpenAiApi

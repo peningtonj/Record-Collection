@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +28,25 @@ fun PlayButton(
         Icon(
             imageVector = Icons.Rounded.PlayArrow,
             contentDescription = "Play album",
+            tint = MaterialTheme.colorScheme.onTertiary,
+            modifier = Modifier.fillMaxSize(.8f)  // Make icon fill the button
+        )
+    }
+}
+
+@Composable
+fun PauseButton(
+    onPauseClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(
+        onClick = onPauseClick,
+        modifier = modifier
+            .clip(CircleShape)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Pause,
+            contentDescription = "Pause album",
             tint = MaterialTheme.colorScheme.onTertiary,
             modifier = Modifier.fillMaxSize(.8f)  // Make icon fill the button
         )

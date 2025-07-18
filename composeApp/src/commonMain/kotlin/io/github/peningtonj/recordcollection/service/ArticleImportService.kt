@@ -6,6 +6,9 @@ import io.github.peningtonj.recordcollection.db.domain.SearchResult
 import io.github.peningtonj.recordcollection.network.spotify.model.SearchType
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
+import io.github.peningtonj.recordcollection.viewmodel.AlbumLookUpResult
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -39,6 +42,21 @@ class ArticleImportService(
             listOf(SearchType.ALBUM)
         ).albums?.firstOrNull()
     }
+    suspend fun streamAlbumLookups(
+        albumNames: List<OpenAiResponse>,
+        onResult: (AlbumLookUpResult) -> Unit
+    ) {
+        coroutineScope {
+            albumNames.map { album ->
+                launch {
+                    val result = lookupAlbum(album)
+                    onResult(AlbumLookUpResult(album, result))
+                }
+            }
+        }
+    }
+
+
 }
 
 @Serializable

@@ -5,9 +5,21 @@ import io.github.peningtonj.recordcollection.di.module.UseCaseModule
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
+import io.github.peningtonj.recordcollection.repository.SearchRepository
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
+import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
 
 class ProductionUseCaseModule : UseCaseModule {
+    override fun provideReleaseGroupUseCase(
+        albumRepository: AlbumRepository,
+        searchRepository: SearchRepository
+    ): ReleaseGroupUseCase {
+        return ReleaseGroupUseCase(
+            albumRepository = albumRepository,
+            searchRepository = searchRepository
+        )
+    }
+
     override fun provideGetAlbumDetailUseCase(
         albumRepository: AlbumRepository,
         albumTagRepository: AlbumTagRepository,

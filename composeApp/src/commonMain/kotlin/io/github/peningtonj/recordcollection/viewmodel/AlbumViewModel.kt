@@ -11,8 +11,11 @@ import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.repository.TagRepository
+import io.github.peningtonj.recordcollection.service.TagService
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -23,44 +26,61 @@ class AlbumViewModel (
     private val albumRepository: AlbumRepository,
     private val ratingRepository: RatingRepository,
     private val collectionAlbumRepository: CollectionAlbumRepository,
-    private val getAlbumDetailUseCase: GetAlbumDetailUseCase,
-    private val tagRepository: TagRepository,
-    private val albumTagRepository: AlbumTagRepository
+    private val tagService: TagService,
+    private val releaseGroupUseCase: ReleaseGroupUseCase,
 ) : ViewModel() {
-
-    private val _uiState = MutableStateFlow<AlbumScreenUiState>(AlbumScreenUiState.Loading)
-    val uiState = _uiState.asStateFlow()
-
-    fun getRating(albumId: String) =
-        ratingRepository.getAlbumRating(albumId)
+    private val _releaseGroupStatus = MutableStateFlow(ReleaseGroupStatus.Idle)
+    val releaseGroupStatus = _releaseGroupStatus.asStateFlow()
 
     fun setRating(albumId: String, rating: Int) =
         ratingRepository.addRating(albumId, rating.toLong())
 
-    fun loadAlbum(albumId: String) {
-        viewModelScope.launch {
-            _uiState.value = AlbumScreenUiState.Loading
-            try {
-                albumRepository.checkAndUpdateTracksIfNeeded(albumId)
-
-                getAlbumDetailUseCase.execute(albumId)
-                    .catch { e ->
-                        _uiState.value = AlbumScreenUiState.Error(e.message ?: "Unknown error")
-                    }
-                    .collect { albumDetailState ->
-                        _uiState.value = AlbumScreenUiState.Success(albumDetailState)
-                    }
-            } catch (e: Exception) {
-                _uiState.value = AlbumScreenUiState.Error(e.message ?: "Unknown error")
-            }
-        }
+    fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) {
+        tagService.addTagToAlbum(
+            albumId,
+            tagKey,
+            tagValue
+        )
     }
 
-    fun addAlbumToCollection(album: Album, collectionName: String) {
+    fun removeTagFromAlbum(albumId: String, tagId: String) {
+        tagService.removeTagFromAlbum(
+            albumId,
+            tagId
+        )
+    }
+
+
+    fun updateReleaseGroup(album: Album) = viewModelScope.launch {
+        _releaseGroupStatus.value = ReleaseGroupStatus.Updating
+        val release = releaseGroupUseCase.getReleaseFromAlbum(album)
+        val releaseGroupId = release?.releaseGroup?.id
+
+        if (releaseGroupId == null) {
+            Napier.d { "Release group ID is null" }
+            return@launch
+        }
+
+        albumRepository.updateReleaseGroupId(album.id, release.releaseGroup.id)
+        delay(1000L) // Wait a second because of rate limiting
+        val releases = releaseGroupUseCase.getReleases(releaseGroupId)
+        val albums = releaseGroupUseCase.searchAlbumsFromReleaseGroup(
+            releases.distinctBy {
+                Pair(it.title, it.disambiguation)
+            },
+            album.primaryArtist
+        )
+        Napier.d { "Setting the release group $releaseGroupId to ${albums.joinToString(", ") {it.name}}" }
+        releaseGroupUseCase.updateAlbums(releaseGroupId, albums)
+        _releaseGroupStatus.value = ReleaseGroupStatus.Idle
+
+    }
+
+    fun addAlbumToCollection(album: Album, collectionName: String, addToLibraryOverrideValue: Boolean? = null) {
         viewModelScope.launch {
             Napier.d { "Adding album ${album.id} to collection $collectionName" }
             if (albumRepository.getAlbumByIdIfPresent(album.id).first() == null) {
-                albumRepository.saveAlbum(album)
+                albumRepository.saveAlbum(album, addToLibraryOverrideValue)
             }
             collectionAlbumRepository.addAlbumToCollection(collectionName, album.id)
         }
@@ -73,45 +93,17 @@ class AlbumViewModel (
     fun refreshAlbum(album: Album) = viewModelScope.launch {
         albumRepository.fetchAndSaveAlbum(album.id, true)
     }
-
-    fun removeTagFromAlbum(albumId: String, tagId: String) = viewModelScope.launch {
-        try {
-            albumTagRepository.removeTagFromAlbum(albumId, tagId)
-            loadAlbum(albumId) // Refresh the album data
-            Napier.d { "Removed tag $tagId from album $albumId" }
-        } catch (e: Exception) {
-            Napier.e(e) { "Error removing tag from album" }
-        }
-    }
-
-    fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) = viewModelScope.launch {
-        try {
-            val newTag = Tag(
-                key = tagKey,
-                value = tagValue,
-                type = TagType.USER // Adjust based on your TagType enum
-            )
-
-            // Insert the tag first
-            tagRepository.insertTag(newTag)
-
-            // Then add it to the album
-            albumTagRepository.addTagToAlbum(albumId, newTag.id)
-
-            // Refresh the album data
-            loadAlbum(albumId)
-
-            Napier.d { "Added tag ${newTag.key}:${newTag.value} to album $albumId" }
-        } catch (e: Exception) {
-            Napier.e(e) { "Error adding tag to album" }
-        }
-    }
 }
 
 sealed interface AlbumScreenUiState {
     data object Loading : AlbumScreenUiState
     data class Error(val message: String) : AlbumScreenUiState
     data class Success(
-        val albumDetail: AlbumDetailUiState
+        val albumDetail: AlbumDetailUiState,
     ) : AlbumScreenUiState
+}
+
+enum class ReleaseGroupStatus {
+    Idle,
+    Updating,
 }

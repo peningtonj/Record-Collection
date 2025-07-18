@@ -13,10 +13,15 @@ import kotlinx.coroutines.CoroutineScope
 
 class ProductionEventModule : EventModule {
     
-    override fun provideTagService(): TagService {
-        return TagService()
+    override fun provideTagService(
+        tagRepository: TagRepository,
+        albumTagRepository: AlbumTagRepository
+    ): TagService {
+        return TagService(
+            tagRepository, albumTagRepository
+        )
     }
-    
+
     override fun provideAlbumEventHandlers(
         tagService: TagService,
         albumTagRepository: AlbumTagRepository,

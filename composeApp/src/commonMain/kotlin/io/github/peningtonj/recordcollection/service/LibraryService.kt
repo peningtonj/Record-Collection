@@ -126,6 +126,15 @@ class LibraryService(
         Napier.d("Library sync completed")
     }
 
+    fun addAlbumToLibrary(album: Album) {
+        albumRepository.addAlbumToLibrary(album.id)
+    }
+
+    fun removeAlbumFromLibrary(album: Album) {
+        albumRepository.removeAlbumFromLibrary(album.id)
+    }
+
+
 }
 
 data class LibraryStats(

@@ -264,7 +264,10 @@ fun PlaybackBar(
                     }
                     
                     IconButton(
-                        onClick = { playbackViewModel.next() },
+                        onClick = {
+                            Napier.d("Next button clicked")
+                            playbackViewModel.next()
+                        },
                         modifier = Modifier.size(40.dp),
                         enabled = !isLoading && currentPlayback != null
                     ) {

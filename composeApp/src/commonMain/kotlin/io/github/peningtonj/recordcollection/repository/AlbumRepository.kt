@@ -15,9 +15,11 @@ import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.db.mapper.TrackMapper
 import io.github.peningtonj.recordcollection.events.AlbumEvent
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
+import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -26,6 +28,7 @@ import kotlinx.serialization.json.Json
 class AlbumRepository(
     private val database: RecordCollectionDatabase,
     private val spotifyApi: SpotifyApi,
+    private val miscApi: MiscApi,
     private val eventDispatcher: AlbumEventDispatcher
 
 ) {
@@ -42,11 +45,15 @@ class AlbumRepository(
             album_type = album.albumType.toString(),
             images = Json.encodeToString(album.images),
             updated_at = System.currentTimeMillis(),
+            external_ids = album.externalIds.let { Json.encodeToString(it) },
             in_library = if (addToUsersLibrary) 1 else 0,
+            release_group_id = null
         )
     }
 
-    fun saveAlbum(album: Album, addToUsersLibrary: Boolean = true) {
+    fun saveAlbum(album: Album, overrideInLibrary: Boolean? = null) {
+        val addToLibrary = overrideInLibrary ?: album.inLibrary
+
         database.albumsQueries.insert(
             id = album.id,
             name = album.name,
@@ -59,7 +66,9 @@ class AlbumRepository(
             album_type = album.albumType.toString(),
             images = Json.encodeToString(album.images),
             updated_at = System.currentTimeMillis(),
-            in_library = if (addToUsersLibrary) 1 else 0,
+            external_ids = album.externalIds.let { Json.encodeToString(it) },
+            in_library = if (addToLibrary) 1 else 0,
+            release_group_id = null
         )
     }
 
@@ -75,17 +84,17 @@ class AlbumRepository(
             }
     }
 
-    suspend fun fetchAlbum(albumId: String) : Album? {
+    suspend fun fetchAlbum(albumId: String): Album? {
         spotifyApi.library.getAlbum(albumId)
-            .onSuccess {
-                response ->
+            .onSuccess { response ->
                 return AlbumMapper.toDomain(response)
-        }.onFailure { error ->
-            throw(error)
-        }
+            }.onFailure { error ->
+                throw (error)
+            }
         return null
 
     }
+
     suspend fun syncSavedAlbums() {
         Napier.d("Syncing Albums")
         var offset = 0
@@ -110,7 +119,9 @@ class AlbumRepository(
                             album_type = savedAlbum.album.albumType.toString(),
                             images = Json.encodeToString(savedAlbum.album.images),
                             updated_at = System.currentTimeMillis(),
+                            external_ids = savedAlbum.album.externalIds?.let { Json.encodeToString(it) } ?: "",
                             in_library = 1,
+                            release_group_id = null
                         )
                         val album = AlbumMapper.toDomain(savedAlbum.album)
                         eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album, true))
@@ -152,16 +163,16 @@ class AlbumRepository(
             .getAlbumById(albumId)
             .executeAsOneOrNull() != null
 
-    suspend fun fetchTracksForAlbum(album: Album) : List<Track>{
+    suspend fun fetchTracksForAlbum(album: Album): List<Track> {
         Napier.d("Fetching tracks for album ${album.id}")
         spotifyApi.library.getAlbumTracks(album.id)
             .onSuccess { response ->
                 return response.items.map { track ->
                     TrackMapper.toDomain(track, album)
-                    }
                 }
+            }
         return emptyList()
-        }
+    }
 
     suspend fun fetchAndSaveTracks(albumId: String) {
         Napier.d("Fetching tracks for album $albumId")
@@ -179,7 +190,7 @@ class AlbumRepository(
                             artists = Json.encodeToString(track.artists),
                             preview_url = track.previewUrl,
                             primary_artist = track.artists.firstOrNull()?.name ?: "Unknown Artist",
-                            is_explicit = if(track.explicit) 1 else 0,
+                            is_explicit = if (track.explicit) 1 else 0,
                             disc_number = track.discNumber.toLong(),
                             popularity = null,
                         )
@@ -192,13 +203,13 @@ class AlbumRepository(
             }
     }
 
-    fun getAlbumByIdIfPresent(id: String) : Flow<Album?> = database.albumsQueries
+    fun getAlbumByIdIfPresent(id: String): Flow<Album?> = database.albumsQueries
         .getAlbumById(id)
         .asFlow()
         .mapToOneOrNull(Dispatchers.IO)
         .map { it?.let { AlbumMapper.toDomain(it) } }
 
-    fun getAlbumById(id: String) : Flow<Album> = database.albumsQueries
+    fun getAlbumById(id: String): Flow<Album> = database.albumsQueries
         .getAlbumById(id)
         .asFlow()
         .mapToOneOrNull(Dispatchers.IO)
@@ -206,7 +217,6 @@ class AlbumRepository(
             it?.let { AlbumMapper.toDomain(it) }
                 ?: throw NoSuchElementException("Album with id '$id' not found")
         }
-
 
 
     fun getEarliestReleaseDate(): Flow<LocalDate?> = getAllAlbums()
@@ -238,17 +248,6 @@ class AlbumRepository(
         .asFlow()
         .mapToOne(Dispatchers.IO)
 
-    fun getLatestAlbum(): Flow<Album?> {
-        Napier.d("DB QUERY: getLatestAlbum")
-
-        return database.albumsQueries.getLatest()
-            .asFlow()
-            .mapToOneOrNull(Dispatchers.IO)
-            .map { entity ->
-                entity?.let(AlbumMapper::toDomain)
-            }
-    }
-
     fun getAlbumsByArtist(artistName: String): Flow<List<Album>> {
         return database.albumsQueries.getAlbumsByArtist(artistName)
             .asFlow()
@@ -258,17 +257,8 @@ class AlbumRepository(
             }
     }
 
-    fun getAlbumsByYear(year : String): Flow<List<Album>> {
-        return database.albumsQueries.getByReleaseDate(year)
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { list ->
-                list.map(AlbumMapper::toDomain)
-            }
-    }
 
-
-    suspend fun import() : Map<Playlist, List<AlbumResult>> {
+    suspend fun import(): Map<Playlist, List<AlbumResult>> {
         Napier.d("Importing Collections")
         val playlistsResponse = spotifyApi.temp.getPlaylists()
         val playlists = playlistsResponse.getOrThrow()
@@ -303,5 +293,37 @@ class AlbumRepository(
         }
 
         albums
+    }
+
+    fun addAlbumToLibrary(albumId: String) =
+        database.albumsQueries.updateInLibraryStatus(1, albumId)
+
+    fun removeAlbumFromLibrary(albumId: String) =
+        database.albumsQueries.updateInLibraryStatus(0, albumId)
+
+    fun updateReleaseGroupId(albumId: String, releaseGroupId: String) =
+        database.albumsQueries.updateReleaseGroupId(releaseGroupId, albumId)
+
+    suspend fun fetchReleaseGroupId(album: Album) =
+        if (album.externalIds?.containsKey("upc") ?: false) {
+            miscApi.getAlbumReleaseDetailsByUPC(album.externalIds["upc"]!!)
+        } else {
+            Napier.w("Album does not have an UPC, skipping release group fetch")
+            throw IllegalArgumentException("Album does not have an UPC")
+        }
+
+    suspend fun fetchReleaseGroup(releaseGroupId: String) =
+        miscApi.getReleasesForGroup(releaseGroupId)
+
+    fun getAlbumsFromReleaseGroup(releaseGroupId: String?): Flow<List<Album>> {
+        return if (releaseGroupId == null) {
+            flowOf(emptyList())
+        } else {
+            database.albumsQueries
+                .selectAlbumsByReleaseId(releaseGroupId)
+                .asFlow()
+                .mapToList(Dispatchers.IO)
+                .map { it.map(AlbumMapper::toDomain) }
+        }
     }
 }

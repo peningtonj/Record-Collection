@@ -15,10 +15,11 @@ data class AlbumDetailUiState(
     val tags: List<TagUiState>,
     val collections: List<AlbumCollectionUiState>,
     val tracks: List<Track>,
+    val releaseGroup: List<Album>,
     val totalDuration: Long,
     val rating: AlbumRating? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
 )
 
 data class AlbumCollectionUiState(

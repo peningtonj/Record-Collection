@@ -1,12 +1,10 @@
 package io.github.peningtonj.recordcollection.di.module.impl
 
-import io.github.aakira.napier.LogLevel
 import io.github.peningtonj.recordcollection.di.module.NetworkModule
-import io.github.peningtonj.recordcollection.network.everynoise.EveryNoiseApi
+import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
-import io.github.peningtonj.recordcollection.util.Logger
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.auth.*
@@ -17,12 +15,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
-import okhttp3.internal.concurrent.TaskRunner.Companion.logger
-import kotlin.math.min
-import kotlin.math.pow
-import kotlin.random.Random
 
 class ProductionNetworkModule : NetworkModule {
     private var httpClient: HttpClient? = null
@@ -126,8 +119,8 @@ class ProductionNetworkModule : NetworkModule {
         }.also { httpClient = it }
     }
 
-    override fun provideEveryNoiseApi(): EveryNoiseApi {
-        return EveryNoiseApi(provideHttpClient())
+    override fun provideMiscApi(): MiscApi {
+        return MiscApi(provideHttpClient())
     }
 
     val apiKey = System.getenv("OPENAI_API_KEY")!!
@@ -163,12 +156,18 @@ class ProductionNetworkModule : NetworkModule {
                         val retryAfter = response.headers["Retry-After"]
                         val remaining = response.headers["X-RateLimit-Remaining"]
                         val limit = response.headers["X-RateLimit-Limit"]
-                        
+
                         println("🎵 SPOTIFY RATE LIMITED! ${response.status}")
                         println("   Retry-After: $retryAfter")
                         println("   Rate limit: $remaining/$limit remaining")
+                        println("   Request: $maxRetries -- ${request.method} ${request.url}")
+
+                        val isPolling = request.headers["X-No-Retry"] == "true"
+                        if (isPolling) {
+                            return@retryIf false // Don't retry polling requests
+                        }
                     }
-                    
+
                     isRateLimit
                 }
                 
@@ -198,6 +197,7 @@ class ProductionNetworkModule : NetworkModule {
                         is kotlinx.serialization.MissingFieldException -> {
                             println("🔍 SPOTIFY MISSING FIELD ERROR:")
                             println("   Field: ${exception.message}")
+                            println("   Request: ${request.method} ${request.url} ")
                             exception.printStackTrace()
                         }
                         else -> {

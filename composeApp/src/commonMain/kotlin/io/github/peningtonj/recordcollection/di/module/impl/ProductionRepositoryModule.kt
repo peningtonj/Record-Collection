@@ -5,7 +5,7 @@ import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.di.module.RepositoryModule
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
-import io.github.peningtonj.recordcollection.network.everynoise.EveryNoiseApi
+import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
@@ -20,14 +20,15 @@ class ProductionRepositoryModule : RepositoryModule {
     override fun provideAlbumRepository(
         database: RecordCollectionDatabase,
         spotifyApi: SpotifyApi,
+        miscApi: MiscApi,
         eventDispatcher: AlbumEventDispatcher
-    ): AlbumRepository = AlbumRepository(database, spotifyApi, eventDispatcher)
+    ): AlbumRepository = AlbumRepository(database, spotifyApi, miscApi, eventDispatcher)
     
     override fun provideArtistRepository(
         database: RecordCollectionDatabase,
         spotifyApi: SpotifyApi,
-        everyNoiseApi: EveryNoiseApi
-    ): ArtistRepository = ArtistRepository(database, spotifyApi, everyNoiseApi)
+        miscApi: MiscApi
+    ): ArtistRepository = ArtistRepository(database, spotifyApi, miscApi)
     
     override fun providePlaybackRepository(
         spotifyApi: SpotifyApi

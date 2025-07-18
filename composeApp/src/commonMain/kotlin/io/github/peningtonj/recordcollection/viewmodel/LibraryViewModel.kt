@@ -131,6 +131,13 @@ class LibraryViewModel(
             collectionsService.import()
         }
 
+    fun addAlbumToLibrary(album: Album) =
+        libraryService.addAlbumToLibrary(album)
+
+
+    fun removeAlbumFromLibrary(album: Album) =
+        libraryService.removeAlbumFromLibrary(album)
+
 }
 
 sealed class SyncState {

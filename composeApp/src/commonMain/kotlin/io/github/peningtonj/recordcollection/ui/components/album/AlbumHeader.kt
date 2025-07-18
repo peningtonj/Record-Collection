@@ -5,32 +5,51 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
+import io.github.peningtonj.recordcollection.ui.components.playback.PlaybackActions
 import io.github.peningtonj.recordcollection.ui.components.rating.StarRating
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import io.github.peningtonj.recordcollection.ui.models.formattedTotalDuration
+import io.github.peningtonj.recordcollection.viewmodel.ReleaseGroupStatus
 
 @Composable
 fun AlbumHeader(
     albumDetailUiState: AlbumDetailUiState,
-    onPlayClick: () -> Unit,
-    onRatingChange: (Int) -> Unit,
+    releaseGroupStatus: ReleaseGroupStatus,
+    collections: List<AlbumCollection>,
+    albumActions: AlbumActions,
+    playbackActions: PlaybackActions,
+    showAddTagDialogClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onRefreshClick: () -> Unit = {},
-    removeTag: (String) -> Unit = {},
-    onArtistClick: () -> Unit = {},
-    addTag: () -> Unit = {},
+    isPlaying: () -> Boolean = { false },
+    onReleaseSelect: (String) -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -71,19 +90,19 @@ fun AlbumHeader(
 
                     Spacer(modifier = Modifier.width(24.dp))  // Adds fixed space between text and button
 
-                    PlayButton(
-                        onPlayClick = onPlayClick,
-                        modifier = Modifier
-                            .padding(top = 4.dp)
-                    )
-
-                    IconButton(
-                        onClick = onRefreshClick,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Refresh album"
+                    if (isPlaying()) {
+                        PauseButton(
+                            onPauseClick = playbackActions.togglePlayPause,
+                            modifier = Modifier
+                                .padding(top = 4.dp)
                         )
+                    } else {
+                        PlayButton(
+                            onPlayClick = { albumActions.play(albumDetailUiState) },
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                        )
+
                     }
                 }
 
@@ -91,7 +110,7 @@ fun AlbumHeader(
                 Text(
                     text = albumDetailUiState.album.primaryArtist,
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.clickable { onArtistClick() },
+                    modifier = Modifier.clickable { albumActions.navigateToArtist(albumDetailUiState) },
                 )
 
                 // Release Year and Track Count
@@ -122,12 +141,113 @@ fun AlbumHeader(
 
                 StarRating(
                     albumDetailUiState.rating?.rating ?: 0,
-                    onRatingChange = onRatingChange,
+                    onRatingChange = { newRating -> albumActions.updateRating(albumDetailUiState, newRating) },
                 )
             }
         }
 
-        TagsSection(albumDetailUiState, removeTag, addTag)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            ReleaseGroupUi(
+                albumDetailUiState = albumDetailUiState,
+                releaseGroupStatus = releaseGroupStatus,
+                onReleaseSelect = onReleaseSelect,
+                albumActions = albumActions
+            )
 
+            AddToLibraryButton(
+                onClick = { albumActions.toggleLibraryStatus(albumDetailUiState) },
+                inLibrary = albumDetailUiState.album.inLibrary
+            )
+
+            AddToCollectionButton(
+                collections = collections,
+                album = albumDetailUiState.album,
+                onDismiss = {},
+                addAlbumToCollection = { collectionName ->
+                    albumActions.addToCollection(albumDetailUiState, collectionName)
+                },
+                createCollectionWithAlbum = { albumActions.addToNewCollection(albumDetailUiState) }
+            )
+        }
+
+        TagsSection(albumDetailUiState,
+            addTag = showAddTagDialogClick,
+            removeTag = {tagId ->
+                albumActions.removeTag(albumDetailUiState, tagId)
+            }
+        )
+
+    }
+}
+
+
+@Composable
+fun AddToLibraryButton(
+    onClick: () -> Unit,
+    inLibrary: Boolean
+) {
+    AssistChip(
+        onClick = onClick,
+        label = {
+            if (inLibrary) {
+                Text("Remove From Library")
+            } else {
+                Text("Add To Library")
+            }
+        },
+        trailingIcon = {
+            if (inLibrary) {
+                    Icon(
+                        Icons.Default.Favorite,
+                        contentDescription = null,
+                        modifier = Modifier.size(AssistChipDefaults.IconSize)
+                    )
+                } else {
+            Icon(
+                Icons.Default.FavoriteBorder,
+                contentDescription = null,
+                modifier = Modifier.size(AssistChipDefaults.IconSize)
+            )
+            }
+        }
+    )
+}
+
+@Composable
+fun AddToCollectionButton(
+    collections: List<AlbumCollection>,
+    album: Album,
+    addAlbumToCollection: (String) -> Unit,
+    createCollectionWithAlbum: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var showDropdown by remember { mutableStateOf(false) }
+
+    Box {
+        AssistChip(
+            onClick = { showDropdown = true },
+            label = { Text("Add to Collection") },
+            trailingIcon = {
+                Icon(
+                    Icons.Default.LibraryMusic,
+                    contentDescription = null,
+                    modifier = Modifier.size(AssistChipDefaults.IconSize)
+                )
+            }
+        )
+
+        CollectionDropdownContent(
+            expanded = showDropdown,
+            onDismissRequest = {
+                showDropdown = false
+                onDismiss()
+            },
+            collections = collections,
+            album = album,
+            addAlbumToCollection = addAlbumToCollection,
+            createCollectionWithAlbum = createCollectionWithAlbum
+        )
     }
 }

@@ -9,7 +9,7 @@ import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Artist
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.db.mapper.ArtistMapper
-import io.github.peningtonj.recordcollection.network.everynoise.EveryNoiseApi
+import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AristAlbumsRequest
 import io.github.peningtonj.recordcollection.network.spotify.model.FullArtistDto
@@ -27,7 +27,7 @@ import kotlinx.serialization.json.Json
 class ArtistRepository(
     private val database: RecordCollectionDatabase,
     private val spotifyApi: SpotifyApi,
-    private val everyNoiseApi: EveryNoiseApi
+    private val miscApi: MiscApi
 ) {
 
     suspend fun fetchArtistWithEnhancedGenres(artistId: String): Result<EnrichedArtist> = runCatching {
@@ -42,7 +42,7 @@ class ArtistRepository(
     }
 
     suspend fun fetchEnhancedGenresForArtist(artistId: String): List<String> =
-        everyNoiseApi.getArtistGenres(artistId).fold(
+        miscApi.getArtistGenres(artistId).fold(
             onSuccess = { response ->
                 response },
             onFailure = { response ->

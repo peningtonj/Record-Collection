@@ -10,6 +10,8 @@ CREATE TABLE albums (
     album_type TEXT NOT NULL,
     images TEXT NOT NULL,
     updated_at INTEGER NOT NULL,
+    external_ids TEXT,
+    release_group_id TEXT,
     in_library INTEGER NOT NULL
 );
 
@@ -31,8 +33,10 @@ INSERT OR REPLACE INTO albums(
     album_type,
     images,
     updated_at,
-    in_library
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    external_ids,
+    in_library,
+    release_group_id
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 deleteAll:
 DELETE FROM albums;
@@ -74,3 +78,17 @@ getLibraryCount:
 SELECT COUNT(*) FROM albums
 WHERE in_library = 1;
 
+updateInLibraryStatus:
+UPDATE albums
+SET in_library = :inLibrary
+WHERE id = :albumId;
+
+updateReleaseGroupId:
+UPDATE albums
+SET release_group_id = :release_group_id
+WHERE id = :albumId;
+
+selectAlbumsByReleaseId:
+SELECT *
+FROM albums
+WHERE release_group_id = :release_group_id;

@@ -15,6 +15,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -24,7 +25,9 @@ import kotlin.time.Duration.Companion.milliseconds
 fun TrackListing(
     tracks: List<Track>,
     onPlayClick: (Track) -> Unit,
-    modifier: Modifier = Modifier
+    onPauseClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isPlaying: (Track) -> Boolean = { false },
 ) {
     // Group tracks by disc number
     val tracksByDisc = tracks.groupBy { it.discNumber }.toSortedMap()
@@ -51,7 +54,12 @@ fun TrackListing(
                 items = discTracks,
                 key = { it.id }
             ) { track ->
-                TrackListingItem(track = track, onPlayClick = onPlayClick)
+                TrackListingItem(
+                    track = track,
+                    onPlayClick = onPlayClick,
+                    isPlaying = isPlaying,
+                    onPauseClick = onPauseClick
+                )
             }
         }
     }
@@ -123,7 +131,9 @@ fun TrackListingHeader(
 fun TrackListingItem(
     track: Track,
     modifier: Modifier = Modifier,
-    onPlayClick: (Track) -> Unit = {}
+    isPlaying: (Track) -> Boolean = { false },
+    onPlayClick: (Track) -> Unit = {},
+    onPauseClick: () -> Unit = {}
 ) {
 
     val interactionSource = remember { MutableInteractionSource() }
@@ -143,7 +153,19 @@ fun TrackListingItem(
             modifier = Modifier.width(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (isHovered) {
+            if (isPlaying(track)) {
+                IconButton(
+                    onClick = { onPauseClick() },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Pause,
+                        contentDescription = "Play ${track.name}",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            else if (isHovered) {
                 IconButton(
                     onClick = { onPlayClick(track) },
                     modifier = Modifier.size(24.dp)

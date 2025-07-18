@@ -1,15 +1,12 @@
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -36,23 +33,36 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.peningtonj.recordcollection.db.domain.Artist
 import io.github.peningtonj.recordcollection.db.domain.AlbumType
-import io.github.peningtonj.recordcollection.navigation.LocalNavigator
-import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
-import io.github.peningtonj.recordcollection.ui.components.album.StandardAlbumContextMenu
-import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumContextMenuActions
+import io.github.peningtonj.recordcollection.ui.components.album.AlbumActions
+import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumActions
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
+import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
+import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberArtistDetailViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
 
 @Composable
 fun ArtistDetailScreen(
     artistId: String,
     playbackViewModel: PlaybackViewModel,
     viewModel: ArtistDetailViewModel = rememberArtistDetailViewModel(artistId = artistId),
+    albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
+    libraryViewModel: LibraryViewModel = rememberLibraryViewModel(),
+    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val albumTileActions = rememberAlbumActions(
+        playbackViewModel,
+        albumViewModel = albumViewModel,
+        libraryViewModel = libraryViewModel,
+        collectionsViewModel = collectionsViewModel
+    )
 
     Column(
         modifier = Modifier
@@ -72,7 +82,8 @@ fun ArtistDetailScreen(
                 ArtistDetailContent(
                     artist = uiState.artist,
                     albums = uiState.albums,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    albumTileActions = albumTileActions
                 )
             }
         }
@@ -83,12 +94,9 @@ fun ArtistDetailScreen(
 private fun ArtistDetailContent(
     artist: Artist?,
     albums: List<AlbumDetailUiState>,
+    albumTileActions: AlbumActions,
     modifier: Modifier = Modifier
 ) {
-    val navigator = LocalNavigator.current
-    val albumActions = rememberAlbumContextMenuActions()
-
-    
     // Group albums by type
     val albumsByType = albums.groupBy { it.album.albumType }
     
@@ -104,7 +112,7 @@ private fun ArtistDetailContent(
     }
     
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    
+
     Column(modifier = modifier) {
         // Artist Header
         ArtistHeader(
@@ -140,20 +148,7 @@ private fun ArtistDetailContent(
                 
                 AlbumGrid(
                     albums = selectedAlbums,
-                    onAlbumClick = { album ->
-                        navigator.navigateTo(Screen.Album(album.album.id))
-                    },
-                    onPlayClick = { album -> },
-                    onRatingChange = { album, rating -> },
-                    modifier = Modifier.fillMaxSize(),
-                    contextMenuContent = { album, onDismiss ->
-                        StandardAlbumContextMenu(
-                            album = album,
-                            actions = albumActions,
-                            onDismiss = onDismiss
-                        )
-                    },
-
+                    albumActions = albumTileActions
                     )
             }
         } else {

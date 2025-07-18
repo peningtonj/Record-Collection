@@ -29,8 +29,10 @@ import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.ui.components.common.TextInputDialog
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
+import io.github.peningtonj.recordcollection.viewmodel.ArticleImportViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberArticleImportViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 
 @Composable
@@ -38,7 +40,8 @@ fun CollectionsSection(
     currentScreen: Screen,
     navigator: Navigator,
     viewModel: CollectionsViewModel = rememberCollectionsViewModel(),
-    albumViewModel: AlbumViewModel = rememberAlbumViewModel()
+    albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
+    articleImportViewModel: ArticleImportViewModel = rememberArticleImportViewModel(),
 ) {
     var showDropdown by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
@@ -52,7 +55,9 @@ fun CollectionsSection(
     // Use the same viewModel instance for both state and actions
     val collectionsUiState by viewModel.uiState.collectAsState()
     val currentFolder by viewModel.currentFolder.collectAsState()
-    val importResult by viewModel.importResult.collectAsState()
+
+    val importResult by articleImportViewModel.importState.collectAsState()
+    val importUiState by articleImportViewModel.uiState.collectAsState()
 
     Napier.d("CollectionsSection: currentFolder: $currentFolder")
     Napier.d("CollectionsSection: collectionsUiState: $collectionsUiState")
@@ -144,27 +149,29 @@ fun CollectionsSection(
         onDismiss = { showCollectionFromArticleDialog = false },
         onConfirm = { name ->
             showCollectionFromArticle = true
-            viewModel.draftCollectionFromUrl(name)
+            articleImportViewModel.draftCollectionFromUrl(name)
         },
         confirmButtonText = "Create"
     )
 
     ImportCollectionDialog(
         isVisible = showCollectionFromArticle,
-        content = importResult,
         onDismiss = { showCollectionFromArticle = false },
         onSearch = {
             Napier.d("Importing collection from draft????")
-            viewModel.getAlbumsFromDraft() },
+            articleImportViewModel.getAlbumsFromDraft()
+        },
         onMakeCollection = { collectionName ->
             viewModel.createCollection(collectionName)
-            importResult.albums.forEach { album ->
-                if (album.album != null) {
-                    albumViewModel.addAlbumToCollection(album.album, collectionName)
+            importResult?.lookupResults?.forEach { album ->
+                album.album?.let {
+                    albumViewModel.addAlbumToCollection(it, collectionName, false)
                 }
             }
             showCollectionFromArticle = false
-        }
+        },
+        uiState = importUiState,
+        data = importResult
     )
 
     // Folder dialog

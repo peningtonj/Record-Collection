@@ -2,11 +2,13 @@ package io.github.peningtonj.recordcollection.ui.components.collections
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +24,7 @@ fun CollectionHeader(
     albumCount: Int,
     onPlayAllClick: () -> Unit,
     onRandomClick: () -> Unit,
+    isShuffled: Boolean,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -38,17 +41,14 @@ fun CollectionHeader(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Collection Title row
+            Text(
+                text = collectionName,
+                style = MaterialTheme.typography.headlineMedium
+            )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = collectionName,
-                    style = MaterialTheme.typography.headlineMedium
-                )
-
-                Spacer(modifier = Modifier.width(24.dp))
-
                 PlayButton(
                     onPlayClick = onPlayAllClick,
                     modifier = Modifier
@@ -57,11 +57,29 @@ fun CollectionHeader(
                 IconButton(
                     onClick = onRandomClick
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Shuffle,
-                        contentDescription = "Random Album")
+                    if (isShuffled) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shuffle,
+                                contentDescription = "Shuffle On",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Shuffle,
+                            contentDescription = "Shuffle Off"
+                        )
+                    }
                 }
-
             }
 
             // Album Count
