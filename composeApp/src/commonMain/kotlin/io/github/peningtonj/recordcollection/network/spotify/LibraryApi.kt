@@ -22,7 +22,6 @@ class LibraryApi(
         client.get("${SpotifyApi.BASE_URL}/albums/$id").body()
     }
 
-
     suspend fun getAlbumTracks(albumId: String): Result<PaginatedResponse<SimplifiedTrackDto>> = runCatching {
         client.get("${SpotifyApi.BASE_URL}/albums/$albumId/tracks").body()
     }

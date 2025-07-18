@@ -10,6 +10,7 @@ import io.github.peningtonj.recordcollection.repository.ArtistRepository
 import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.LibraryStats
+import io.github.peningtonj.recordcollection.service.SyncAction
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -100,12 +101,14 @@ class LibraryViewModel(
     }
 
     // Sync operations
-    fun syncLibrary() {
+    fun startSync() {
         viewModelScope.launch {
             _syncState.value = SyncState.Syncing
             try {
-                libraryService.syncLibraryData()
-                _syncState.value = SyncState.Success
+                val differences = libraryService.getLibraryDifferences()
+                _syncState.value = SyncState.Ready(
+                    differences
+                )
             } catch (e: Exception) {
                 Napier.e("Library sync failed", e)
                 _syncState.value = SyncState.Error(e.message ?: "Sync failed")
@@ -138,11 +141,34 @@ class LibraryViewModel(
     fun removeAlbumFromLibrary(album: Album) =
         libraryService.removeAlbumFromLibrary(album)
 
+    fun launchSync(syncAction: SyncAction, removeDuplicates: Boolean) =
+        viewModelScope.launch {
+            if (_syncState.value is SyncState.Ready) {
+                libraryService.applySync((_syncState.value as SyncState.Ready).differences, syncAction, removeDuplicates)
+            } else {
+                Napier.d { "Tried to start a sync with ${_syncState.value}" }
+            }
+        }
 }
 
 sealed class SyncState {
     object Idle : SyncState()
     object Syncing : SyncState()
-    object Success : SyncState()
+    data class Ready(
+        val differences: LibraryDifferences,
+        val removeDuplicates: Boolean = true
+    ): SyncState()
     data class Error(val message: String) : SyncState()
 }
+
+data class LibraryDifferences(
+    val localCount: Int,
+    val spotifyCount: Int,
+    val onlyInLocal: Int,
+    val onlyInSpotify: Int,
+    val inBoth: Int,
+    val userSavedAlbums: List<Album>,
+    val localLibrary: List<Album>,
+    val localDuplicates: List<Album>,
+    val userSavedAlbumsDuplicates: List<Album>
+)

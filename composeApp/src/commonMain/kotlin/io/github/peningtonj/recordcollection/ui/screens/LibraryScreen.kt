@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DataArray
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -35,6 +34,7 @@ import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumAc
 import io.github.peningtonj.recordcollection.ui.components.filter.ActiveChips
 import io.github.peningtonj.recordcollection.ui.components.filter.HorizontalFilterBar
 import io.github.peningtonj.recordcollection.ui.components.filter.TextSearchBar
+import io.github.peningtonj.recordcollection.ui.components.library.SyncLibraryUi
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
@@ -58,7 +58,7 @@ fun LibraryScreen(
     val currentFilter by viewModel.currentFilter.collectAsState()
     val artists by viewModel.allArtists.collectAsState()
     val genres by viewModel.allGenres.collectAsState()
-    val earliestReleaseDate by viewModel.earliestReleaseDate.collectAsState(LocalDate(1950,1,1))
+    val earliestReleaseDate by viewModel.earliestReleaseDate.collectAsState(LocalDate(1950, 1, 1))
 
     val navigator = LocalNavigator.current
 
@@ -95,44 +95,38 @@ fun LibraryScreen(
                 style = MaterialTheme.typography.headlineMedium
             )
 
-            IconButton(
-                onClick = { viewModel.syncLibrary() },
-                enabled = syncState !is SyncState.Syncing
-            ) {
-                when (syncState) {
-                    is SyncState.Syncing -> CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp)
-                    )
-
-                    else -> Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "sync"
-                    )
-                }
-            }
-
-            IconButton(
+            SyncLibraryUi(
                 onClick = {
-                    val migration = DatabaseMigration()
-                    migration.migrateDatabases(
-                        "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection_bkup.db",
-                        "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection.db",
-                        specificTables = listOf("album_ratings")
-                    )
-
+                    viewModel.startSync()
                 },
-                enabled = syncState !is SyncState.Syncing
-            ) {
-                when (syncState) {
-                    is SyncState.Syncing -> CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp)
-                    )
-
-                    else -> Icon(
-                        imageVector = Icons.Default.DataArray,
-                        contentDescription = "sync"
-                    )
+                syncState = syncState,
+                launchSync = { syncAction, removeDuplicates ->
+                    viewModel.launchSync(syncAction, removeDuplicates)
                 }
+            )
+        }
+
+        IconButton(
+            onClick = {
+                val migration = DatabaseMigration()
+                migration.migrateDatabases(
+                    "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection_bkup.db",
+                    "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection.db",
+                    specificTables = listOf("album_ratings")
+                )
+
+            },
+            enabled = syncState !is SyncState.Syncing
+        ) {
+            when (syncState) {
+                is SyncState.Syncing -> CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp)
+                )
+
+                else -> Icon(
+                    imageVector = Icons.Default.DataArray,
+                    contentDescription = "sync"
+                )
             }
         }
 

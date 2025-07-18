@@ -86,12 +86,9 @@ fun DefaultAlbumContextMenu(
                     contentDescription = "Remove from collection"
                 )
             }
-
         )
     }
 
-
-    // Submenu
     AddToCollectionDropdown(
         collections = collectionsState.collections,
         album = album.album,

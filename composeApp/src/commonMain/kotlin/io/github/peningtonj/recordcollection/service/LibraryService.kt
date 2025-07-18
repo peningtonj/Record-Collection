@@ -4,14 +4,16 @@ import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.filter.AlbumFilter
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
+import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
+import io.github.peningtonj.recordcollection.viewmodel.LibraryDifferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.LocalDate
 
 class LibraryService(
     private val albumRepository: AlbumRepository,
@@ -118,14 +120,112 @@ class LibraryService(
             .mapValues { it.value.size }
     }
 
-    suspend fun syncLibraryData() {
+    suspend fun getLibraryDifferences(deduplicate: Boolean = true) : LibraryDifferences {
         Napier.d("Starting library sync")
 
-        albumRepository.syncSavedAlbums()
+        val userSavedAlbums = albumRepository.fetchUserSavedAlbums().map { AlbumMapper.toDomain(it.album) }
+        val localLibrary = albumRepository.getAllAlbumsInLibrary().first()
 
-        Napier.d("Library sync completed")
+        val localDuplicates = identifyDuplicates(localLibrary)
+        val spotifyDuplicates = identifyDuplicates(userSavedAlbums)
+
+        val cleanedLocal = localLibrary - localDuplicates
+        val cleanedUserSavedAlbums = userSavedAlbums - spotifyDuplicates
+
+        val spotifyIds = cleanedUserSavedAlbums.mapTo(HashSet()) { it.id }
+        val inBoth = cleanedLocal.count { it.id in spotifyIds }
+
+
+        return LibraryDifferences(
+            localCount = cleanedLocal.size,
+            spotifyCount = cleanedUserSavedAlbums.size,
+            onlyInLocal = cleanedLocal.size - inBoth,
+            onlyInSpotify = cleanedUserSavedAlbums.size - inBoth,
+            inBoth = inBoth,
+            userSavedAlbums = cleanedUserSavedAlbums,
+            localLibrary = cleanedLocal,
+            localDuplicates = localDuplicates,
+            userSavedAlbumsDuplicates = spotifyDuplicates
+        )
     }
 
+    fun identifyDuplicates(albums: List<Album>) : List<Album> {
+        return albums
+            .groupBy { it.name to it.primaryArtist }
+            .filterValues { it.size > 1 }
+            .values
+            .flatMap { duplicateGroup ->
+                duplicateGroup
+                    .sortedByDescending { it.addedAt }
+                    .drop(1)
+            }
+
+    }
+    suspend fun applySync(differences: LibraryDifferences, action: SyncAction, removeDuplicates: Boolean = true) {
+        if (removeDuplicates) {
+            Napier.d {"Removing duplicates"}
+            Napier.d {"Removing ${differences.localDuplicates.size} from local"}
+            differences.localDuplicates.forEach { album ->
+                albumRepository.removeAlbumFromLibrary(album.id)
+            }
+            Napier.d {"Removing ${differences.userSavedAlbumsDuplicates.size} from spotify"}
+            albumRepository.removeAlbumsFromSpotifyLibrary(differences.userSavedAlbumsDuplicates)
+        }
+
+        // Pre-compute sets for efficient lookups
+        val localIds = differences.localLibrary.mapTo(HashSet()) { it.id }
+        val spotifyIds = differences.userSavedAlbums.mapTo(HashSet()) { it.id }
+
+        // Pre-compute album groups for reuse
+        val localOnlyAlbums = differences.localLibrary.filter { it.id !in spotifyIds }
+        val spotifyOnlyAlbums = differences.userSavedAlbums.filter { it.id !in localIds }
+
+        when (action) {
+            SyncAction.Combine -> {
+                // Add Spotify-only albums to local library
+                println("Saving spotify only albums: ${spotifyOnlyAlbums.size}")
+                spotifyOnlyAlbums.forEach { album ->
+                    println(album.name)
+                    albumRepository.saveAlbumIfNotPresent(album)
+                    albumRepository.addAlbumToLibrary(album.id)
+                }
+
+                // Add local-only albums to Spotify library
+                albumRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
+            }
+
+            SyncAction.Intersection -> {
+                println("Removing albums that are only in local library: ${localOnlyAlbums.size}")
+                localOnlyAlbums.forEach { album ->
+                    println(album.name)
+                    albumRepository.removeAlbumFromLibrary(album.id)
+                }
+
+                // Remove albums that are only in Spotify library
+                albumRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums)
+            }
+
+            SyncAction.UseLocal -> {
+                albumRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums)
+                albumRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
+            }
+
+            SyncAction.UseSpotify -> {
+                println("Removing albums that are only in local library: ${localOnlyAlbums.size}")
+                localOnlyAlbums.forEach { album ->
+                    println(album.name)
+                    albumRepository.removeAlbumFromLibrary(album.id)
+                }
+
+                println("Saving spotify only albums: ${spotifyOnlyAlbums.size}")
+                spotifyOnlyAlbums.forEach { album ->
+                    println(album.name)
+                    albumRepository.saveAlbumIfNotPresent(album)
+                    albumRepository.addAlbumToLibrary(album.id)
+                }
+            }
+        }
+    }
     fun addAlbumToLibrary(album: Album) {
         albumRepository.addAlbumToLibrary(album.id)
     }
@@ -133,8 +233,6 @@ class LibraryService(
     fun removeAlbumFromLibrary(album: Album) {
         albumRepository.removeAlbumFromLibrary(album.id)
     }
-
-
 }
 
 data class LibraryStats(
@@ -143,3 +241,11 @@ data class LibraryStats(
     val genreDistribution: Map<String, Int>,
     val decadeDistribution: Map<String, Int>
 )
+
+
+sealed class SyncAction {
+    object Combine : SyncAction()
+    object UseSpotify : SyncAction()
+    object UseLocal : SyncAction()
+    object Intersection : SyncAction()
+}

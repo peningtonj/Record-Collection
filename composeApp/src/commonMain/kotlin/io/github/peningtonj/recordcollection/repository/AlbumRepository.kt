@@ -17,6 +17,7 @@ import io.github.peningtonj.recordcollection.events.AlbumEvent
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
+import io.github.peningtonj.recordcollection.network.spotify.model.SavedAlbumDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -95,38 +96,54 @@ class AlbumRepository(
 
     }
 
-    suspend fun syncSavedAlbums() {
+    suspend fun removeAlbumsFromSpotifyLibrary(albums: List<Album>) {
+        albums.map { it.id }
+            .chunked(20)
+            .forEach { chunk ->
+                spotifyApi.user.removeAlbumsFromCurrentUsersLibrary(chunk)
+            }
+    }
+
+    suspend fun addAlbumsToSpotifyLibrary(albums: List<Album>) {
+        albums.map { it.id }
+            .chunked(20)
+            .forEach { chunk ->
+                spotifyApi.user.saveAlbumsToCurrentUsersLibrary(chunk)
+            }
+    }
+
+    fun saveAlbum(savedAlbum: SavedAlbumDto) {
+        database.albumsQueries.insert(
+            id = savedAlbum.album.id,
+            name = savedAlbum.album.name,
+            primary_artist = savedAlbum.album.artists.firstOrNull()?.name ?: "Unknown Artist",
+            artists = Json.encodeToString(savedAlbum.album.artists),
+            release_date = savedAlbum.album.releaseDate,
+            total_tracks = savedAlbum.album.totalTracks.toLong(),
+            spotify_uri = savedAlbum.album.uri,
+            added_at = savedAlbum.addedAt,
+            album_type = savedAlbum.album.albumType.toString(),
+            images = Json.encodeToString(savedAlbum.album.images),
+            updated_at = System.currentTimeMillis(),
+            external_ids = savedAlbum.album.externalIds?.let { Json.encodeToString(it) } ?: "",
+            in_library = 1,
+            release_group_id = null
+        )
+
+
+        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(AlbumMapper.toDomain(savedAlbum.album), true))
+    }
+    suspend fun fetchUserSavedAlbums(): List<SavedAlbumDto> {
         Napier.d("Syncing Albums")
         var offset = 0
         val limit = 50 // Max allowed by Spotify API
         var hasMore = true
-
-        database.albumsQueries.deleteAll()
+        val userSavedAlbums = mutableListOf<SavedAlbumDto>()
 
         while (hasMore) {
             spotifyApi.library.getUsersSavedAlbums(limit, offset)
                 .onSuccess { response ->
-                    response.items.forEach { savedAlbum ->
-                        database.albumsQueries.insert(
-                            id = savedAlbum.album.id,
-                            name = savedAlbum.album.name,
-                            primary_artist = savedAlbum.album.artists.firstOrNull()?.name ?: "Unknown Artist",
-                            artists = Json.encodeToString(savedAlbum.album.artists),
-                            release_date = savedAlbum.album.releaseDate,
-                            total_tracks = savedAlbum.album.totalTracks.toLong(),
-                            spotify_uri = savedAlbum.album.uri,
-                            added_at = savedAlbum.addedAt,
-                            album_type = savedAlbum.album.albumType.toString(),
-                            images = Json.encodeToString(savedAlbum.album.images),
-                            updated_at = System.currentTimeMillis(),
-                            external_ids = savedAlbum.album.externalIds?.let { Json.encodeToString(it) } ?: "",
-                            in_library = 1,
-                            release_group_id = null
-                        )
-                        val album = AlbumMapper.toDomain(savedAlbum.album)
-                        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album, true))
-                    }
-
+                    userSavedAlbums.addAll(response.items)
                     offset += response.items.size
                     hasMore = response.next != null && response.next.isNotEmpty()
                 }
@@ -134,8 +151,7 @@ class AlbumRepository(
                     throw error // Or handle error appropriately
                 }
         }
-        Napier.d("Finished Syncing Albums")
-
+        return userSavedAlbums
     }
 
     fun getTracksForAlbum(albumId: String): Flow<List<Track>> {
@@ -291,15 +307,21 @@ class AlbumRepository(
                     throw error
                 }
         }
-
         albums
     }
 
-    fun addAlbumToLibrary(albumId: String) =
+    fun saveAlbumIfNotPresent(album: Album) {
+        if (albumExists(album.id)) {
+            saveAlbum(album)
+        }
+    }
+    fun addAlbumToLibrary(albumId: String) {
         database.albumsQueries.updateInLibraryStatus(1, albumId)
+    }
 
-    fun removeAlbumFromLibrary(albumId: String) =
+    fun removeAlbumFromLibrary(albumId: String) {
         database.albumsQueries.updateInLibraryStatus(0, albumId)
+    }
 
     fun updateReleaseGroupId(albumId: String, releaseGroupId: String) =
         database.albumsQueries.updateReleaseGroupId(releaseGroupId, albumId)
