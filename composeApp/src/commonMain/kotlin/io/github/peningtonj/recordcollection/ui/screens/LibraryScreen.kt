@@ -1,18 +1,17 @@
 // commonMain/ui/screens/LibraryScreen.kt
 package io.github.peningtonj.recordcollection.ui.screens
 
-import DatabaseMigration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DataArray
 import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,8 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
-import io.github.peningtonj.recordcollection.ui.components.CreateCollectionButton
-import io.github.peningtonj.recordcollection.ui.components.Temp
+import io.github.peningtonj.recordcollection.ui.components.library.CreateCollectionButton
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
 import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumActions
 import io.github.peningtonj.recordcollection.ui.components.filter.ActiveChips
@@ -106,30 +104,6 @@ fun LibraryScreen(
             )
         }
 
-        IconButton(
-            onClick = {
-                val migration = DatabaseMigration()
-                migration.migrateDatabases(
-                    "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection_bkup.db",
-                    "/Users/josephpenington/IdeaProjects/Record Collection/composeApp/record_collection.db",
-                    specificTables = listOf("album_ratings")
-                )
-
-            },
-            enabled = syncState !is SyncState.Syncing
-        ) {
-            when (syncState) {
-                is SyncState.Syncing -> CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp)
-                )
-
-                else -> Icon(
-                    imageVector = Icons.Default.DataArray,
-                    contentDescription = "sync"
-                )
-            }
-        }
-
         TextSearchBar(
             currentFilter,
             options = filterOptions,
@@ -164,24 +138,24 @@ fun LibraryScreen(
         }
 
         Row() {
-            IconButton(
+            AssistChip(
                 onClick = {
                     playbackViewModel.playAlbum(filteredAlbums.random())
-                }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Shuffle,
-                    contentDescription = "Random Album")
-            }
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Shuffle,
+                        contentDescription = "Random Album")
+                },
+                label = { Text("Play Random Album From Filtered Albums") }
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             CreateCollectionButton(
                 onCreateCollection = { name ->
                     viewModel.createCollectionFromCurrentFilter(name)
                 }
-            )
-
-            Temp(
-                { viewModel.import() }
             )
         }
 
