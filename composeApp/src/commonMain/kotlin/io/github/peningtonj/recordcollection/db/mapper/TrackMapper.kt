@@ -74,4 +74,5 @@ object TrackMapper {
             spotifyUri = entity.spotify_uri
         )
     }
+
 }

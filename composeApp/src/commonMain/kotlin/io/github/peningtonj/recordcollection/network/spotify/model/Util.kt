@@ -14,6 +14,26 @@ data class PaginatedResponse<T>(
     val previous: String?
 )
 
+
+suspend fun <T> PaginatedResponse<T>.getAllItems(
+    fetchNext: suspend (String) -> Result<PaginatedResponse<T>>
+): Result<List<T>> {
+    val allItems = mutableListOf<T>()
+    var currentPage: PaginatedResponse<T>? = this
+
+    while (currentPage != null) {
+        allItems.addAll(currentPage.items)
+        currentPage = currentPage.next?.let { nextUrl ->
+            val nextResult = fetchNext(nextUrl)
+            if (nextResult.isFailure) return Result.failure(nextResult.exceptionOrNull()!!)
+            nextResult.getOrNull()
+        }
+    }
+
+    return Result.success(allItems)
+}
+
+
 @Serializable
 data class SearchResponse(
     val albums: PaginatedResponse<AlbumDto>?,

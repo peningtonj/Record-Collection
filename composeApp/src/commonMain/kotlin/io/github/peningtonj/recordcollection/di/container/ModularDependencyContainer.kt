@@ -9,11 +9,10 @@ import io.github.peningtonj.recordcollection.di.module.UseCaseModule
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.repository.*
-import io.github.peningtonj.recordcollection.service.ArticleImportService
+import io.github.peningtonj.recordcollection.service.CollectionImportService
 import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.TagService
-import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -49,6 +48,10 @@ class ModularDependencyContainer(
 
     override val openAiApi: OpenAiApi by lazy {
         networkModule.provideOpenAiApi()
+    }
+
+    override val playlistRepository: PlaylistRepository by lazy {
+        repositoryModule.providePlaylistRepository(spotifyApi)
     }
 
     // Create the event dispatcher
@@ -90,15 +93,15 @@ class ModularDependencyContainer(
     }
     
     override val profileRepository by lazy {
-        repositoryModule.provideProfileRepository(database)
+        repositoryModule.provideProfileRepository(database, spotifyApi)
     }
     
     override val libraryService by lazy {
         LibraryService(albumRepository, artistRepository, ratingRepository)
     }
 
-    override val articleImportService by lazy {
-        ArticleImportService(albumCollectionRepository, searchRepository)
+    override val collectionImportService by lazy {
+        CollectionImportService(albumCollectionRepository, searchRepository, playlistRepository)
     }
 
     override val playbackQueueService by lazy {

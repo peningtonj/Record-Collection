@@ -225,6 +225,12 @@ class AlbumRepository(
         .mapToOneOrNull(Dispatchers.IO)
         .map { it?.let { AlbumMapper.toDomain(it) } }
 
+    fun getAlbumByNameAndArtistIfPresent(name: String, artistName: String): Flow<Album?> = database.albumsQueries
+        .selectAlbumByNameAndArtist(name, artistName)
+        .asFlow()
+        .mapToOneOrNull(Dispatchers.IO)
+        .map { it?.let { AlbumMapper.toDomain(it) } }
+
     fun getAlbumById(id: String): Flow<Album> = database.albumsQueries
         .getAlbumById(id)
         .asFlow()

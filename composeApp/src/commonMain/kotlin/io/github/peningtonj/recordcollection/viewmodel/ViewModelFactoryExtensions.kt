@@ -7,7 +7,6 @@ import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalDependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Navigator
-import io.github.peningtonj.recordcollection.service.ArticleImportService
 import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
 
 @Composable
@@ -105,10 +104,11 @@ fun rememberCollectionsViewModel(
 @Composable
 fun rememberArticleImportViewModel(
     dependencies: DependencyContainer = LocalDependencyContainer.current
-): ArticleImportViewModel {
+): CollectionImportViewModel {
     return remember(dependencies) {
-        ArticleImportViewModel(
-            articleImportService = dependencies.articleImportService
+        CollectionImportViewModel(
+            collectionImportService = dependencies.collectionImportService,
+            profileRepository = dependencies.profileRepository
         )
     }
 }

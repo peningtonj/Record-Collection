@@ -35,8 +35,12 @@ class ProductionRepositoryModule : RepositoryModule {
     ): PlaybackRepository = PlaybackRepository(spotifyApi)
     
     override fun provideProfileRepository(
-        database: RecordCollectionDatabase
-    ): ProfileRepository = ProfileRepository(database)
+        database: RecordCollectionDatabase,
+        spotifyApi: SpotifyApi
+    ): ProfileRepository = ProfileRepository(
+        database,
+        spotifyApi
+    )
 
     override fun provideRatingRepository(
         database: RecordCollectionDatabase
@@ -64,4 +68,7 @@ class ProductionRepositoryModule : RepositoryModule {
         spotifyApi: SpotifyApi
     ): SearchRepository = SearchRepository(spotifyApi)
 
+    override fun providePlaylistRepository(
+        spotifyApi: SpotifyApi
+    ): PlaylistRepository = PlaylistRepository(spotifyApi)
 }

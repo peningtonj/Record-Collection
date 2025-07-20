@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
@@ -49,7 +50,7 @@ fun rememberCollectionContextMenuActions(
             ),
             "move_to_folder" to CollectionContextMenuAction(
                 label = "Move to Folder",
-                icon = Icons.Default.DriveFileMove,
+                icon = Icons.AutoMirrored.Filled.DriveFileMove,
                 action = { collection -> /* This will be handled by the submenu */ },
                 hasSubmenu = true
             ),

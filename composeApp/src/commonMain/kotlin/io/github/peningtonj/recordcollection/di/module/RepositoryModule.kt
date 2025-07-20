@@ -34,7 +34,8 @@ interface RepositoryModule {
     ): PlaybackRepository
     
     fun provideProfileRepository(
-        database: RecordCollectionDatabase
+        database: RecordCollectionDatabase,
+        spotifyApi: SpotifyApi
     ): ProfileRepository
 
     fun provideRatingRepository(
@@ -61,4 +62,8 @@ interface RepositoryModule {
     fun provideSearchRepository(
         spotifyApi: SpotifyApi
     ): SearchRepository
+
+    fun providePlaylistRepository(
+        spotifyApi: SpotifyApi
+    ): PlaylistRepository
 }

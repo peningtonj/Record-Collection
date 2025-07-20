@@ -79,10 +79,12 @@ class AlbumViewModel (
     fun addAlbumToCollection(album: Album, collectionName: String, addToLibraryOverrideValue: Boolean? = null) {
         viewModelScope.launch {
             Napier.d { "Adding album ${album.id} to collection $collectionName" }
-            if (albumRepository.getAlbumByIdIfPresent(album.id).first() == null) {
+            val existingAlbum = albumRepository.getAlbumByNameAndArtistIfPresent(album.name, album.primaryArtist).first()
+            if (existingAlbum == null) {
                 albumRepository.saveAlbum(album, addToLibraryOverrideValue)
+            } else {
+                collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum.id)
             }
-            collectionAlbumRepository.addAlbumToCollection(collectionName, album.id)
         }
     }
 

@@ -15,21 +15,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
+import io.github.peningtonj.recordcollection.service.AlbumNameAndArtist
 import io.github.peningtonj.recordcollection.ui.components.common.LoadingIndicator
 import io.github.peningtonj.recordcollection.viewmodel.UiState
-import io.github.peningtonj.recordcollection.viewmodel.ArticleImportData
 import io.github.peningtonj.recordcollection.viewmodel.AlbumLookUpResult
-
 @Composable
 fun ImportCollectionDialog(
     isVisible: Boolean,
     onDismiss: () -> Unit,
     onSearch: () -> Unit,
     onMakeCollection: (String) -> Unit,
+    initialValue: String = "",
     uiState: UiState,
-    data: ArticleImportData?
 ) {
-    var textValue by remember { mutableStateOf("") }
+    var textValue by remember { mutableStateOf(initialValue) }
 
     if (!isVisible) return
 
@@ -39,14 +38,13 @@ fun ImportCollectionDialog(
         text = {
             ImportDialogContent(
                 uiState = uiState,
-                data = data,
                 textValue = textValue,
                 onTextChange = { textValue = it }
             )
         },
         confirmButton = {
             ImportDialogConfirmButton(
-                data = data,
+                uiState = uiState,
                 textValue = textValue,
                 onSearch = onSearch,
                 onMakeCollection = onMakeCollection
@@ -68,7 +66,10 @@ fun ImportCollectionDialog(
 @Composable
 private fun ImportDialogTitle(uiState: UiState) {
     Text(
-        text = if (uiState is UiState.Loading) "Processing with OpenAI" else "Draft Collection",
+        text = when (uiState) {
+            is UiState.Loading -> "Processing..."
+            else -> "Draft Collection"
+        },
         style = MaterialTheme.typography.headlineSmall
     )
 }
@@ -76,19 +77,28 @@ private fun ImportDialogTitle(uiState: UiState) {
 @Composable
 private fun ImportDialogContent(
     uiState: UiState,
-    data: ArticleImportData?,
     textValue: String,
     onTextChange: (String) -> Unit
 ) {
-    when {
-        uiState is UiState.Loading && (data?.lookupResults?.isEmpty() != false) -> LoadingIndicator()
-        uiState is UiState.Error -> Column {
-            Text(uiState.message)
-            Text("The response looks like ${data?.openAiResponse}.")
+    when (uiState) {
+        is UiState.Loading -> LoadingIndicator()
+
+        is UiState.Error -> Column {
+            Text("Error: ${uiState.message}")
         }
-        data?.lookupResults?.isNotEmpty() == true -> {
+
+        is UiState.AlbumsList -> {
             Column {
-                if (data.lookupResults.size == data.albumNames.size) {
+                Text("Found album names:")
+                uiState.albumNames.take(5).forEach {
+                    Text("${it.album} by ${it.artist}")
+                }
+            }
+        }
+
+        is UiState.Searching -> {
+            Column {
+                if (uiState.albums.size == uiState.albumNames.size) {
                     OutlinedTextField(
                         value = textValue,
                         onValueChange = onTextChange,
@@ -102,32 +112,68 @@ private fun ImportDialogContent(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
-                    items(data.lookupResults) {
+                    items(uiState.albums) {
                         if (it.album != null) AlbumRow(it)
                         else Text("Failed to search for ${it.query.album}")
                     }
                 }
             }
         }
-        data?.albumNames?.isNotEmpty() == true -> Column {
-            Text("Importing collection including the following albums:")
-            data.albumNames.take(5).forEach {
-                Text("${it.album} by ${it.artist}")
+
+        is UiState.ReadyToImport -> {
+            Column {
+                OutlinedTextField(
+                    value = textValue,
+                    onValueChange = onTextChange,
+                    label = { Text("Collection Name:") },
+                    placeholder = { Text("Enter Collection Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    items(uiState.albums) {
+                        AlbumRow(AlbumLookUpResult(query = AlbumNameAndArtist(
+                            it.name,
+                            it.artists.firstOrNull()?.name.orEmpty()
+                        ), album = it))
+                    }
+                }
             }
         }
-        else -> Text("No albums found to import.")
+
+        UiState.Idle -> {
+            Text("No albums found to import.")
+        }
     }
 }
 
 @Composable
 private fun ImportDialogConfirmButton(
-    data: ArticleImportData?,
+    uiState: UiState,
     textValue: String,
     onSearch: () -> Unit,
     onMakeCollection: (String) -> Unit
 ) {
-    when {
-        data?.lookupResults?.isNotEmpty() == true && data.lookupResults.size == data.albumNames.size -> {
+    when (uiState) {
+        is UiState.Searching -> {
+            if (uiState.albumNames.isNotEmpty() && uiState.albums.size < uiState.albumNames.size) {
+                Button(onClick = onSearch) {
+                    Text("Search Spotify For Albums")
+                }
+            } else if (uiState.albums.size == uiState.albumNames.size) {
+                Button(
+                    onClick = { onMakeCollection(textValue) },
+                    enabled = textValue.isNotBlank()
+                ) {
+                    Text("Create Collection")
+                }
+            }
+        }
+
+        is UiState.ReadyToImport -> {
             Button(
                 onClick = { onMakeCollection(textValue) },
                 enabled = textValue.isNotBlank()
@@ -135,11 +181,14 @@ private fun ImportDialogConfirmButton(
                 Text("Create Collection")
             }
         }
-        data?.albumNames?.isNotEmpty() == true -> {
+
+        is UiState.AlbumsList -> {
             Button(onClick = onSearch) {
                 Text("Search Spotify For Albums")
             }
         }
+
+        else -> {}
     }
 }
 

@@ -2,10 +2,13 @@ package io.github.peningtonj.recordcollection.ui.components.navigation.collectio
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -29,8 +32,10 @@ import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.ui.components.common.TextInputDialog
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
-import io.github.peningtonj.recordcollection.viewmodel.ArticleImportViewModel
+import io.github.peningtonj.recordcollection.viewmodel.CollectionImportViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
+import io.github.peningtonj.recordcollection.viewmodel.ImportSource
+import io.github.peningtonj.recordcollection.viewmodel.UiState
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberArticleImportViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
@@ -41,26 +46,26 @@ fun CollectionsSection(
     navigator: Navigator,
     viewModel: CollectionsViewModel = rememberCollectionsViewModel(),
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
-    articleImportViewModel: ArticleImportViewModel = rememberArticleImportViewModel(),
+    articleImportViewModel: CollectionImportViewModel = rememberArticleImportViewModel(),
 ) {
     var showDropdown by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
-    var showCollectionFromArticleDialog by remember { mutableStateOf(false) }
-    var showCollectionFromArticle by remember { mutableStateOf(false) }
+    var showCollectionFromLinkDialog by remember { mutableStateOf(false) }
+    var showImportCollectionDialog by remember { mutableStateOf(false) }
     var showFolderDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showPlaylistsDropdown by remember { mutableStateOf(false) }
     var collectionToRename by remember { mutableStateOf<AlbumCollection?>(null) }
     var collectionToDelete by remember { mutableStateOf<AlbumCollection?>(null) }
     // Use the same viewModel instance for both state and actions
     val collectionsUiState by viewModel.uiState.collectAsState()
     val currentFolder by viewModel.currentFolder.collectAsState()
+    var importSource by remember { mutableStateOf<ImportSource?>(null) }
 
-    val importResult by articleImportViewModel.importState.collectAsState()
     val importUiState by articleImportViewModel.uiState.collectAsState()
-
-    Napier.d("CollectionsSection: currentFolder: $currentFolder")
-    Napier.d("CollectionsSection: collectionsUiState: $collectionsUiState")
+    val userPlaylists by articleImportViewModel.userPlaylists.collectAsState()
+    var collectionNameSuggestion by remember { mutableStateOf("") }
 
     Row(
         verticalAlignment = Alignment.Bottom
@@ -114,9 +119,44 @@ fun CollectionsSection(
                     text = { Text("Collection From Article") },
                     onClick = {
                         showDropdown = false
-                        showCollectionFromArticleDialog = true
+                        showCollectionFromLinkDialog = true
+                        importSource = ImportSource.ARTICLE
                     }
                 )
+
+                DropdownMenuItem(
+                    text = {  Row {
+                        Text("Collection From Spotify Playlist")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowRight,
+                            contentDescription = null
+                        )
+                    } },
+                    onClick = {
+                        showPlaylistsDropdown = true                    }
+                )
+
+                SpotifyPlaylistsSelector(
+                    showPlaylistsSubmenu = showPlaylistsDropdown,
+                    onDismiss = {
+                        showPlaylistsDropdown = false
+                        showDropdown = false
+                    },
+                    playlistSelectAction = { playlist ->
+                        importSource = ImportSource.PLAYLIST
+                        articleImportViewModel.getAlbumsFromPlaylist(playlist.id)
+                        collectionNameSuggestion = playlist.name
+                        showImportCollectionDialog = true
+                    },
+                    playlistByLinkAction = {
+                        showDropdown = false
+                        showCollectionFromLinkDialog = true
+                        importSource = ImportSource.PLAYLIST
+                    },
+                    userPlaylists = userPlaylists
+                )
+
                 DropdownMenuItem(
                     text = { Text("New Folder") },
                     onClick = {
@@ -137,41 +177,62 @@ fun CollectionsSection(
         onDismiss = { showCollectionDialog = false },
         onConfirm = { name ->
             viewModel.createCollection(name)
+            collectionNameSuggestion = ""
         },
-        confirmButtonText = "Create"
+        confirmButtonText = "Create",
     )
 
     TextInputDialog(
-        title = "Collection From Article",
-        label = "Article URL",
-        placeholder = "Enter Article URL",
-        isVisible = showCollectionFromArticleDialog,
-        onDismiss = { showCollectionFromArticleDialog = false },
-        onConfirm = { name ->
-            showCollectionFromArticle = true
-            articleImportViewModel.draftCollectionFromUrl(name)
+        title = when (importSource) {
+            ImportSource.PLAYLIST -> "Collection From Playlist"
+            else -> "Collection From Article"
+        },
+        label = when (importSource) {
+            ImportSource.PLAYLIST -> "Spotify Playlist URL or ID"
+            else -> "Article URL"
+        },
+        placeholder = "Enter URL",
+        isVisible = showCollectionFromLinkDialog,
+        onDismiss = {
+            showCollectionFromLinkDialog = false
+            importSource = null
+        },
+        onConfirm = { input ->
+            showImportCollectionDialog = true
+            when (importSource) {
+                ImportSource.PLAYLIST -> articleImportViewModel.getAlbumsFromPlaylist(input)
+                ImportSource.ARTICLE -> articleImportViewModel.draftCollectionFromUrl(input)
+                null -> {}
+            }
         },
         confirmButtonText = "Create"
     )
 
     ImportCollectionDialog(
-        isVisible = showCollectionFromArticle,
-        onDismiss = { showCollectionFromArticle = false },
+        isVisible = showImportCollectionDialog,
+        onDismiss = { showImportCollectionDialog = false },
         onSearch = {
-            Napier.d("Importing collection from draft????")
-            articleImportViewModel.getAlbumsFromDraft()
+            when (importSource) {
+                ImportSource.PLAYLIST -> {
+                    Napier.d { "Shouldn't be here onSearch" }
+                }
+                ImportSource.ARTICLE -> articleImportViewModel.getAlbumsFromDraft()
+                null -> {}
+            }
         },
         onMakeCollection = { collectionName ->
-            viewModel.createCollection(collectionName)
-            importResult?.lookupResults?.forEach { album ->
-                album.album?.let {
-                    albumViewModel.addAlbumToCollection(it, collectionName, false)
+            if (importUiState is UiState.ReadyToImport) {
+                viewModel.createCollection(collectionName)
+                (importUiState as UiState.ReadyToImport).albums.forEach { album ->
+                    album.let {
+                        albumViewModel.addAlbumToCollection(it, collectionName, false)
+                    }
                 }
+                showImportCollectionDialog = false
             }
-            showCollectionFromArticle = false
         },
         uiState = importUiState,
-        data = importResult
+        initialValue = collectionNameSuggestion,
     )
 
     // Folder dialog

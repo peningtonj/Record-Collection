@@ -14,8 +14,8 @@ object ProfileMapper {
         country = country,
         spotify_uri = uri,
         spotify_url = externalUrls["spotify"] ?: "",
-        profile_image_url = images.firstOrNull()?.url,
-        followers_count = followers.total.toLong(),
+        profile_image_url = images?.firstOrNull()?.url,
+        followers_count = followers?.total?.toLong() ?: 0,
         product_type = product,
         updated_at = Clock.System.now().epochSeconds
     )

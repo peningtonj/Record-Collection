@@ -92,3 +92,11 @@ selectAlbumsByReleaseId:
 SELECT *
 FROM albums
 WHERE release_group_id = :release_group_id;
+
+selectAlbumByNameAndArtist:
+SELECT *
+FROM albums
+WHERE name = :name
+AND primary_artist = :primary_artist
+ORDER BY in_library DESC, added_at DESC
+LIMIT 1;

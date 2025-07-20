@@ -13,10 +13,10 @@ data class SpotifyProfileDto(
     val explicitContent: ExplicitContent? = null,
     @SerialName("external_urls")
     val externalUrls: Map<String, String>,
-    val followers: Followers,
+    val followers: Followers? = null,
     val href: String,
     val id: String,
-    val images: List<ImageDto>,
+    val images: List<ImageDto>? = emptyList(),
     val product: String? = null,
     val type: String,
     val uri: String

@@ -75,7 +75,7 @@ object PlaybackItemSerializer : JsonContentPolymorphicSerializer<PlaybackItem>(P
         return when (element.jsonObject["type"]?.jsonPrimitive?.content) {
             "track" -> PlaybackTrack.serializer()
             "episode" -> PlaybackEpisode.serializer()
-            else -> throw SerializationException("Unknown playback item type")
+            else -> throw SerializationException("Unknown playback item type ${element.jsonObject["type"]}")
         }
     }
 }

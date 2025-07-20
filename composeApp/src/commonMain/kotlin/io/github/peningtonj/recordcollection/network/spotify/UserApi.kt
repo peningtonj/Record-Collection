@@ -1,7 +1,8 @@
 package io.github.peningtonj.recordcollection.network.spotify
 
-import io.github.aakira.napier.Napier
+import io.github.peningtonj.recordcollection.network.spotify.model.PaginatedResponse
 import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfileDto
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyUserPlaylistDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -28,5 +29,9 @@ class UserApi(
             parameters.append("ids", albumIds.joinToString(","))
         }.buildString()
         )
+    }
+
+    suspend fun getUserPlaylists(): Result<PaginatedResponse<SpotifyUserPlaylistDto>> = runCatching{
+        client.get("${SpotifyApi.BASE_URL}/me/playlists").body()
     }
 }

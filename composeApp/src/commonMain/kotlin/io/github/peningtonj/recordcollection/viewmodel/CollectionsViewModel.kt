@@ -2,24 +2,15 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.aakira.napier.Napier
-import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.CollectionFolder
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
-import io.github.peningtonj.recordcollection.service.ArticleImportService
-import io.github.peningtonj.recordcollection.service.OpenAiResponse
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 class CollectionsViewModel(
     private val repository: AlbumCollectionRepository,
@@ -159,7 +150,8 @@ class CollectionsViewModel(
             }
         }
     }
-    
+
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
