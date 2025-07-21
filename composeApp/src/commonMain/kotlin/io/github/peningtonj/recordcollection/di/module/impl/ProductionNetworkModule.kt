@@ -52,7 +52,8 @@ class ProductionNetworkModule : NetworkModule {
                 
                 retryIf(maxRetries) { request, response ->
                     val isRateLimit = response.status == HttpStatusCode.TooManyRequests ||
-                                     response.status == HttpStatusCode.ServiceUnavailable
+                                     response.status == HttpStatusCode.ServiceUnavailable ||
+                                    response.status == HttpStatusCode.Forbidden
                     
                     if (isRateLimit) {
                         rateLimitCount++
@@ -215,7 +216,7 @@ class ProductionNetworkModule : NetworkModule {
                             "Unable to read response body: ${e.message}"
                         }
                         
-                        println("❌ Spotify API Error ${response.status.value} for ${response.request.url}")
+                        println("❌ Spotify API Error ${response.status.value} for ${response.request.url} (${response.request.method})")
                         println("   Response body: $responseBody")
                     }
                 }

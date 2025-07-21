@@ -52,6 +52,7 @@ class AlbumRepository(
             in_library = if (addToUsersLibrary) 1 else 0,
             release_group_id = null
         )
+        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(AlbumMapper.toDomain(album)))
     }
 
     fun saveAlbum(album: Album, overrideInLibrary: Boolean? = null) {
@@ -73,6 +74,8 @@ class AlbumRepository(
             in_library = if (addToLibrary) 1 else 0,
             release_group_id = null
         )
+        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
+
     }
 
     fun albumExists(albumId: String) =
@@ -226,20 +229,8 @@ class AlbumRepository(
      * CHAINED OPERATIONS
      */
 
-    suspend fun fetchAndSaveAlbum(albumId: String, replaceArtist: Boolean = false) {
-        Napier.d("Fetching Album $albumId")
-        spotifyApi.library.getAlbum(albumId)
-            .onSuccess { response ->
-                database.transaction {
-                    saveAlbum(response)
-                }
-                val album = AlbumMapper.toDomain(response)
-                eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album, replaceArtist))
-            }
-    }
-
     fun saveAlbumIfNotPresent(album: Album) {
-        if (albumExists(album.id)) {
+        if (!albumExists(album.id)) {
             saveAlbum(album)
         }
     }

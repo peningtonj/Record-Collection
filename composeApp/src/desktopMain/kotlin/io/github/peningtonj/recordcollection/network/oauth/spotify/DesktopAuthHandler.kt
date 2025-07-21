@@ -57,7 +57,7 @@ class DesktopAuthHandler(
                 .addParameter("redirect_uri", getRedirectUri())
                 .addParameter(
                     "scope",
-                    "playlist-modify-public playlist-modify-private user-library-read user-modify-playback-state user-read-playback-state user-read-recently-played"
+                    "playlist-modify-public playlist-modify-private user-library-read user-modify-playback-state user-read-playback-state user-read-recently-played user-library-modify"
                 )
                 .build()
 

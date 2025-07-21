@@ -97,9 +97,6 @@ class AlbumViewModel (
         collectionAlbumRepository.removeAlbumFromCollection(collectionName, album.id)
     }
 
-    fun refreshAlbum(album: Album) = viewModelScope.launch {
-        albumRepository.fetchAndSaveAlbum(album.id, true)
-    }
 }
 
 sealed interface AlbumScreenUiState {

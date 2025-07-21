@@ -23,7 +23,7 @@ import io.ktor.client.request.get
 import io.ktor.http.URLBuilder
 
 class LibraryApi(
-    private val client: HttpClient,
+    val client: HttpClient,
 ) {
     suspend fun getAlbum(id: String): Result<AlbumDto> = runCatching {
         client.get("${SpotifyApi.BASE_URL}/albums/$id").body()
@@ -34,11 +34,13 @@ class LibraryApi(
     }
 
     suspend fun getArtist(id: String): Result<FullArtistDto> = runCatching {
+        Napier.d { "Getting artist: $id" }
         client.get("${SpotifyApi.BASE_URL}/artists/$id").body()
     }
 
     suspend fun getMultipleArtists(ids: List<String>) : Result<ArtistsResponse> = runCatching {
-        require(ids.size <= 50) { "Spotify API allows maximum 20 artists per request" }
+        require(ids.size <= 50) { "Spotify API allows maximum 50 artists per request" }
+        Napier.d { "Getting artists: ${ids.size}" }
 
         val url = URLBuilder("${SpotifyApi.BASE_URL}/artists").apply {
             parameters.append("ids", ids.joinToString(","))
@@ -83,7 +85,7 @@ class LibraryApi(
         client.get("${SpotifyApi.BASE_URL}/playlists/$playlistId/tracks").body()
     }
 
-    suspend fun <T> getNextPaginated(url: String): Result<PaginatedResponse<T>> = runCatching {
+    suspend inline fun <reified T> getNextPaginated(url: String): Result<PaginatedResponse<T>> = runCatching {
         client.get(url).body()
     }
 }

@@ -122,7 +122,7 @@ class LibraryService(
             .mapValues { it.value.size }
     }
 
-    suspend fun getLibraryDifferences(deduplicate: Boolean = true) : LibraryDifferences {
+    suspend fun getLibraryDifferences() : LibraryDifferences {
         Napier.d("Starting library sync")
 
         val userSavedAlbums = profileRepository.fetchUserSavedAlbums().map { AlbumMapper.toDomain(it.album) }
@@ -163,6 +163,15 @@ class LibraryService(
             }
 
     }
+    suspend fun batchArtistsThenSaveLocalAlbums(albums: List<Album>) {
+        val artists = albums.map { it.artists.first() }.distinct()
+        artistRepository.fetchArtistsWithEnhancedGenres(artists.map { it.id }, true)
+        albums.forEach { album ->
+            albumRepository.saveAlbumIfNotPresent(album)
+            albumRepository.addAlbumToLibrary(album.id)
+        }
+    }
+
     suspend fun applySync(differences: LibraryDifferences, action: SyncAction, removeDuplicates: Boolean = true) {
         if (removeDuplicates) {
             Napier.d {"Removing duplicates"}
@@ -186,11 +195,7 @@ class LibraryService(
             SyncAction.Combine -> {
                 // Add Spotify-only albums to local library
                 println("Saving spotify only albums: ${spotifyOnlyAlbums.size}")
-                spotifyOnlyAlbums.forEach { album ->
-                    println(album.name)
-                    albumRepository.saveAlbumIfNotPresent(album)
-                    albumRepository.addAlbumToLibrary(album.id)
-                }
+                batchArtistsThenSaveLocalAlbums(spotifyOnlyAlbums)
 
                 // Add local-only albums to Spotify library
                 profileRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
@@ -199,7 +204,6 @@ class LibraryService(
             SyncAction.Intersection -> {
                 println("Removing albums that are only in local library: ${localOnlyAlbums.size}")
                 localOnlyAlbums.forEach { album ->
-                    println(album.name)
                     albumRepository.removeAlbumFromLibrary(album.id)
                 }
 
@@ -215,16 +219,11 @@ class LibraryService(
             SyncAction.UseSpotify -> {
                 println("Removing albums that are only in local library: ${localOnlyAlbums.size}")
                 localOnlyAlbums.forEach { album ->
-                    println(album.name)
                     albumRepository.removeAlbumFromLibrary(album.id)
                 }
 
                 println("Saving spotify only albums: ${spotifyOnlyAlbums.size}")
-                spotifyOnlyAlbums.forEach { album ->
-                    println(album.name)
-                    albumRepository.saveAlbumIfNotPresent(album)
-                    albumRepository.addAlbumToLibrary(album.id)
-                }
+                batchArtistsThenSaveLocalAlbums(spotifyOnlyAlbums)
             }
         }
     }

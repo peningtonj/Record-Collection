@@ -7,6 +7,7 @@ import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Artist
+import io.github.peningtonj.recordcollection.db.domain.SimplifiedArtist
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.db.mapper.ArtistMapper
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
@@ -30,6 +31,19 @@ class ArtistRepository(
     private val miscApi: MiscApi
 ) {
 
+    suspend fun fetchMultipleArtists(artists: List<SimplifiedArtist>) {
+        artists.chunked(50).forEach { chunk ->
+            Napier.d("Fetching ${chunk.size} artists from Spotify API")
+            val artistIds = chunk.map { it.id }
+            spotifyApi.library.getMultipleArtists(artistIds)
+                .onSuccess { response ->
+                    Napier.d("Successfully fetched ${response.artists.size} artists from Spotify API")
+                    response.artists.forEach { artist ->
+                        saveArtist(artist)
+                    }
+                }
+        }
+    }
     suspend fun fetchArtistWithEnhancedGenres(artistId: String): Result<EnrichedArtist> = runCatching {
         // Get artist from Spotify API
         val artist = spotifyApi.library.getArtist(artistId).getOrThrow()
@@ -51,35 +65,8 @@ class ArtistRepository(
             }
         )
 
-    suspend fun getArtistsForAlbums(albums: List<Album>): List<EnrichedArtist> {
-        Napier.d("Getting artists associated with ${albums.size} albums, e.g. ${albums.firstOrNull()?.name}")
 
-        // Early return if no albums
-        if (albums.isEmpty()) {
-            Napier.d("No albums provided, skipping artist fetch")
-            return emptyList()
-        }
-
-        val existingArtistIds = getAllArtistIds().first().toSet()
-
-        // Extract artist IDs, filtering out nulls and duplicates
-        val artistIds = albums
-            .mapNotNull { album -> album.artists.firstOrNull()?.id }
-            .distinct()
-            .filterNot { it in existingArtistIds }
-
-        // Early return if no valid artist IDs
-        if (artistIds.isEmpty()) {
-            Napier.d("No valid artist IDs found in albums")
-            return emptyList()
-        }
-
-        Napier.d("Found ${artistIds.size} unique artist IDs to fetch")
-        
-        return fetchArtistsWithEnhancedGenres(artistIds)
-    }
-
-    private suspend fun fetchArtistsWithEnhancedGenres(artistIds: List<String>): List<EnrichedArtist> = coroutineScope {
+    suspend fun fetchArtistsWithEnhancedGenres(artistIds: List<String>, saveToDb: Boolean): List<EnrichedArtist> = coroutineScope {
         val limit = 50
 
         try {
@@ -103,6 +90,15 @@ class ArtistRepository(
                                     EnrichedArtist(artist, enhancedGenres)
                                 }
                             }.awaitAll()
+
+                            if (saveToDb) {
+                                enrichedArtists.forEach { enrichedArtist ->
+                                    database.transaction {
+                                        saveArtist(enrichedArtist)
+                                    }
+                                }
+
+                            }
                             
                             enrichedArtists
                         },

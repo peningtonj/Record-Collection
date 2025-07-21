@@ -37,9 +37,10 @@ class SearchViewModel(
     private var searchJob: Job? = null
 
     init {
-        viewModelScope.launch {
-            updateNewReleaseAlbums()
-        }
+
+//        viewModelScope.launch {
+//            updateNewReleaseAlbums()
+//        }
     }
 
     suspend fun updateNewReleaseAlbums() {
@@ -48,7 +49,7 @@ class SearchViewModel(
         val detailedAlbums = supervisorScope {
             newReleases.map { album ->
                 async {
-                    getAlbumUseCase.execute(album.id, false)
+                    getAlbumUseCase.execute(album.id, false, album)
                 }
             }.awaitAll()
         }

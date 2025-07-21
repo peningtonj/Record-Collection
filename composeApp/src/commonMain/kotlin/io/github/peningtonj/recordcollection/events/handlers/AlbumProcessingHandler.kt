@@ -55,23 +55,21 @@ class AlbumProcessingHandler(
 
         try {
             Napier.d("Processing artists for album: ${album.name}")
+            val artistDto = album.artists.first()
+            val existingArtist = artistRepository.getArtistById(artistDto.id).first()
 
-            album.artists.forEach { artistDto ->
-                val existingArtist = artistRepository.getArtistById(artistDto.id).first()
+            if (existingArtist == null || replace) {
+                // Fetch full artist data from Spotify API
+                val artist = artistRepository.fetchArtistWithEnhancedGenres(artistDto.id)
+                artistRepository.saveArtist(artist.getOrThrow())
+                // Get the saved artist
+                val savedArtist = artistRepository.getArtistById(artistDto.id).first()
+                savedArtist?.let { processedArtists.add(it) }
+                Napier.d("Saved artist: ${savedArtist?.name}")
 
-                if (existingArtist == null || replace) {
-                    // Fetch full artist data from Spotify API
-                    val artist = artistRepository.fetchArtistWithEnhancedGenres(artistDto.id)
-                    artistRepository.saveArtist(artist.getOrThrow())
-                    // Get the saved artist
-                    val savedArtist = artistRepository.getArtistById(artistDto.id).first()
-                    savedArtist?.let { processedArtists.add(it) }
-                    Napier.d("Saved artist: ${savedArtist?.name}")
-
-                } else {
-                    processedArtists.add(existingArtist)
-                    Napier.d("Artist ${artistDto.name} already exists in database")
-                }
+            } else {
+                processedArtists.add(existingArtist)
+                Napier.d("Artist ${artistDto.name} already exists in database")
             }
 
         } catch (e: Exception) {

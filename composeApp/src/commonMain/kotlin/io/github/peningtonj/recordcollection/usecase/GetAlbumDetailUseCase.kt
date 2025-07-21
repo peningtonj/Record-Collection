@@ -30,8 +30,11 @@ class GetAlbumDetailUseCase(
     private val albumRatingRepository: RatingRepository
 ) {
 
-    suspend fun execute(albumId: String, getTracks: Boolean = true): AlbumDetailUiState {
+    suspend fun execute(albumId: String, getTracks: Boolean = true, albumData: Album? = null): AlbumDetailUiState {
         val albumExistsInDb = albumRepository.albumExists(albumId)
+        if (albumData != null) {
+            return getDatabaseAlbum(albumData)
+        }
         return if (albumExistsInDb) {
             val album = albumRepository.getAlbumById(albumId).first()
             getDatabaseAlbum(album)

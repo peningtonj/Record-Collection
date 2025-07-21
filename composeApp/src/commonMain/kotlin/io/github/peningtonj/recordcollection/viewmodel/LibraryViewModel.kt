@@ -153,7 +153,10 @@ class LibraryViewModel(
     fun launchSync(syncAction: SyncAction, removeDuplicates: Boolean) =
         viewModelScope.launch {
             if (_syncState.value is SyncState.Ready) {
-                libraryService.applySync((_syncState.value as SyncState.Ready).differences, syncAction, removeDuplicates)
+                val differences = (_syncState.value as SyncState.Ready).differences
+                _syncState.value = SyncState.Syncing
+                libraryService.applySync(differences, syncAction, removeDuplicates)
+                _syncState.value = SyncState.Idle
             } else {
                 Napier.d { "Tried to start a sync with ${_syncState.value}" }
             }

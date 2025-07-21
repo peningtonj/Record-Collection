@@ -204,15 +204,6 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun `refreshAlbum calls repository with correct parameters`() = runTest {
-        coEvery { albumRepository.fetchAndSaveAlbum(any(), any()) } just Runs
-
-        viewModel.refreshAlbum(testAlbum)
-        advanceUntilIdle()
-        coVerify { albumRepository.fetchAndSaveAlbum(testAlbum.id, true) }
-    }
-
-    @Test
     fun `releaseGroupStatus initial state is Idle`() {
         assertEquals(ReleaseGroupStatus.Idle, viewModel.releaseGroupStatus.value)
     }
