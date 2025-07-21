@@ -65,7 +65,9 @@ data class SimplifiedAlbumDto(
 enum class AlbumTypeDto {
     @SerialName("album") ALBUM,
     @SerialName("single") SINGLE,
-    @SerialName("compilation") COMPILATION
+    @SerialName("compilation") COMPILATION,
+    @SerialName("ep") EP
+
 }
 
 @Serializable
@@ -93,5 +95,10 @@ enum class AlbumGroupDto {
     @SerialName("album") ALBUM,
     @SerialName("single") SINGLE,
     @SerialName("compilation") COMPILATION,
-    @SerialName("appears_on") APPEARS_ON
+    @SerialName("appears_on") APPEARS_ON,
 }
+
+@Serializable
+data class NewReleasesResponse(
+    val albums: PaginatedResponse<SimplifiedAlbumDto>
+)

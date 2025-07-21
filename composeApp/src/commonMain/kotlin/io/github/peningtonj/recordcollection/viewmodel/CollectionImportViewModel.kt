@@ -81,8 +81,16 @@ class CollectionImportViewModel(
         }
     }
 
-    fun getAlbumsFromPlaylist(playlistId: String) {
+    fun getAlbumsFromPlaylist(playlistInput: String) {
+
+        //
         viewModelScope.launch {
+            var playlistId = ""
+            playlistId = if (playlistInput.contains("open.spotify.com")) {
+                Regex("playlist/([a-zA-Z0-9]+)").find(playlistInput)?.groupValues?.get(1) ?: ""
+            } else {
+                playlistInput.trim()
+            }
             _uiState.value = UiState.Loading
             Napier.d("Importing albums from playlist")
             _uiState.value = UiState.ReadyToImport(
@@ -90,11 +98,6 @@ class CollectionImportViewModel(
             )
         }
     }
-
-    fun userSpotifyPlaylists() = viewModelScope.launch {
-        profileRepository.getUserSavedPlaylist()
-    }
-
 }
 
 sealed interface UiState {

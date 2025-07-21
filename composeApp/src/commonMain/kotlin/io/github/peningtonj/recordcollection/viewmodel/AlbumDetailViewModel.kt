@@ -22,16 +22,9 @@ class AlbumDetailViewModel(
             _uiState.value = AlbumScreenUiState.Loading
             try {
                 albumRepository.checkAndUpdateTracksIfNeeded(albumId)
-
-                getAlbumDetailUseCase.execute(albumId)
-                    .catch { e ->
-                        _uiState.value = AlbumScreenUiState.Error(e.message ?: "Unknown error")
-                    }
-                    .collect { albumDetailState ->
-                        _uiState.value = AlbumScreenUiState.Success(
-                            albumDetailState,
-                        )
-                    }
+                _uiState.value = AlbumScreenUiState.Success(
+                    getAlbumDetailUseCase.execute(albumId),
+                )
             } catch (e: Exception) {
                 _uiState.value = AlbumScreenUiState.Error(e.message ?: "Unknown error")
             }

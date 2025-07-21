@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -27,24 +28,18 @@ class GetAlbumDetailUseCase(
     private val albumRatingRepository: RatingRepository
 ) {
 
-    fun execute(albumId: String): Flow<AlbumDetailUiState> {
-        return flow {
-            // Check if album exists in database
-            val albumExistsInDb = albumRepository.albumExists(albumId)
-            
-            if (albumExistsInDb) {
-                val album = albumRepository.getAlbumById(albumId).first()
-                // Use database data
-                getDatabaseAlbumFlow(album).collect { emit(it) }
-            } else {
-                // Fetch from API
-                getApiAlbumData(albumId).collect { emit(it) }
-            }
+    suspend fun execute(albumId: String, getTracks: Boolean = true): AlbumDetailUiState {
+        val albumExistsInDb = albumRepository.albumExists(albumId)
+        return if (albumExistsInDb) {
+            val album = albumRepository.getAlbumById(albumId).first()
+            getDatabaseAlbum(album)
+        } else {
+            getApiAlbumData(albumId, getTracks = getTracks)
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun getDatabaseAlbumFlow(album: Album): Flow<AlbumDetailUiState> {
+    private suspend fun getDatabaseAlbum(album: Album): AlbumDetailUiState {
         return combine(
             albumTagRepository.getTagsForAlbum(album.id),
             collectionAlbumRepository.getCollectionsForAlbum(album.id),
@@ -67,33 +62,29 @@ class GetAlbumDetailUseCase(
                 error = null,
                 releaseGroup = releaseGroup
             )
-        }
+        }.first()
     }
 
-    private fun getApiAlbumData(albumId: String): Flow<AlbumDetailUiState> {
-        return flow {
-            try {
-                val apiAlbum = albumRepository.fetchAlbum(albumId)
-                apiAlbum?.let {
-                    val apiTracks = albumRepository.fetchTracksForAlbum(apiAlbum)
-
-                    emit(
-                        AlbumDetailUiState(
-                            album = apiAlbum,
-                            tags = emptyList(),
-                            collections = emptyList(),
-                            tracks = apiTracks,
-                            totalDuration = apiTracks.sumOf { it.durationMs },
-                            rating = null,
-                            isLoading = false,
-                            error = null,
-                            releaseGroup = emptyList()
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                Napier.e(e) { "Error fetching album $albumId from API" }
+    private suspend fun getApiAlbumData(albumId: String, getTracks: Boolean = true): AlbumDetailUiState {
+        val apiAlbum = albumRepository.fetchAlbum(albumId)
+        apiAlbum?.let {
+            val apiTracks = if (getTracks) {
+                albumRepository.fetchTracksForAlbum(apiAlbum)
+            } else {
+                emptyList()
             }
+            return AlbumDetailUiState(
+                album = apiAlbum,
+                tags = emptyList(),
+                collections = emptyList(),
+                tracks = apiTracks,
+                totalDuration = apiTracks.sumOf { it.durationMs },
+                rating = null,
+                isLoading = false,
+                error = null,
+                releaseGroup = emptyList()
+            )
         }
+        throw (Error("Album not found"))
     }
-}
+    }

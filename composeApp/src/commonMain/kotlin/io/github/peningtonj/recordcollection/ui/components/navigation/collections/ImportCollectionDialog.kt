@@ -24,11 +24,12 @@ fun ImportCollectionDialog(
     isVisible: Boolean,
     onDismiss: () -> Unit,
     onSearch: () -> Unit,
-    onMakeCollection: (String) -> Unit,
+    onMakeCollection: (String, Boolean) -> Unit,
     initialValue: String = "",
     uiState: UiState,
 ) {
     var textValue by remember { mutableStateOf(initialValue) }
+    var addToLibrary by remember { mutableStateOf(false) }
 
     if (!isVisible) return
 
@@ -39,7 +40,9 @@ fun ImportCollectionDialog(
             ImportDialogContent(
                 uiState = uiState,
                 textValue = textValue,
-                onTextChange = { textValue = it }
+                onTextChange = { textValue = it },
+                addToLibrary = addToLibrary,
+                onSwitchChange = { addToLibrary = !addToLibrary }
             )
         },
         confirmButton = {
@@ -47,7 +50,9 @@ fun ImportCollectionDialog(
                 uiState = uiState,
                 textValue = textValue,
                 onSearch = onSearch,
-                onMakeCollection = onMakeCollection
+                onMakeCollection =  { collectionName ->
+                    onMakeCollection(collectionName, addToLibrary)
+                }
             )
         },
         dismissButton = {
@@ -78,8 +83,11 @@ private fun ImportDialogTitle(uiState: UiState) {
 private fun ImportDialogContent(
     uiState: UiState,
     textValue: String,
-    onTextChange: (String) -> Unit
+    onTextChange: (String) -> Unit,
+    addToLibrary: Boolean,
+    onSwitchChange: (Boolean) -> Unit
 ) {
+
     when (uiState) {
         is UiState.Loading -> LoadingIndicator()
 
@@ -122,14 +130,23 @@ private fun ImportDialogContent(
 
         is UiState.ReadyToImport -> {
             Column {
-                OutlinedTextField(
-                    value = textValue,
-                    onValueChange = onTextChange,
-                    label = { Text("Collection Name:") },
-                    placeholder = { Text("Enter Collection Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = textValue,
+                        onValueChange = onTextChange,
+                        label = { Text("Collection Name:") },
+                        placeholder = { Text("Enter Collection Name") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Switch(
+                        addToLibrary,
+                        onCheckedChange = onSwitchChange,
+                    )
+                }
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     contentPadding = PaddingValues(vertical = 16.dp)

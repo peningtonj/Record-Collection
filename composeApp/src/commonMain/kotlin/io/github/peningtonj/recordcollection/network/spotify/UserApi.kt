@@ -1,6 +1,9 @@
 package io.github.peningtonj.recordcollection.network.spotify
 
+import io.github.aakira.napier.Napier
+import io.github.peningtonj.recordcollection.network.spotify.model.NewReleasesResponse
 import io.github.peningtonj.recordcollection.network.spotify.model.PaginatedResponse
+import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfileDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyUserPlaylistDto
 import io.ktor.client.HttpClient
@@ -34,4 +37,16 @@ class UserApi(
     suspend fun getUserPlaylists(): Result<PaginatedResponse<SpotifyUserPlaylistDto>> = runCatching{
         client.get("${SpotifyApi.BASE_URL}/me/playlists").body()
     }
+
+    suspend fun getNewReleases(): Result<NewReleasesResponse> = runCatching {
+        client.get("${SpotifyApi.BASE_URL}/browse/new-releases").body()
+    }
+
+    suspend fun fetchNextNewReleases(url: String): Result<PaginatedResponse<SimplifiedAlbumDto>> {
+        return runCatching {
+            val wrapper: NewReleasesResponse = client.get(url).body()
+            wrapper.albums
+        }
+    }
+
 }

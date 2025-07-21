@@ -149,7 +149,9 @@ fun rememberSearchViewModel(
 ): SearchViewModel {
     return remember(dependencies) {
         SearchViewModel(
-            searchRepository = dependencies.searchRepository
+            searchRepository = dependencies.searchRepository,
+            albumRepository = dependencies.albumRepository,
+            getAlbumUseCase = dependencies.albumDetailUseCase,
         )
     }
 }

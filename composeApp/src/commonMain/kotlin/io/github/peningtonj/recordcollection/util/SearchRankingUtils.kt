@@ -59,9 +59,6 @@ object SearchRankingUtils {
             score += fuzzyMatch(artistName, query) * 25.0
         }
 
-        // Boost popular albums (if popularity data available)
-        // album.popularity?.let { score += it * 0.1 }
-
         return score
     }
 

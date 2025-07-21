@@ -26,20 +26,20 @@ import io.github.peningtonj.recordcollection.util.RankedArtist
 
 @Composable
 fun AlbumSearchItem(
-    album: RankedAlbum,
+    album: Album,
     modifier: Modifier = Modifier
 ) {
     val navigator = LocalNavigator.current
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = {
-            navigator.navigateTo(Screen.Album(album.album.id))
+            navigator.navigateTo(Screen.Album(album.id))
         }
     ) {
         Row {
             AsyncImage(
-                model = album.album.images.firstOrNull()?.url,
-                contentDescription = "Album cover for ${album.album.name}",
+                model = album.images.firstOrNull()?.url,
+                contentDescription = "Album cover for ${album.name}",
                 modifier = Modifier
                     .width(60.dp)
                     .aspectRatio(1f)
@@ -50,39 +50,35 @@ fun AlbumSearchItem(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = album.album.name,
+                    text = album.name,
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = album.album.artists.joinToString(", ") { it.name },
+                    text = album.artists.joinToString(", ") { it.name },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Text(
-                "Ranking score ${album.relevanceScore}"
-            )
-
         }
     }
 }
 
 @Composable
 fun ArtistSearchItem(
-    artist: RankedArtist,
+    artist: Artist,
     modifier: Modifier = Modifier
 ) {
     val navigator = LocalNavigator.current
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = {
-            navigator.navigateTo(Screen.Artist(artist.artist.id))
+            navigator.navigateTo(Screen.Artist(artist.id))
         }
     ) {
         Row {
             AsyncImage(
-                model = artist.artist.images.firstOrNull()?.url,
-                contentDescription = "Album image for ${artist.artist.name}",
+                model = artist.images.firstOrNull()?.url,
+                contentDescription = "Album image for ${artist.name}",
                 modifier = Modifier
                     .width(60.dp)
                     .aspectRatio(1f)
@@ -93,13 +89,10 @@ fun ArtistSearchItem(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = artist.artist.name,
+                    text = artist.name,
                     style = MaterialTheme.typography.titleMedium
                 )
             }
-            Text(
-                "Ranking score ${artist.relevanceScore}"
-            )
         }
     }
 }

@@ -28,6 +28,7 @@ import io.github.peningtonj.recordcollection.ui.screens.LoginScreen
 import io.github.peningtonj.recordcollection.ui.screens.ProfileScreen
 import io.github.peningtonj.recordcollection.ui.screens.SearchScreen
 import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberSearchViewModel
 
 @Composable
 fun RecordCollectionApp(
@@ -36,6 +37,7 @@ fun RecordCollectionApp(
     Napier.d("RecordCollectionApp composable started")
 
     val playbackViewModel = rememberPlaybackViewModel()
+    val searchViewModel = rememberSearchViewModel()
 
     CompositionLocalProvider(LocalNavigator provides navigator) {
         AuthNavigationWrapper {
@@ -79,7 +81,10 @@ fun RecordCollectionApp(
                                 Screen.Library -> LibraryScreen(
                                     playbackViewModel = playbackViewModel
                                 )
-                                Screen.Search -> SearchScreen()
+                                Screen.Search -> SearchScreen(
+                                    playbackViewModel = playbackViewModel,
+                                    viewModel = searchViewModel
+                                )
                                 is Screen.Album -> AlbumScreen(
                                     albumId = screen.albumId,
                                     playbackViewModel = playbackViewModel

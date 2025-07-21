@@ -8,6 +8,8 @@ import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepositor
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +17,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 class CollectionDetailViewModel(
     private val collectionRepository: AlbumCollectionRepository,
@@ -34,43 +38,34 @@ class CollectionDetailViewModel(
     private fun loadCollectionDetails() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            
+
             combine(
                 collectionRepository.getCollectionByName(collectionName),
                 collectionAlbumRepository.getAlbumsInCollection(collectionName)
             ) { collection, albums ->
-                Pair(collection, albums)
-            }
-            .flatMapLatest { (collection, albums) ->
-                if (albums.isEmpty()) {
-                    flowOf(Pair(collection, emptyList<AlbumDetailUiState>()))
+                collection to albums
+            }.collect { (collection, albums) ->
+                val albumDetails = if (albums.isEmpty()) {
+                    emptyList()
                 } else {
-                    // Get detailed album information using the use case
-                    combine(
+                    supervisorScope {
                         albums.map { album ->
-                            getAlbumDetailUseCase.execute(album.album.id)
-                        }
-                    ) { albumDetails ->
-                        Pair(collection, albumDetails.toList())
+                            async {
+                                getAlbumDetailUseCase.execute(album.album.id)
+                            }
+                        }.awaitAll()
                     }
                 }
-            }
-            .catch { error ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = error.message
-                )
-            }
-            .collect { (collection, albums) ->
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     collection = collection,
-                    albums = albums,
-                    error = null
+                    albums = albumDetails
                 )
             }
         }
     }
+
     
     fun addAlbumToCollection(albumId: String) {
         viewModelScope.launch {

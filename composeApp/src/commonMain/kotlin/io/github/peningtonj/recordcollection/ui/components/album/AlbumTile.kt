@@ -68,7 +68,8 @@ fun CompactAlbumTile(
     onRatingChange: (Int) -> Unit = {},
     onArtistClick: () -> Unit = {},
     contextMenuContent: @Composable (onDismiss: () -> Unit) -> Unit = { _ -> },
-    onLibraryToggle: () -> Unit = {}
+    onLibraryToggle: () -> Unit = {},
+    showRating: Boolean = true
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
     var contextMenuPosition by remember { mutableStateOf(DpOffset.Zero) }
@@ -174,12 +175,13 @@ fun CompactAlbumTile(
                                 .fillMaxWidth(0.75f)
                                 .clickable { onArtistClick() }
                         )
-
-                        StarRating(
-                            album.rating?.rating ?: 0,
-                            starSpacing = 0.dp,
-                            onRatingChange = onRatingChange,
-                        )
+                        if (showRating) {
+                            StarRating(
+                                album.rating?.rating ?: 0,
+                                starSpacing = 0.dp,
+                                onRatingChange = onRatingChange,
+                            )
+                        }
                     }
 
                     // ─── Heart icon pinned to the real bottom‑right ──
@@ -216,7 +218,8 @@ fun AlbumGrid(
     albums: List<AlbumDetailUiState>,
     modifier: Modifier = Modifier,
     albumActions: AlbumActions,
-    collectionAlbumActions: CollectionAlbumActions? = null
+    collectionAlbumActions: CollectionAlbumActions? = null,
+    showRating: Boolean = true
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 175.dp),
@@ -243,7 +246,8 @@ fun AlbumGrid(
                     albumActions.updateRating(album, rating)
                 },
                 onArtistClick = { albumActions.navigateToArtist(album) },
-                onLibraryToggle = { albumActions.toggleLibraryStatus(album) }
+                onLibraryToggle = { albumActions.toggleLibraryStatus(album) },
+                showRating = showRating
             )
         }
     }

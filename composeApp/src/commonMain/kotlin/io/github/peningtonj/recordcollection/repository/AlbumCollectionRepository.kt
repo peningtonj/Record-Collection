@@ -114,6 +114,7 @@ class AlbumCollectionRepository(
     
     fun deleteCollection(name: String) {
         database.albumCollectionsQueries.delete(name)
+        database.collectionAlbumsQueries.deleteByCollectionName(name)
     }
     
     fun getCollectionCount(): Flow<Long> = 

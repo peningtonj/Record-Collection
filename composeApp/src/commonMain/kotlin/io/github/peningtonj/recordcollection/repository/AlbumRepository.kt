@@ -18,6 +18,8 @@ import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SavedAlbumDto
+import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
+import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -224,6 +226,19 @@ class AlbumRepository(
         .asFlow()
         .mapToOneOrNull(Dispatchers.IO)
         .map { it?.let { AlbumMapper.toDomain(it) } }
+
+    suspend fun fetchAllNewReleases(): List<Album> {
+        val response = spotifyApi.user.getNewReleases().getOrNull() ?: return emptyList()
+
+        val result = response.albums.getAllItems { nextUrl ->
+            Napier.d("Fetching next page of new releases: $nextUrl")
+            spotifyApi.user.fetchNextNewReleases(nextUrl)
+        }
+
+        return result.getOrNull()?.map { albumDto ->
+            AlbumMapper.toDomain(albumDto)
+        } ?: emptyList()
+    }
 
     fun getAlbumByNameAndArtistIfPresent(name: String, artistName: String): Flow<Album?> = database.albumsQueries
         .selectAlbumByNameAndArtist(name, artistName)

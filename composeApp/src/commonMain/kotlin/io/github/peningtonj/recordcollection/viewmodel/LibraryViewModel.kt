@@ -13,7 +13,11 @@ import io.github.peningtonj.recordcollection.service.LibraryStats
 import io.github.peningtonj.recordcollection.service.SyncAction
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import jdk.jfr.internal.OldObjectSample.emit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +26,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 
 class LibraryViewModel(
     private val libraryService: LibraryService,
@@ -60,15 +65,18 @@ class LibraryViewModel(
             libraryService.getFilteredAlbums(filter)
         }
         .flatMapLatest { albumDisplayData ->
-            if (albumDisplayData.isEmpty()) {
-                kotlinx.coroutines.flow.flowOf(emptyList())
-            } else {
-                combine(
-                    albumDisplayData.map { displayData ->
-                        getAlbumDetailUseCase.execute(displayData.album.id)
+            flow {
+                if (albumDisplayData.isEmpty()) {
+                    emit(emptyList())
+                } else {
+                    val albumDetails = coroutineScope {
+                        albumDisplayData.map { displayData ->
+                            async {
+                                getAlbumDetailUseCase.execute(displayData.album.id)
+                            }
+                        }.awaitAll()
                     }
-                ) { albumDetails ->
-                    albumDetails.toList()
+                    emit(albumDetails)
                 }
             }
         }
@@ -77,6 +85,7 @@ class LibraryViewModel(
             SharingStarted.WhileSubscribed(5000),
             emptyList()
         )
+
 
     // Library statistics
     val libraryStats: StateFlow<LibraryStats> = libraryService

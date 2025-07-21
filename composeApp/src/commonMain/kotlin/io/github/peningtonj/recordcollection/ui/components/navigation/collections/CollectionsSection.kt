@@ -220,12 +220,12 @@ fun CollectionsSection(
                 null -> {}
             }
         },
-        onMakeCollection = { collectionName ->
+        onMakeCollection = { collectionName, addToLibrary ->
             if (importUiState is UiState.ReadyToImport) {
                 viewModel.createCollection(collectionName)
                 (importUiState as UiState.ReadyToImport).albums.forEach { album ->
                     album.let {
-                        albumViewModel.addAlbumToCollection(it, collectionName, false)
+                        albumViewModel.addAlbumToCollection(it, collectionName, addToLibrary)
                     }
                 }
                 showImportCollectionDialog = false
@@ -282,6 +282,7 @@ fun CollectionsSection(
                 viewModel.deleteCollection(collection.name)
                 showDeleteDialog = false
                 collectionToDelete = null
+                navigator.navigateTo(Screen.Library)
             }
         )
     }
