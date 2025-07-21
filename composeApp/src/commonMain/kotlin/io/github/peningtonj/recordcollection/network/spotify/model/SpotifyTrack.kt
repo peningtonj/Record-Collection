@@ -2,16 +2,6 @@ package io.github.peningtonj.recordcollection.network.spotify.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-@Serializable
-data class TracksDto(
-    val href: String,
-    val items: List<SimplifiedTrackDto>,
-    val limit: Int,
-    val next: String?,
-    val offset: Int,
-    val previous: String?,
-    val total: Int
-)
 
 @Serializable
 data class SimplifiedTrackDto(

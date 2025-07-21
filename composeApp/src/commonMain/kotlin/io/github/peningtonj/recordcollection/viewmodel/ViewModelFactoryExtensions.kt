@@ -85,7 +85,7 @@ fun rememberAlbumDetailViewModel(
         AlbumDetailViewModel(
             albumId = albumId,
             getAlbumDetailUseCase = dependencies.albumDetailUseCase,
-            albumRepository = dependencies.albumRepository
+            trackRepository = dependencies.trackRepository
         )
     }
 }

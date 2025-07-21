@@ -3,8 +3,10 @@ import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.Playback
 import io.github.peningtonj.recordcollection.db.domain.Track
+import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.PlaybackRepository
+import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.flow.first
 
@@ -13,7 +15,7 @@ const val NEXT_ALBUM_TRIGGER_MS = 500L // 1 seconds before track ends
 
 class PlaybackQueueService(
     private val playbackRepository: PlaybackRepository,
-    private val albumRepository: AlbumRepository
+    private val trackRepository: TrackRepository,
 ) {
     data class QueueSession(
         val album: Album,
@@ -73,8 +75,8 @@ class PlaybackQueueService(
 
     suspend fun ensureTracksLoaded(album: AlbumDetailUiState): AlbumDetailUiState {
         return if (album.tracks.isEmpty()) {
-            albumRepository.fetchAndSaveTracks(album.album.id)
-            val tracks = albumRepository.getTracksForAlbum(album.album.id).first()
+            trackRepository.fetchAndSaveTracks(album.album.id)
+            val tracks = trackRepository.getTracksForAlbum(album.album.id).first()
             album.copy(tracks = tracks)
         } else {
             album

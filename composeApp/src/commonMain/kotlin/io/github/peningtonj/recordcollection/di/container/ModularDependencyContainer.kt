@@ -97,7 +97,7 @@ class ModularDependencyContainer(
     }
     
     override val libraryService by lazy {
-        LibraryService(albumRepository, artistRepository, ratingRepository)
+        LibraryService(albumRepository, artistRepository, ratingRepository, profileRepository)
     }
 
     override val collectionImportService by lazy {
@@ -107,7 +107,7 @@ class ModularDependencyContainer(
     override val playbackQueueService by lazy {
         PlaybackQueueService(
             playbackRepository,
-            albumRepository
+            trackRepository
         )
     }
 
@@ -143,7 +143,8 @@ class ModularDependencyContainer(
             albumRepository,
             albumTagRepository,
             collectionAlbumRepository,
-            ratingRepository
+            ratingRepository,
+            trackRepository
         )
     }
 
@@ -166,5 +167,9 @@ class ModularDependencyContainer(
             albumRepository,
             searchRepository
         )
+    }
+
+    override val trackRepository: TrackRepository by lazy {
+        repositoryModule.provideTrackRepository(database, spotifyApi)
     }
 }

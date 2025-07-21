@@ -7,6 +7,7 @@ import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
+import io.github.peningtonj.recordcollection.repository.ProfileRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 import io.github.peningtonj.recordcollection.viewmodel.LibraryDifferences
@@ -18,7 +19,8 @@ import kotlinx.coroutines.flow.map
 class LibraryService(
     private val albumRepository: AlbumRepository,
     private val artistRepository: ArtistRepository,
-    private val ratingRepository: RatingRepository
+    private val ratingRepository: RatingRepository,
+    private val profileRepository: ProfileRepository
 ) {
     // Core data operations
     fun getAllAlbumsEnriched(): Flow<List<AlbumDisplayData>> = combine(
@@ -123,7 +125,7 @@ class LibraryService(
     suspend fun getLibraryDifferences(deduplicate: Boolean = true) : LibraryDifferences {
         Napier.d("Starting library sync")
 
-        val userSavedAlbums = albumRepository.fetchUserSavedAlbums().map { AlbumMapper.toDomain(it.album) }
+        val userSavedAlbums = profileRepository.fetchUserSavedAlbums().map { AlbumMapper.toDomain(it.album) }
         val localLibrary = albumRepository.getAllAlbumsInLibrary().first()
 
         val localDuplicates = identifyDuplicates(localLibrary)
@@ -169,7 +171,7 @@ class LibraryService(
                 albumRepository.removeAlbumFromLibrary(album.id)
             }
             Napier.d {"Removing ${differences.userSavedAlbumsDuplicates.size} from spotify"}
-            albumRepository.removeAlbumsFromSpotifyLibrary(differences.userSavedAlbumsDuplicates)
+            profileRepository.removeAlbumsFromSpotifyLibrary(differences.userSavedAlbumsDuplicates)
         }
 
         // Pre-compute sets for efficient lookups
@@ -191,7 +193,7 @@ class LibraryService(
                 }
 
                 // Add local-only albums to Spotify library
-                albumRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
+                profileRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
             }
 
             SyncAction.Intersection -> {
@@ -202,12 +204,12 @@ class LibraryService(
                 }
 
                 // Remove albums that are only in Spotify library
-                albumRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums)
+                profileRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums)
             }
 
             SyncAction.UseLocal -> {
-                albumRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums)
-                albumRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
+                profileRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums)
+                profileRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
             }
 
             SyncAction.UseSpotify -> {

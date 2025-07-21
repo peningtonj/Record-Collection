@@ -31,7 +31,7 @@ data class AlbumDto(
     val restrictions: Restrictions? = null,
     val type: String,
     val genres: List<String>? = emptyList(),
-    val tracks: TracksDto? = null
+    val tracks: PaginatedResponse<SimplifiedTrackDto>? = null
 )
 
 @Serializable

@@ -15,6 +15,7 @@ import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
 import io.github.peningtonj.recordcollection.repository.TagRepository
+import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.service.CollectionImportService
 import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
@@ -45,4 +46,5 @@ interface DependencyContainer : AutoCloseable {
     val openAiApi: OpenAiApi
     val collectionImportService: CollectionImportService
     val playlistRepository: PlaylistRepository
+    val trackRepository: TrackRepository
 }

@@ -83,6 +83,7 @@ class LibraryApi(
         client.get("${SpotifyApi.BASE_URL}/playlists/$playlistId/tracks").body()
     }
 
-    suspend fun <T> getNextPaginated(url: String): Result<PaginatedResponse<T>> =
+    suspend fun <T> getNextPaginated(url: String): Result<PaginatedResponse<T>> = runCatching {
         client.get(url).body()
+    }
 }

@@ -71,4 +71,9 @@ class ProductionRepositoryModule : RepositoryModule {
     override fun providePlaylistRepository(
         spotifyApi: SpotifyApi
     ): PlaylistRepository = PlaylistRepository(spotifyApi)
+
+    override fun provideTrackRepository(
+        database: RecordCollectionDatabase,
+        spotifyApi: SpotifyApi
+    ): TrackRepository = TrackRepository(database, spotifyApi)
 }

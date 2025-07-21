@@ -6,6 +6,7 @@ import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
+import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
 
@@ -24,13 +25,15 @@ class ProductionUseCaseModule : UseCaseModule {
         albumRepository: AlbumRepository,
         albumTagRepository: AlbumTagRepository,
         collectionAlbumRepository: CollectionAlbumRepository,
-        albumRatingRepository: RatingRepository
+        albumRatingRepository: RatingRepository,
+        trackRepository: TrackRepository
     ): GetAlbumDetailUseCase {
         return GetAlbumDetailUseCase(
             albumRepository = albumRepository,
             albumTagRepository = albumTagRepository,
             collectionAlbumRepository = collectionAlbumRepository,
-            albumRatingRepository = albumRatingRepository
+            albumRatingRepository = albumRatingRepository,
+            trackRepository = trackRepository
         )
     }
 }

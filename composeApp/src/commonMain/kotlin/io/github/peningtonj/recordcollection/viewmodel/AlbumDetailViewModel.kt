@@ -3,6 +3,7 @@ package io.github.peningtonj.recordcollection.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
+import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,8 +12,8 @@ import kotlinx.coroutines.launch
 
 class AlbumDetailViewModel(
     private val albumId: String,
-    private val albumRepository: AlbumRepository,
-    private val getAlbumDetailUseCase: GetAlbumDetailUseCase
+    private val getAlbumDetailUseCase: GetAlbumDetailUseCase,
+    private val trackRepository: TrackRepository,
 ): ViewModel() {
     private val _uiState = MutableStateFlow<AlbumScreenUiState>(AlbumScreenUiState.Loading)
     val uiState = _uiState.asStateFlow()
@@ -21,7 +22,7 @@ class AlbumDetailViewModel(
         viewModelScope.launch {
             _uiState.value = AlbumScreenUiState.Loading
             try {
-                albumRepository.checkAndUpdateTracksIfNeeded(albumId)
+                trackRepository.checkAndUpdateTracksIfNeeded(albumId)
                 _uiState.value = AlbumScreenUiState.Success(
                     getAlbumDetailUseCase.execute(albumId),
                 )

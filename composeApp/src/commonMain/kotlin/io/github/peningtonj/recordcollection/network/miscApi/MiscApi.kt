@@ -38,22 +38,12 @@ class MiscApi(
         apiResponse[id] ?: emptyList()
     }
 
-    suspend fun getAlbumReleaseDetailsByUPC(upc: String) = runCatching {
-        Napier.d {"Fetching UPC $upc"}
+    suspend fun getAlbumReleaseDetailsByUPC(upc: String): Result<MusicBrainzResponse> = runCatching {
         val response = client.get("$MUSICBRAINZ_BASE_URL/release?query=barcode:$upc&fmt=json") {
             header("User-Agent", "RecordCollection/1.0 (peningtonj@gmail.com)")
         }
         val jsonString = response.bodyAsText()
-
-        Napier.d {"UPC response: $jsonString"}
-
-        // Parse the direct map format from the API
-        try {
-            miscJson.decodeFromString<MusicBrainzResponse>(jsonString)
-        } catch (e: Exception) {
-            Napier.e(e) { "Failed to parse UPC response" }
-            throw e
-        }
+        miscJson.decodeFromString<MusicBrainzResponse>(jsonString)
     }
 
     suspend fun getReleasesForGroup(releaseGroupId: String) = runCatching {

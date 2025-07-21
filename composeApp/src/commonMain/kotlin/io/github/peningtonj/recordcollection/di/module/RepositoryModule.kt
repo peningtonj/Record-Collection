@@ -66,4 +66,9 @@ interface RepositoryModule {
     fun providePlaylistRepository(
         spotifyApi: SpotifyApi
     ): PlaylistRepository
+
+    fun provideTrackRepository(
+        database: RecordCollectionDatabase,
+        spotifyApi: SpotifyApi
+    ): TrackRepository
 }

@@ -50,7 +50,6 @@ class AlbumViewModel (
         )
     }
 
-
     fun updateReleaseGroup(album: Album) = viewModelScope.launch {
         _releaseGroupStatus.value = ReleaseGroupStatus.Updating
         val release = releaseGroupUseCase.getReleaseFromAlbum(album)

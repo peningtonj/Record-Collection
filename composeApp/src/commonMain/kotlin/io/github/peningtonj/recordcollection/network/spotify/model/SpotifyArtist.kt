@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SimplifiedArtistDto(
     @SerialName("external_urls")
-    val externalUrls: Map<String, String>,
+    val externalUrls: Map<String, String>? = null,
     val href: String,
     val id: String,
     val name: String,
@@ -18,7 +18,7 @@ data class SimplifiedArtistDto(
 @Serializable
 data class FullArtistDto(
     @SerialName("external_urls")
-    val externalUrls: Map<String, String>,
+    val externalUrls: Map<String, String>? = null,
     val followers: Followers,
     val genres: List<String>,
     val href: String,

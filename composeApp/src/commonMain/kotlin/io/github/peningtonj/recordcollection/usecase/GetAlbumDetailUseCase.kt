@@ -6,6 +6,7 @@ import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
+import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumCollectionUiState
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import io.github.peningtonj.recordcollection.ui.models.TagUiState
@@ -25,6 +26,7 @@ class GetAlbumDetailUseCase(
     private val albumRepository: AlbumRepository,
     private val albumTagRepository: AlbumTagRepository,
     private val collectionAlbumRepository: CollectionAlbumRepository,
+    private val trackRepository: TrackRepository,
     private val albumRatingRepository: RatingRepository
 ) {
 
@@ -43,7 +45,7 @@ class GetAlbumDetailUseCase(
         return combine(
             albumTagRepository.getTagsForAlbum(album.id),
             collectionAlbumRepository.getCollectionsForAlbum(album.id),
-            albumRepository.getTracksForAlbum(album.id),
+            trackRepository.getTracksForAlbum(album.id),
             albumRatingRepository.getAlbumRating(album.id),
             albumRepository.getAlbumsFromReleaseGroup(album.releaseGroupId)
         ) { tags, collections, tracks, rating, releaseGroup ->
@@ -69,7 +71,7 @@ class GetAlbumDetailUseCase(
         val apiAlbum = albumRepository.fetchAlbum(albumId)
         apiAlbum?.let {
             val apiTracks = if (getTracks) {
-                albumRepository.fetchTracksForAlbum(apiAlbum)
+                trackRepository.fetchTracksForAlbum(apiAlbum)
             } else {
                 emptyList()
             }

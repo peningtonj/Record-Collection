@@ -10,15 +10,11 @@ import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.db.domain.Album
-import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
-import io.github.peningtonj.recordcollection.db.mapper.TrackMapper
 import io.github.peningtonj.recordcollection.events.AlbumEvent
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
-import io.github.peningtonj.recordcollection.network.spotify.model.SavedAlbumDto
-import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +31,10 @@ class AlbumRepository(
     private val eventDispatcher: AlbumEventDispatcher
 
 ) {
+
+    /**
+     * DATABASE OPERATIONS
+     */
     fun saveAlbum(album: AlbumDto, addToUsersLibrary: Boolean = true) {
         database.albumsQueries.insert(
             id = album.id,
@@ -75,170 +75,10 @@ class AlbumRepository(
         )
     }
 
-    suspend fun fetchAndSaveAlbum(albumId: String, replaceArtist: Boolean = false) {
-        Napier.d("Fetching Album $albumId")
-        spotifyApi.library.getAlbum(albumId)
-            .onSuccess { response ->
-                database.transaction {
-                    saveAlbum(response)
-                }
-                val album = AlbumMapper.toDomain(response)
-                eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album, replaceArtist))
-            }
-    }
-
-    suspend fun fetchAlbum(albumId: String): Album? {
-        spotifyApi.library.getAlbum(albumId)
-            .onSuccess { response ->
-                return AlbumMapper.toDomain(response)
-            }.onFailure { error ->
-                throw (error)
-            }
-        return null
-
-    }
-
-    suspend fun removeAlbumsFromSpotifyLibrary(albums: List<Album>) {
-        albums.map { it.id }
-            .chunked(20)
-            .forEach { chunk ->
-                spotifyApi.user.removeAlbumsFromCurrentUsersLibrary(chunk)
-            }
-    }
-
-    suspend fun addAlbumsToSpotifyLibrary(albums: List<Album>) {
-        albums.map { it.id }
-            .chunked(20)
-            .forEach { chunk ->
-                spotifyApi.user.saveAlbumsToCurrentUsersLibrary(chunk)
-            }
-    }
-
-    fun saveAlbum(savedAlbum: SavedAlbumDto) {
-        database.albumsQueries.insert(
-            id = savedAlbum.album.id,
-            name = savedAlbum.album.name,
-            primary_artist = savedAlbum.album.artists.firstOrNull()?.name ?: "Unknown Artist",
-            artists = Json.encodeToString(savedAlbum.album.artists),
-            release_date = savedAlbum.album.releaseDate,
-            total_tracks = savedAlbum.album.totalTracks.toLong(),
-            spotify_uri = savedAlbum.album.uri,
-            added_at = savedAlbum.addedAt,
-            album_type = savedAlbum.album.albumType.toString(),
-            images = Json.encodeToString(savedAlbum.album.images),
-            updated_at = System.currentTimeMillis(),
-            external_ids = savedAlbum.album.externalIds?.let { Json.encodeToString(it) } ?: "",
-            in_library = 1,
-            release_group_id = null
-        )
-
-
-        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(AlbumMapper.toDomain(savedAlbum.album), true))
-    }
-    suspend fun fetchUserSavedAlbums(): List<SavedAlbumDto> {
-        Napier.d("Syncing Albums")
-        var offset = 0
-        val limit = 50 // Max allowed by Spotify API
-        var hasMore = true
-        val userSavedAlbums = mutableListOf<SavedAlbumDto>()
-
-        while (hasMore) {
-            spotifyApi.library.getUsersSavedAlbums(limit, offset)
-                .onSuccess { response ->
-                    userSavedAlbums.addAll(response.items)
-                    offset += response.items.size
-                    hasMore = response.next != null && response.next.isNotEmpty()
-                }
-                .onFailure { error ->
-                    throw error // Or handle error appropriately
-                }
-        }
-        return userSavedAlbums
-    }
-
-    fun getTracksForAlbum(albumId: String): Flow<List<Track>> {
-        return database.tracksQueries
-            .getByAlbumId(albumId = albumId)
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { it.map { track -> TrackMapper.toDomain(track, null) } }
-    }
-
-    suspend fun checkAndUpdateTracksIfNeeded(albumId: String) {
-        Napier.d("Checking if tracks exist for album $albumId")
-        val tracksExist = database.tracksQueries
-            .countTracksForAlbum(albumId)
-            .executeAsOne() > 0
-
-        Napier.d { "Tracks exist: $tracksExist" }
-        if (!tracksExist) {
-            fetchAndSaveTracks(albumId)
-        }
-    }
-
     fun albumExists(albumId: String) =
         database.albumsQueries
             .getAlbumById(albumId)
             .executeAsOneOrNull() != null
-
-    suspend fun fetchTracksForAlbum(album: Album): List<Track> {
-        Napier.d("Fetching tracks for album ${album.id}")
-        spotifyApi.library.getAlbumTracks(album.id)
-            .onSuccess { response ->
-                return response.items.map { track ->
-                    TrackMapper.toDomain(track, album)
-                }
-            }
-        return emptyList()
-    }
-
-    suspend fun fetchAndSaveTracks(albumId: String) {
-        Napier.d("Fetching tracks for album $albumId")
-        spotifyApi.library.getAlbumTracks(albumId)
-            .onSuccess { response ->
-                database.transaction {
-                    response.items.forEach { track ->
-                        database.tracksQueries.insert(
-                            id = track.id,
-                            album_id = albumId,
-                            name = track.name,
-                            track_number = track.trackNumber.toLong(),
-                            duration_ms = track.durationMs.toLong(),
-                            spotify_uri = track.uri,
-                            artists = Json.encodeToString(track.artists),
-                            preview_url = track.previewUrl,
-                            primary_artist = track.artists.firstOrNull()?.name ?: "Unknown Artist",
-                            is_explicit = if (track.explicit) 1 else 0,
-                            disc_number = track.discNumber.toLong(),
-                            popularity = null,
-                        )
-                    }
-                }
-
-            }
-            .onFailure { error ->
-                Napier.e("Failed to fetch tracks for album $albumId", error)
-            }
-    }
-
-    fun getAlbumByIdIfPresent(id: String): Flow<Album?> = database.albumsQueries
-        .getAlbumById(id)
-        .asFlow()
-        .mapToOneOrNull(Dispatchers.IO)
-        .map { it?.let { AlbumMapper.toDomain(it) } }
-
-    suspend fun fetchAllNewReleases(): List<Album> {
-        val response = spotifyApi.user.getNewReleases().getOrNull() ?: return emptyList()
-
-        val result = response.albums.getAllItems { nextUrl ->
-            Napier.d("Fetching next page of new releases: $nextUrl")
-            spotifyApi.user.fetchNextNewReleases(nextUrl)
-        }
-
-        return result.getOrNull()?.map { albumDto ->
-            AlbumMapper.toDomain(albumDto)
-        } ?: emptyList()
-    }
 
     fun getAlbumByNameAndArtistIfPresent(name: String, artistName: String): Flow<Album?> = database.albumsQueries
         .selectAlbumByNameAndArtist(name, artistName)
@@ -294,14 +134,52 @@ class AlbumRepository(
             }
     }
 
+    fun addAlbumToLibrary(albumId: String) {
+        database.albumsQueries.updateInLibraryStatus(1, albumId)
+    }
 
-    suspend fun import(): Map<Playlist, List<AlbumResult>> {
-        Napier.d("Importing Collections")
-        val playlistsResponse = spotifyApi.temp.getPlaylists()
-        val playlists = playlistsResponse.getOrThrow()
-        Napier.d("Fetched ${playlists.size} playlists")
+    fun removeAlbumFromLibrary(albumId: String) {
+        database.albumsQueries.updateInLibraryStatus(0, albumId)
+    }
 
-        return playlists.associateWith { playlist -> spotifyApi.temp.extractAlbumsFromPlaylist(playlist) }
+    fun updateReleaseGroupId(albumId: String, releaseGroupId: String) =
+        database.albumsQueries.updateReleaseGroupId(releaseGroupId, albumId)
+
+    fun getAlbumsFromReleaseGroup(releaseGroupId: String?): Flow<List<Album>> {
+        return if (releaseGroupId == null) {
+            flowOf(emptyList())
+        } else {
+            database.albumsQueries
+                .selectAlbumsByReleaseId(releaseGroupId)
+                .asFlow()
+                .mapToList(Dispatchers.IO)
+                .map { it.map(AlbumMapper::toDomain) }
+        }
+    }
+    /**
+     * SPOTIFY OPERATIONS
+     */
+    suspend fun fetchAlbum(albumId: String): Album? {
+        spotifyApi.library.getAlbum(albumId)
+            .onSuccess { response ->
+                return AlbumMapper.toDomain(response)
+            }.onFailure { error ->
+                throw (error)
+            }
+        return null
+    }
+
+    suspend fun fetchAllNewReleases(): List<Album> {
+        val response = spotifyApi.user.getNewReleases().getOrNull() ?: return emptyList()
+
+        val result = response.albums.getAllItems { nextUrl ->
+            Napier.d("Fetching next page of new releases: $nextUrl")
+            spotifyApi.user.fetchNextNewReleases(nextUrl)
+        }
+
+        return result.getOrNull()?.map { albumDto ->
+            AlbumMapper.toDomain(albumDto)
+        } ?: emptyList()
     }
 
     suspend fun fetchMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = runCatching {
@@ -331,22 +209,9 @@ class AlbumRepository(
         albums
     }
 
-    fun saveAlbumIfNotPresent(album: Album) {
-        if (albumExists(album.id)) {
-            saveAlbum(album)
-        }
-    }
-    fun addAlbumToLibrary(albumId: String) {
-        database.albumsQueries.updateInLibraryStatus(1, albumId)
-    }
-
-    fun removeAlbumFromLibrary(albumId: String) {
-        database.albumsQueries.updateInLibraryStatus(0, albumId)
-    }
-
-    fun updateReleaseGroupId(albumId: String, releaseGroupId: String) =
-        database.albumsQueries.updateReleaseGroupId(releaseGroupId, albumId)
-
+    /**
+     * OTHER APIS
+     */
     suspend fun fetchReleaseGroupId(album: Album) =
         if (album.externalIds?.containsKey("upc") ?: false) {
             miscApi.getAlbumReleaseDetailsByUPC(album.externalIds["upc"]!!)
@@ -357,16 +222,35 @@ class AlbumRepository(
 
     suspend fun fetchReleaseGroup(releaseGroupId: String) =
         miscApi.getReleasesForGroup(releaseGroupId)
+    /**
+     * CHAINED OPERATIONS
+     */
 
-    fun getAlbumsFromReleaseGroup(releaseGroupId: String?): Flow<List<Album>> {
-        return if (releaseGroupId == null) {
-            flowOf(emptyList())
-        } else {
-            database.albumsQueries
-                .selectAlbumsByReleaseId(releaseGroupId)
-                .asFlow()
-                .mapToList(Dispatchers.IO)
-                .map { it.map(AlbumMapper::toDomain) }
+    suspend fun fetchAndSaveAlbum(albumId: String, replaceArtist: Boolean = false) {
+        Napier.d("Fetching Album $albumId")
+        spotifyApi.library.getAlbum(albumId)
+            .onSuccess { response ->
+                database.transaction {
+                    saveAlbum(response)
+                }
+                val album = AlbumMapper.toDomain(response)
+                eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album, replaceArtist))
+            }
+    }
+
+    fun saveAlbumIfNotPresent(album: Album) {
+        if (albumExists(album.id)) {
+            saveAlbum(album)
         }
     }
+
+    suspend fun import(): Map<Playlist, List<AlbumResult>> {
+        Napier.d("Importing Collections")
+        val playlistsResponse = spotifyApi.temp.getPlaylists()
+        val playlists = playlistsResponse.getOrThrow()
+        Napier.d("Fetched ${playlists.size} playlists")
+
+        return playlists.associateWith { playlist -> spotifyApi.temp.extractAlbumsFromPlaylist(playlist) }
+    }
+
 }

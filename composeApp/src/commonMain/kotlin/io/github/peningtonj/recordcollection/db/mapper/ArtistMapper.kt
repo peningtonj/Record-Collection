@@ -14,7 +14,7 @@ object ArtistMapper {
             id = entity.id,
             name = entity.name,
             uri = entity.uri,
-            externalUrls = entity.externalUrls,
+            externalUrls = entity.externalUrls ?: emptyMap(),
             href = entity.href,
             type = entity.type,
         )
