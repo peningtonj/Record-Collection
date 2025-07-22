@@ -1,13 +1,13 @@
 name: Build Multi-Platform Desktop Apps
 
 on:
+  # Only build on releases and manual triggers
   push:
-    branches: [ main, develop ]
     tags:
-      - 'v*'
+      - 'v*'  # Only build when you create version tags like v1.0.0
   pull_request:
-    branches: [ main ]
-  workflow_dispatch: # Allow manual triggering
+    branches: [ main ]  # Build on PRs to test before merging
+  workflow_dispatch: # Allow manual triggering from GitHub UI
 
 jobs:
   build-windows:
