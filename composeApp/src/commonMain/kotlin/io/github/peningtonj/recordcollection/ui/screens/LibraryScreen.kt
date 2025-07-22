@@ -89,7 +89,7 @@ fun LibraryScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Saved Albums (${libraryStats.totalAlbums})",
+                text = "Library",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -159,6 +159,11 @@ fun LibraryScreen(
                 }
             )
         }
+
+        Text(
+            "${filteredAlbums.size} albums",
+            color = MaterialTheme.colorScheme.onSurface,
+        )
 
 
         AlbumGrid(

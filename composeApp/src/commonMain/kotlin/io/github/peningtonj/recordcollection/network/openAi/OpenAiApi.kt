@@ -24,7 +24,6 @@ import net.dankito.readability4j.Readability4J
  */
 class OpenAiApi(
     private val client: HttpClient,
-    private val apiKey: String,
     private val model: String = "gpt-4.1",
 ) {
 
@@ -43,7 +42,7 @@ class OpenAiApi(
      *
      * @param prompt      user text to send
      */
-    suspend fun prompt(prompt: String): String {
+    suspend fun prompt(prompt: String, apiKey: String): String {
         Napier.d { "Sending prompt: $prompt" }
 
         val reqBody = ChatRequest(model, prompt)
@@ -64,6 +63,13 @@ class OpenAiApi(
         return chatResponse.firstAssistantText()
     }
 
+    suspend fun isApiKeyValid(apiKey: String): Boolean {
+        val response = client.get("https://api.openai.com/v1/models") {
+            header("Authorization", "Bearer $apiKey")
+        }
+
+        return response.status.value == 200
+    }
 
     private fun ChatResponse.firstAssistantText(): String =
         output

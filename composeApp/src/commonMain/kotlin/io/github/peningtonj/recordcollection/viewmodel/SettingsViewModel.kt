@@ -2,6 +2,8 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.aakira.napier.Napier
+import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.repository.CacheSize
 import io.github.peningtonj.recordcollection.repository.OnAddToCollection
 import io.github.peningtonj.recordcollection.repository.SettingsRepository
@@ -13,7 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val openAiApi: OpenAiApi
 ) : ViewModel() {
 
     // Expose the repository's settings directly
@@ -78,6 +81,27 @@ class SettingsViewModel(
     fun resetToDefaults() {
         viewModelScope.launch {
             settingsRepository.updateSettings(SettingsState())
+        }
+    }
+
+    fun updateOpenAiApiKey(value: String) {
+        viewModelScope.launch {
+            val currentSettings = settings.value
+            settingsRepository.updateSettings(currentSettings.copy(openAiApiKey = value))
+        }
+    }
+
+    fun validateOpenAiApiKey() {
+        viewModelScope.launch {
+            val currentSettings = settings.value
+            val openAiApiKey = currentSettings.openAiApiKey
+
+            try {
+                settingsRepository.updateSettings(currentSettings.copy(openAiApiKeyValid = openAiApi.isApiKeyValid(openAiApiKey)))
+            } catch (e: Exception) {
+                Napier.e(e) { "Failed to validate OpenAI API key" }
+                settingsRepository.updateSettings(currentSettings.copy(openAiApiKeyValid = false))
+            }
         }
     }
 

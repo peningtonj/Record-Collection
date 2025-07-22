@@ -1,12 +1,26 @@
 package io.github.peningtonj.recordcollection.repository
 
+import com.russhwolf.settings.Settings
+import com.russhwolf.settings.set
+import com.russhwolf.settings.get
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
-class SettingsRepository {
+class SettingsRepository(private val settingsStorage: Settings) {
     private val _settings = MutableStateFlow(SettingsState())
     val settings: StateFlow<SettingsState> = _settings.asStateFlow()
+
+    init {
+        CoroutineScope(Dispatchers.Default).launch {
+            _settings.value = loadFromStorage()
+        }
+    }
 
     suspend fun updateSettings(newSettings: SettingsState) {
         _settings.value = newSettings
@@ -26,21 +40,42 @@ class SettingsRepository {
     }
 
     private suspend fun saveToStorage(settings: SettingsState) {
-        // Implement persistence (SharedPreferences/UserDefaults/DataStore)
+        settingsStorage.set("theme", settings.theme.name)
+        settingsStorage.set("autoSync", settings.autoSync)
+        settingsStorage.set("syncInterval", settings.syncInterval.name)
+        settingsStorage.set("showAlbumYear", settings.showAlbumYear)
+        settingsStorage.set("defaultSortOrder", settings.defaultSortOrder.name)
+        settingsStorage.set("cacheSize", settings.cacheSize.name)
+        settingsStorage.set("defaultOnAddToCollection", settings.defaultOnAddToCollection)
+        settingsStorage.set("transitionTrack", settings.transitionTrack)
+        settingsStorage.set("openAiApiKey", settings.openAiApiKey)
+        settingsStorage.set("openAiApiKeyValid", settings.openAiApiKeyValid)
+        settingsStorage.set("collectionAddToLibrary", Json.encodeToString(settings.collectionAddToLibrary))
     }
 
     private suspend fun loadFromStorage(): SettingsState {
-        // Implement loading from storage
-        return SettingsState()
-    }
+        val mapJson = settingsStorage.getStringOrNull("collectionAddToLibrary")
+        val collectionAddToLibrary = mapJson?.let {
+            runCatching {
+                Json.decodeFromString<Map<String, OnAddToCollection>>(it)
+            }.getOrElse { emptyMap() }
+        } ?: emptyMap()
 
-    init {
-        // Load initial settings from storage
-        // Note: In a real app, you might want to do this in a suspend function
-        _settings.value = SettingsState() // For now, use defaults
+        return SettingsState(
+            theme = Theme.valueOf(settingsStorage.get("theme", Theme.SYSTEM.name)),
+            autoSync = settingsStorage.get("autoSync", true),
+            syncInterval = SyncInterval.valueOf(settingsStorage.get("syncInterval", SyncInterval.DAILY.name)),
+            showAlbumYear = settingsStorage.get("showAlbumYear", true),
+            defaultSortOrder = SortOrder.valueOf(settingsStorage.get("defaultSortOrder", SortOrder.RELEASE_DATE.name)),
+            cacheSize = CacheSize.valueOf(settingsStorage.get("cacheSize", CacheSize.MEDIUM.name)),
+            defaultOnAddToCollection = settingsStorage.get("defaultOnAddToCollection", false),
+            transitionTrack = settingsStorage.get("transitionTrack", true),
+            openAiApiKey = settingsStorage.get("openAiApiKey", ""),
+            openAiApiKeyValid = settingsStorage.get("openAiApiKeyValid", false),
+            collectionAddToLibrary = collectionAddToLibrary
+        )
     }
 }
-
 
 data class SettingsState(
     val theme: Theme = Theme.SYSTEM,
@@ -52,8 +87,9 @@ data class SettingsState(
     val defaultOnAddToCollection: Boolean = false,
     val collectionAddToLibrary: Map<String, OnAddToCollection> = emptyMap(),
     val transitionTrack: Boolean = true,
+    val openAiApiKey: String = "",
+    val openAiApiKeyValid: Boolean = false,
 )
-
 
 enum class SyncInterval(val displayName: String, val hours: Int) {
     NEVER("Never", 0),
@@ -83,8 +119,14 @@ enum class Theme(val displayName: String) {
     SYSTEM("System Default")
 }
 
+@Serializable
 enum class OnAddToCollection(val displayName: String, val value: Boolean?) {
     DEFAULT("App Default", null),
     TRUE("On", true),
     FALSE("Off", false)
 }
+
+@Serializable
+data class SerializableSettingsState(
+    val collectionAddToLibrary: Map<String, OnAddToCollection> = emptyMap()
+)

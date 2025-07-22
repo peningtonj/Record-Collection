@@ -124,10 +124,8 @@ class ProductionNetworkModule : NetworkModule {
         return MiscApi(provideHttpClient())
     }
 
-    val apiKey = System.getenv("OPENAI_API_KEY")!!
-
     override fun provideOpenAiApi(): OpenAiApi {
-        return OpenAiApi(provideHttpClient(), apiKey)
+        return OpenAiApi(provideHttpClient())
     }
 
     override fun provideSpotifyApi(authRepository: SpotifyAuthRepository): SpotifyApi {

@@ -35,10 +35,12 @@ import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionImportViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.ImportSource
+import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.UiState
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberArticleImportViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 
 @Composable
 fun CollectionsSection(
@@ -47,6 +49,7 @@ fun CollectionsSection(
     viewModel: CollectionsViewModel = rememberCollectionsViewModel(),
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
     articleImportViewModel: CollectionImportViewModel = rememberArticleImportViewModel(),
+    settingsViewModel: SettingsViewModel = rememberSettingsViewModel()
 ) {
     var showDropdown by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
@@ -66,6 +69,7 @@ fun CollectionsSection(
     val importUiState by articleImportViewModel.uiState.collectAsState()
     val userPlaylists by articleImportViewModel.userPlaylists.collectAsState()
     var collectionNameSuggestion by remember { mutableStateOf("") }
+    val settings = settingsViewModel.settings.collectAsState()
 
     Row(
         verticalAlignment = Alignment.Bottom
@@ -121,7 +125,8 @@ fun CollectionsSection(
                         showDropdown = false
                         showCollectionFromLinkDialog = true
                         importSource = ImportSource.ARTICLE
-                    }
+                    },
+                    enabled = settings.value.openAiApiKeyValid,
                 )
 
                 DropdownMenuItem(

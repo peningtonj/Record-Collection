@@ -6,6 +6,7 @@ import io.github.peningtonj.recordcollection.network.spotify.model.SearchType
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.PlaylistRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
+import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.viewmodel.AlbumLookUpResult
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -15,9 +16,11 @@ import kotlinx.serialization.json.Json
 class CollectionImportService(
     private val albumCollectionRepository: AlbumCollectionRepository,
     private val searchRepository: SearchRepository,
-    private val playlistRepository: PlaylistRepository
+    private val playlistRepository: PlaylistRepository,
+    private val settingsRepository: SettingsRepository
 ) {
     suspend fun getResponseFromOpenAI(url: String): String {
+        val openAiApiKey = settingsRepository.settings.value.openAiApiKey
         val prompt = """
             Extract album information from this article and return JSON like:
             [
@@ -29,7 +32,7 @@ class CollectionImportService(
             
         """.trimIndent()
 
-        return albumCollectionRepository.draftCollectionFromPrompt(prompt, url)
+        return albumCollectionRepository.draftCollectionFromPrompt(prompt, url, openAiApiKey)
     }
 
     fun parseAlbumAndArtistResponse(response: String): List<AlbumNameAndArtist> {

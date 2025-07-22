@@ -64,6 +64,7 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation("io.ktor:ktor-client-auth:3.1.0")
             implementation("net.dankito.readability4j:readability4j:1.0.8")
+            implementation("com.russhwolf:multiplatform-settings:1.3.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -79,6 +80,8 @@ kotlin {
             implementation(libs.ktor.client.java)
             implementation("org.apache.httpcomponents:httpclient:4.5.14")
             implementation(libs.sqlDelight.driver.sqlite)
+            implementation("com.russhwolf:multiplatform-settings-jvm:1.3.0")
+
         }
     }
 }

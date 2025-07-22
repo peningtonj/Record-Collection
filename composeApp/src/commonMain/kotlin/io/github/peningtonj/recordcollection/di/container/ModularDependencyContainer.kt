@@ -103,7 +103,7 @@ class ModularDependencyContainer(
     }
 
     override val collectionImportService by lazy {
-        CollectionImportService(albumCollectionRepository, searchRepository, playlistRepository)
+        CollectionImportService(albumCollectionRepository, searchRepository, playlistRepository, settingsRepository)
     }
 
     override val playbackQueueService by lazy {
@@ -180,7 +180,7 @@ class ModularDependencyContainer(
     }
 
     override val settingsViewModel by lazy {
-        settingsModule.provideSettingsViewModel(settingsRepository)
+        settingsModule.provideSettingsViewModel(settingsRepository, openAiApi)
     }
 
 }

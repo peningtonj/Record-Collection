@@ -11,6 +11,7 @@ import io.github.peningtonj.recordcollection.db.domain.CollectionFolder
 import io.github.peningtonj.recordcollection.db.mapper.AlbumCollectionMapper
 import io.github.peningtonj.recordcollection.db.mapper.CollectionFolderMapper
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
+import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -104,13 +105,13 @@ class AlbumCollectionRepository(
             .mapToList(Dispatchers.IO)
             .map { it.map(CollectionFolderMapper::toDomain) }
 
-    suspend fun draftCollectionFromPrompt(prompt: String, url: String): String {
+    suspend fun draftCollectionFromPrompt(prompt: String, url: String, openAiApiKey: String): String {
         val urlText = openAiApi.getUrlContent(url)
         val promptWithArticle = """
             $prompt
             $urlText
         """.trimIndent()
         println("Drafting collection from prompt: $promptWithArticle")
-        return openAiApi.prompt(promptWithArticle)
+        return openAiApi.prompt(promptWithArticle, openAiApiKey)
     }
 }

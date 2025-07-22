@@ -1,6 +1,7 @@
 // commonMain/ui/screens/SettingsScreen.kt
 package io.github.peningtonj.recordcollection.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,11 +26,13 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.repository.CacheSize
 import io.github.peningtonj.recordcollection.repository.SortOrder
@@ -106,6 +111,20 @@ fun SettingsScreen(
                 )
             }
         }
+
+        SettingsSection(title = "Collection") {
+            SettingsRow(
+                title = "OpenAI API Key",
+                subtitle = "Required for importing collections from articles"
+            ) {
+                OpenAiKeySettingRow(
+                    key = settings.openAiApiKey,
+                    onKeyChange = { viewModel.updateOpenAiApiKey(it) },
+                    onValidate = { viewModel.validateOpenAiApiKey() }
+                )
+            }
+        }
+
 
         // Reset Section
         SettingsSection(title = "Reset") {
@@ -223,4 +242,36 @@ private fun <T> getDisplayName(value: T): String = when (value) {
     is CacheSize -> value.displayName
     is Theme -> value.displayName
     else -> value.toString()
+}
+
+@Composable
+fun OpenAiKeySettingRow(
+    key: String,
+    onKeyChange: (String) -> Unit,
+    onValidate: () -> Unit,
+) {
+    var textFieldValue by remember { mutableStateOf(TextFieldValue(key)) }
+
+    // Sync state when it comes from ViewModel
+    LaunchedEffect(key) {
+        if (key != textFieldValue.text) {
+            textFieldValue = textFieldValue.copy(text = key)
+        }
+    }
+
+    val scrollState = rememberScrollState()
+
+    OutlinedTextField(
+        value = textFieldValue,
+        onValueChange = { newValue ->
+            textFieldValue = newValue
+            onKeyChange(newValue.text)
+            onValidate()
+        },
+        modifier = Modifier
+            .width(280.dp)
+            .horizontalScroll(scrollState),
+        singleLine = true,
+        visualTransformation = VisualTransformation.None
+    )
 }

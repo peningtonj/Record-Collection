@@ -1,5 +1,7 @@
 package io.github.peningtonj.recordcollection.di
 
+import com.russhwolf.settings.PreferencesSettings
+import com.russhwolf.settings.Settings
 import io.github.peningtonj.recordcollection.db.DatabaseDriver
 import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionDatabaseModule
@@ -14,6 +16,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
+import java.util.prefs.Preferences
 
 object DependencyContainerFactory {
     fun create(): DependencyContainer {
@@ -23,13 +26,21 @@ object DependencyContainerFactory {
                 json()
             }
         }
-        
+
+        fun createPreferencesSettings(): PreferencesSettings {
+            // You can use your app package name or any node name
+            val prefs = Preferences.userRoot().node("io.github.peningtonj.recordcollection")
+            return PreferencesSettings(prefs)
+        }
+
+        val settings = createPreferencesSettings()
+
         val databaseModule = ProductionDatabaseModule(DatabaseDriver())
         val networkModule = ProductionNetworkModule()
         val repositoryModule = ProductionRepositoryModule()
         val useCaseModule = ProductionUseCaseModule()
         val eventModule = ProductionEventModule()
-        val settingsModule = ProductionSettingsModule() // Add this
+        val settingsModule = ProductionSettingsModule(settings) // Add this
 
         // Create the container first
         val container = ModularDependencyContainer(
@@ -47,3 +58,4 @@ object DependencyContainerFactory {
         return container
     }
 }
+
