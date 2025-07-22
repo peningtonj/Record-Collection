@@ -137,6 +137,13 @@ compose.desktop {
             macOS {
                 bundleID = "io.github.peningtonj.recordcollection"
             }
+            windows {
+                packageVersion = "1.0.0"
+                msiPackageVersion = "1.0.0"
+                exePackageVersion = "1.0.0"
+                includeAllModules = true
+            }
+
         }
     }
 }
