@@ -50,7 +50,8 @@ data class SettingsState(
     val defaultSortOrder: SortOrder = SortOrder.RELEASE_DATE,
     val cacheSize: CacheSize = CacheSize.MEDIUM,
     val defaultOnAddToCollection: Boolean = false,
-    val collectionAddToLibrary: Map<String, OnAddToCollection> = emptyMap()
+    val collectionAddToLibrary: Map<String, OnAddToCollection> = emptyMap(),
+    val transitionTrack: Boolean = true,
 )
 
 

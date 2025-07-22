@@ -1,6 +1,8 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
+import NEXT_ALBUM_TRIGGER_MS
 import PlaybackQueueService
+import TRANSITION_TRIGGER_MS
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
@@ -9,6 +11,7 @@ import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.Playback
 import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.repository.PlaybackRepository
+import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -16,17 +19,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 const val PLAYBACK_ACTIVE_POLLING_DELAY = 1500L
 const val PLAYBACK_INACTIVE_POLLING_DELAY = 5000L
-const val TRANSITIONING_POLLING_DELAY_MS = 200L
+const val TRANSITIONING_POLLING_DELAY_MS = 150L
 
 class PlaybackViewModel(
     private val playbackRepository: PlaybackRepository,
-    private val queueManager: PlaybackQueueService
+    private val queueManager: PlaybackQueueService,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _currentSession = MutableStateFlow<PlaybackQueueService.QueueSession?>(null)
@@ -83,8 +88,20 @@ class PlaybackViewModel(
 
         if (_isSessionAppInitialized.value && session != null) {
             // Check for transition track addition
-            if (queueManager.shouldAddTransitionTrack(session, playback)) {
-                addTransitionTrack(session)
+            val settings = settingsRepository.settings.first()
+            val transitionTime = if (settings.transitionTrack) {TRANSITION_TRIGGER_MS} else {NEXT_ALBUM_TRIGGER_MS}
+
+            if (!settings.transitionTrack && queueManager.albumEnding(session, playback, TRANSITION_TRIGGER_MS)){
+                playbackPoller.setPollingDelay(TRANSITIONING_POLLING_DELAY_MS)
+            }
+
+            if (queueManager.albumEnding(session, playback, transitionTime)) {
+                Napier.d("Within the transition time")
+                if (settings.transitionTrack) {
+                    addTransitionTrack(session)
+                } else {
+                    transitionToNextAlbum(session)
+                }
             }
 
             // Check for transitioning to next album

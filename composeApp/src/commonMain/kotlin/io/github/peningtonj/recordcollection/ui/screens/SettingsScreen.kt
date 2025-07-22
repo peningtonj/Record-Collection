@@ -73,15 +73,6 @@ fun SettingsScreen(
                 onSelectionChange = { viewModel.updateTheme(it) }
             )
 
-            SettingsRow(
-                title = "Show Album Year",
-                subtitle = "Display release year on album tiles"
-            ) {
-                Switch(
-                    checked = settings.showAlbumYear,
-                    onCheckedChange = { viewModel.toggleShowAlbumYear() }
-                )
-            }
         }
 
         // Library Section
@@ -101,79 +92,20 @@ fun SettingsScreen(
                     checked = settings.defaultOnAddToCollection,
                     onCheckedChange = { viewModel.toggleDefaultOnAddToCollection() }
                 )
-
             }
         }
 
-        // Sync Section
-        SettingsSection(title = "Synchronization") {
+        SettingsSection(title = "Playback") {
             SettingsRow(
-                title = "Auto Sync",
-                subtitle = "Automatically sync library changes"
+                title = "Play transition between albums",
+                subtitle = "Play a short transition sound effect between albums"
             ) {
                 Switch(
-                    checked = settings.autoSync,
-                    onCheckedChange = { viewModel.toggleAutoSync() }
-                )
-            }
-
-            if (settings.autoSync) {
-                SettingsDropdown(
-                    title = "Sync Interval",
-                    subtitle = "How often to sync automatically",
-                    currentValue = settings.syncInterval,
-                    options = SyncInterval.entries.toList(),
-                    onSelectionChange = { viewModel.updateSyncInterval(it) }
+                    checked = settings.transitionTrack,
+                    onCheckedChange = { viewModel.toggleTransitionTrack() }
                 )
             }
         }
-
-        // Storage Section
-        SettingsSection(title = "Storage") {
-            OutlinedButton(
-                onClick = { viewModel.clearCache() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DeleteOutline,
-                    contentDescription = null
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Clear Cache")
-            }
-        }
-
-        // Data Management Section
-//        SettingsSection(title = "Data Management") {
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.spacedBy(8.dp)
-//            ) {
-//                OutlinedButton(
-//                    onClick = { viewModel.exportLibrary() },
-//                    modifier = Modifier.weight(1f)
-//                ) {
-//                    Icon(
-//                        imageVector = Icons.Default.FileUpload,
-//                        contentDescription = null
-//                    )
-//                    Spacer(modifier = Modifier.width(4.dp))
-//                    Text("Export")
-//                }
-//
-//                OutlinedButton(
-//                    onClick = { viewModel.importLibrary() },
-//                    modifier = Modifier.weight(1f)
-//                ) {
-//                    Icon(
-//                        imageVector = Icons.Default.FileDownload,
-//                        contentDescription = null
-//                    )
-//                    Spacer(modifier = Modifier.width(4.dp))
-//                    Text("Import")
-//                }
-//            }
-//        }
 
         // Reset Section
         SettingsSection(title = "Reset") {

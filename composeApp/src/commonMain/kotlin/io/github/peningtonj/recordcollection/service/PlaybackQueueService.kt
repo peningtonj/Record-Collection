@@ -3,15 +3,13 @@ import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.Playback
 import io.github.peningtonj.recordcollection.db.domain.Track
-import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
-import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.PlaybackRepository
 import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.flow.first
 
-const val TRANSITION_TRIGGER_MS = 3000L // 6 seconds before track ends
-const val NEXT_ALBUM_TRIGGER_MS = 500L // 1 seconds before track ends
+const val TRANSITION_TRIGGER_MS = 4000L // 4 seconds before track ends
+const val NEXT_ALBUM_TRIGGER_MS = 500L // 0.5 seconds before track ends
 
 class PlaybackQueueService(
     private val playbackRepository: PlaybackRepository,
@@ -35,7 +33,7 @@ class PlaybackQueueService(
         val currentTrack = playback?.track ?: return false
         return currentTrack.id == currentSession.lastTrack.id
     }
-    fun shouldAddTransitionTrack(session: QueueSession?, playback: Playback?): Boolean {
+    fun albumEnding(session: QueueSession?, playback: Playback?, transitionTriggerTime: Long = TRANSITION_TRIGGER_MS): Boolean {
         val currentSession = session ?: return false
 
         if (!isLastTrackInAlbum(currentSession, playback)) return false
@@ -44,11 +42,9 @@ class PlaybackQueueService(
         val currentTrack = playback?.track ?: return false
 
         val progressMs = playback.progressMs ?: 0
-        Napier.d("Getting close to adding transition track")
         val remainingMs = currentTrack.durationMs - progressMs
-        if (remainingMs > TRANSITION_TRIGGER_MS) return false
-        
-        return true
+        Napier.d("Getting close to adding transition track | remainingMs: $remainingMs, transitionTriggerTime: $transitionTriggerTime")
+        return remainingMs <= transitionTriggerTime
     }
 
      fun shouldTransitionToNextAlbum(session: QueueSession?, playback: Playback?): Boolean {

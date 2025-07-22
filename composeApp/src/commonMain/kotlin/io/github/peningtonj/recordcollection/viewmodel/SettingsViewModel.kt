@@ -53,6 +53,14 @@ class SettingsViewModel(
         }
     }
 
+
+    fun toggleTransitionTrack() {
+        viewModelScope.launch {
+            val currentSettings = settings.value
+            settingsRepository.updateSettings(currentSettings.copy(transitionTrack = !currentSettings.transitionTrack))
+        }
+    }
+
     fun updateDefaultSortOrder(sortOrder: SortOrder) {
         viewModelScope.launch {
             val currentSettings = settings.value
