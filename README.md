@@ -20,6 +20,10 @@ You can import collections from:
 1. Playlists in Spotify (Every album from which a song in the playlist appears)
 2. An article about a list of songs (Requires an Open AI API key)
 
+## Playing Music
+
+You must have an available Spotify device to play music.
+
 ## Other Features
 * Rating albums
 * Filtering on release date
