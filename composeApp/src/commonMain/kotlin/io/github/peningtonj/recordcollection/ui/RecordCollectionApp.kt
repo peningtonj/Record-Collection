@@ -1,6 +1,7 @@
 package io.github.peningtonj.recordcollection.ui
 
 import ArtistDetailScreen
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.navigation.*
+import io.github.peningtonj.recordcollection.repository.Theme
 import io.github.peningtonj.recordcollection.ui.components.navigation.NavigationPanel
 import io.github.peningtonj.recordcollection.ui.components.playback.PlaybackBar
 import io.github.peningtonj.recordcollection.ui.screens.AlbumScreen
@@ -27,8 +30,10 @@ import io.github.peningtonj.recordcollection.ui.screens.LibraryScreen
 import io.github.peningtonj.recordcollection.ui.screens.LoginScreen
 import io.github.peningtonj.recordcollection.ui.screens.ProfileScreen
 import io.github.peningtonj.recordcollection.ui.screens.SearchScreen
+import io.github.peningtonj.recordcollection.ui.screens.SettingsScreen
 import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberSearchViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 
 @Composable
 fun RecordCollectionApp(
@@ -38,11 +43,16 @@ fun RecordCollectionApp(
 
     val playbackViewModel = rememberPlaybackViewModel()
     val searchViewModel = rememberSearchViewModel()
+    val settingsViewModel = rememberSettingsViewModel()
+
+    RecordCollectionTheme(
+        viewModel = settingsViewModel
+    ) {
 
     CompositionLocalProvider(LocalNavigator provides navigator) {
         AuthNavigationWrapper {
             var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
-            
+
             Column(modifier = Modifier.fillMaxSize()) {
                 // Main content area with navigation
                 Row(modifier = Modifier.weight(1f)) {
@@ -52,13 +62,14 @@ fun RecordCollectionApp(
                             currentScreen = currentScreen,
                             modifier = Modifier
                                 .widthIn(min = 100.dp, max = 300.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                         )
 
                         // Vertical divider
                         HorizontalDivider(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .width(1.dp)
+                                .width(1.dp),
                         )
                     }
 
@@ -67,6 +78,7 @@ fun RecordCollectionApp(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         NavigationHost(
                             startScreen = Screen.Login,
@@ -78,21 +90,26 @@ fun RecordCollectionApp(
                             when (screen) {
                                 Screen.Login -> LoginScreen()
                                 Screen.Profile -> ProfileScreen()
+                                Screen.Settings -> SettingsScreen()
                                 Screen.Library -> LibraryScreen(
                                     playbackViewModel = playbackViewModel
                                 )
+
                                 Screen.Search -> SearchScreen(
                                     playbackViewModel = playbackViewModel,
                                     viewModel = searchViewModel
                                 )
+
                                 is Screen.Album -> AlbumScreen(
                                     albumId = screen.albumId,
                                     playbackViewModel = playbackViewModel
                                 )
+
                                 is Screen.Artist -> ArtistDetailScreen(
                                     artistId = screen.artistId,
                                     playbackViewModel = playbackViewModel
                                 )
+
                                 is Screen.Collection -> CollectionScreen(
                                     collectionName = screen.collectionName,
                                     playbackViewModel = playbackViewModel
@@ -108,5 +125,6 @@ fun RecordCollectionApp(
                 }
             }
         }
+    }
     }
 }

@@ -71,7 +71,8 @@ fun rememberAlbumViewModel(
             dependencies.ratingRepository,
             dependencies.collectionAlbumRepository,
             dependencies.tagService,
-            dependencies.releaseGroupUseCase
+            dependencies.releaseGroupUseCase,
+            dependencies.settingsRepository
         )
     }
 }
@@ -153,5 +154,13 @@ fun rememberSearchViewModel(
             albumRepository = dependencies.albumRepository,
             getAlbumUseCase = dependencies.albumDetailUseCase,
         )
+    }
+}
+@Composable
+fun rememberSettingsViewModel(
+    dependencies: DependencyContainer = LocalDependencyContainer.current
+): SettingsViewModel {
+    return remember(dependencies) {
+        dependencies.settingsViewModel
     }
 }

@@ -50,6 +50,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
             implementation("io.ktor:ktor-client-core:3.1.0")
+            implementation("io.insert-koin:koin-core:3.5.0")
+            implementation("io.insert-koin:koin-compose:1.1.0")
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.kotlinx.datetime)

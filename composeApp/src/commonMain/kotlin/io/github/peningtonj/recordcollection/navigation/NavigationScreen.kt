@@ -6,6 +6,7 @@ sealed class Screen(val route: String) {
     data object Profile : Screen("profile")
     data object Library : Screen("library")
     data object Search : Screen("search")
+    data object Settings : Screen("settings")
 
     data class Album(val albumId: String) : Screen("album/$albumId")
     data class Artist(val artistId: String) : Screen("artist/$artistId")

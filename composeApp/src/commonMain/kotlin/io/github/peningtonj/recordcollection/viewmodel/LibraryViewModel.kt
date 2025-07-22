@@ -32,8 +32,8 @@ class LibraryViewModel(
     private val libraryService: LibraryService,
     private val collectionsService: CollectionsService,
     private val getAlbumDetailUseCase: GetAlbumDetailUseCase,
-    albumRepository: AlbumRepository,
-    artistRepository: ArtistRepository,
+    private val albumRepository: AlbumRepository,
+    private val artistRepository: ArtistRepository,
 ) : ViewModel() {
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val syncState = _syncState.asStateFlow()

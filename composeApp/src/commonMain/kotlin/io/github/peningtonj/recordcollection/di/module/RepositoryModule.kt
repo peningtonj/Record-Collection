@@ -71,4 +71,5 @@ interface RepositoryModule {
         database: RecordCollectionDatabase,
         spotifyApi: SpotifyApi
     ): TrackRepository
+
 }

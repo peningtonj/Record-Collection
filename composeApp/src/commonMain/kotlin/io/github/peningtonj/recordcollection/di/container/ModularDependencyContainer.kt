@@ -5,6 +5,7 @@ import io.github.peningtonj.recordcollection.di.module.DatabaseModule
 import io.github.peningtonj.recordcollection.di.module.EventModule
 import io.github.peningtonj.recordcollection.di.module.NetworkModule
 import io.github.peningtonj.recordcollection.di.module.RepositoryModule
+import io.github.peningtonj.recordcollection.di.module.SettingsModule
 import io.github.peningtonj.recordcollection.di.module.UseCaseModule
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
@@ -24,6 +25,7 @@ class ModularDependencyContainer(
     override val authHandler: AuthHandler,
     private val useCaseModule: UseCaseModule,
     private val eventModule: EventModule,
+    private val settingsModule: SettingsModule, // Add this
 ) : DependencyContainer {
 
     private val database by lazy { databaseModule.provideDatabase() }
@@ -97,7 +99,7 @@ class ModularDependencyContainer(
     }
     
     override val libraryService by lazy {
-        LibraryService(albumRepository, artistRepository, ratingRepository, profileRepository)
+        LibraryService(albumRepository, artistRepository, ratingRepository, profileRepository, settingsRepository)
     }
 
     override val collectionImportService by lazy {
@@ -172,4 +174,13 @@ class ModularDependencyContainer(
     override val trackRepository: TrackRepository by lazy {
         repositoryModule.provideTrackRepository(database, spotifyApi)
     }
+
+    override val settingsRepository by lazy {
+        settingsModule.provideSettingsRepository()
+    }
+
+    override val settingsViewModel by lazy {
+        settingsModule.provideSettingsViewModel(settingsRepository)
+    }
+
 }

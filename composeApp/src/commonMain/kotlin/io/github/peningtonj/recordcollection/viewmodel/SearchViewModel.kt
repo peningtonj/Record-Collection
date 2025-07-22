@@ -25,7 +25,7 @@ class SearchViewModel(
     private val getAlbumUseCase: GetAlbumDetailUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<SearchScreenUiState>(SearchScreenUiState.Loading)
+    private val _uiState = MutableStateFlow<SearchScreenUiState>(SearchScreenUiState.LoadingNewReleases)
     val uiState = _uiState.asStateFlow()
 
     private val _currentQuery = MutableStateFlow("")
@@ -37,13 +37,13 @@ class SearchViewModel(
     private var searchJob: Job? = null
 
     init {
-
-//        viewModelScope.launch {
-//            updateNewReleaseAlbums()
-//        }
+        viewModelScope.launch {
+            updateNewReleaseAlbums()
+        }
     }
 
     suspend fun updateNewReleaseAlbums() {
+        _uiState.value = if(_uiState.value is SearchScreenUiState.Idle) { SearchScreenUiState.LoadingNewReleases } else { _uiState.value }
         val newReleases = albumRepository.fetchAllNewReleases()
 
         val detailedAlbums = supervisorScope {
@@ -55,9 +55,7 @@ class SearchViewModel(
         }
 
         _newReleaseAlbums.value = detailedAlbums
-        _uiState.value = SearchScreenUiState.Idle(
-            newReleases = detailedAlbums
-        )
+        _uiState.value = if(_uiState.value is SearchScreenUiState.LoadingNewReleases) { SearchScreenUiState.Idle } else { _uiState.value }
     }
 
 
@@ -68,9 +66,7 @@ class SearchViewModel(
         _currentQuery.value = query
 
         if (query.isBlank()) {
-            _uiState.value = SearchScreenUiState.Idle(
-                newReleases = _newReleaseAlbums.value
-            )
+            _uiState.value = SearchScreenUiState.Idle
             return
         }
 
@@ -99,9 +95,8 @@ class SearchViewModel(
 }
 
 sealed interface SearchScreenUiState {
-    data class Idle(
-        val newReleases: List<AlbumDetailUiState>
-    ): SearchScreenUiState
+    data object LoadingNewReleases : SearchScreenUiState
+    data object Idle: SearchScreenUiState
     data object Loading : SearchScreenUiState
     data class Error(val message: String) : SearchScreenUiState
     data class Success(

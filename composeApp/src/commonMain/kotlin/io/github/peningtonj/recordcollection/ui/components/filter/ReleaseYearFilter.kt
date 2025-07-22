@@ -3,6 +3,7 @@ package io.github.peningtonj.recordcollection.ui.components.filter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -20,7 +19,6 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RangeSlider
@@ -39,6 +37,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
+import kotlinx.datetime.Clock
+import kotlinx.datetime.toLocalDateTime
 
 @Composable
 fun ReleaseYearFilter(
@@ -65,12 +65,12 @@ fun ReleaseYearFilter(
         if (expanded) {
             Popup(
                 alignment = Alignment.TopEnd,
-                offset = IntOffset(x = -280, y = 48),
+                offset = IntOffset(x = -80, y = 48),
                 onDismissRequest = { expanded = false }
             ) {
                 Surface(
                     modifier = Modifier
-                        .width(280.dp)
+                        .width(380.dp)
                         .wrapContentHeight(),
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surface,
@@ -117,7 +117,7 @@ fun ReleaseYearWidget(
                 yearRange = it
                 selectedLabel = null // Clear label when manually adjusting slider
             },
-            valueRange = startYear.toFloat()..2025f,
+            valueRange = startYear.toFloat()..Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).year.toFloat(),
             modifier = Modifier
                 .padding(vertical = 8.dp)
                 .height(32.dp)
@@ -164,11 +164,11 @@ fun QuickSelectButtons(
         "Last 5 Years" to ((currentYear - 5f)..currentYear.toFloat()),
     )
 
-    LazyRow(
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(vertical = 8.dp)
     ) {
-        items(presets) { (label, range) ->
+        presets.forEach { (label, range) ->
             AssistChip(
                 onClick = { onClick(range, label) },
                 label = { Text(label, fontSize = 12.sp) }

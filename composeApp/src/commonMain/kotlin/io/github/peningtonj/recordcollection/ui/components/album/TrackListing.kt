@@ -196,6 +196,7 @@ fun TrackListingItem(
                 Text(
                     text = track.name,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

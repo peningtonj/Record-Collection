@@ -9,7 +9,9 @@ import io.github.peningtonj.recordcollection.db.domain.TagType
 import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
+import io.github.peningtonj.recordcollection.repository.OnAddToCollection
 import io.github.peningtonj.recordcollection.repository.RatingRepository
+import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.repository.TagRepository
 import io.github.peningtonj.recordcollection.service.TagService
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
@@ -28,6 +30,7 @@ class AlbumViewModel (
     private val collectionAlbumRepository: CollectionAlbumRepository,
     private val tagService: TagService,
     private val releaseGroupUseCase: ReleaseGroupUseCase,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _releaseGroupStatus = MutableStateFlow(ReleaseGroupStatus.Idle)
     val releaseGroupStatus = _releaseGroupStatus.asStateFlow()
@@ -77,10 +80,14 @@ class AlbumViewModel (
 
     fun addAlbumToCollection(album: Album, collectionName: String, addToLibraryOverrideValue: Boolean? = null) {
         viewModelScope.launch {
+            val settings = settingsRepository.settings.first()
+            val appDefault = settings.defaultOnAddToCollection
+            val addToLibrary = addToLibraryOverrideValue ?: settings.collectionAddToLibrary.getOrDefault(collectionName, OnAddToCollection.DEFAULT).value ?: appDefault
+
             Napier.d { "Adding album ${album.id} to collection $collectionName" }
             val existingAlbum = albumRepository.getAlbumByNameAndArtistIfPresent(album.name, album.primaryArtist).first()
             if (existingAlbum == null) {
-                albumRepository.saveAlbum(album, addToLibraryOverrideValue)
+                albumRepository.saveAlbum(album, addToLibrary)
                 collectionAlbumRepository.addAlbumToCollection(collectionName, album.id)
 
             } else {

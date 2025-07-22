@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocalLibrary
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -25,8 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -34,30 +33,26 @@ import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.ui.components.navigation.collections.CollectionsSection
-import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 
 @Composable
 fun NavigationPanel(
     navigator: Navigator,
     currentScreen: Screen,
     modifier: Modifier = Modifier,
-    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
 ) {
-    val collectionsUiState by collectionsViewModel.uiState.collectAsState()
-    
     Column(
         modifier = modifier
             .fillMaxHeight()
             .width(240.dp)
-            .background(colorScheme.surface)
+            .background(colorScheme.surfaceContainer)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
         Text(
             text = "Navigation",
             style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 16.dp),
+            color = colorScheme.onSurface,
         )
 
         // Main navigation items
@@ -80,6 +75,12 @@ fun NavigationPanel(
             icon = Icons.Default.Search,
             isSelected = currentScreen is Screen.Search,
             onClick = { navigator.navigateTo(Screen.Search) }
+        )
+        NavigationItem(
+            title = "Settings",
+            icon = Icons.Default.Settings,
+            isSelected = currentScreen is Screen.Settings,
+            onClick = { navigator.navigateTo(Screen.Settings) }
         )
 
         // Collections section

@@ -6,6 +6,7 @@ import io.github.peningtonj.recordcollection.di.module.impl.ProductionDatabaseMo
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionNetworkModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionRepositoryModule
 import io.github.peningtonj.recordcollection.di.container.ModularDependencyContainer
+import io.github.peningtonj.recordcollection.di.module.ProductionSettingsModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionEventModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionUseCaseModule
 import io.github.peningtonj.recordcollection.network.oauth.spotify.DesktopAuthHandler
@@ -28,7 +29,8 @@ object DependencyContainerFactory {
         val repositoryModule = ProductionRepositoryModule()
         val useCaseModule = ProductionUseCaseModule()
         val eventModule = ProductionEventModule()
-        
+        val settingsModule = ProductionSettingsModule() // Add this
+
         // Create the container first
         val container = ModularDependencyContainer(
             networkModule = networkModule,
@@ -36,7 +38,8 @@ object DependencyContainerFactory {
             repositoryModule = repositoryModule,
             useCaseModule = useCaseModule,
             authHandler = DesktopAuthHandler(authClient),
-            eventModule = eventModule
+            eventModule = eventModule,
+            settingsModule = settingsModule
         )
         
         // Now initialize the auth handler with the repository

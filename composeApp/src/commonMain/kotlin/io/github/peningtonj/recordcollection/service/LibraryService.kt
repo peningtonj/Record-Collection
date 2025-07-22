@@ -9,6 +9,8 @@ import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
 import io.github.peningtonj.recordcollection.repository.ProfileRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
+import io.github.peningtonj.recordcollection.repository.SettingsRepository
+import io.github.peningtonj.recordcollection.repository.SortOrder
 import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 import io.github.peningtonj.recordcollection.viewmodel.LibraryDifferences
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +22,8 @@ class LibraryService(
     private val albumRepository: AlbumRepository,
     private val artistRepository: ArtistRepository,
     private val ratingRepository: RatingRepository,
-    private val profileRepository: ProfileRepository
+    private val profileRepository: ProfileRepository,
+    private val settingsRepository: SettingsRepository
 ) {
     // Core data operations
     fun getAllAlbumsEnriched(): Flow<List<AlbumDisplayData>> = combine(
@@ -36,10 +39,17 @@ class LibraryService(
     }
 
     fun getFilteredAlbums(filter: AlbumFilter): Flow<List<AlbumDisplayData>> =
-        getAllAlbumsEnriched().map()
-     { albums ->
-        filterAlbums(albums, filter)
-    }
+        getAllAlbumsEnriched().map { albums ->
+            val filtered = filterAlbums(albums, filter)
+
+            when (settingsRepository.settings.value.defaultSortOrder) {
+                SortOrder.ARTIST_NAME -> filtered.sortedBy { it.album.primaryArtist.lowercase() }
+                SortOrder.ALBUM_NAME -> filtered.sortedBy { it.album.name.lowercase() }
+                SortOrder.RELEASE_DATE -> filtered.sortedByDescending { it.album.releaseDate }
+                SortOrder.DATE_ADDED -> filtered.sortedByDescending { it.album.addedAt }
+                SortOrder.RATING -> filtered.sortedByDescending { it.rating }
+            }
+        }
 
     // Library statistics
     fun getLibraryStats(): Flow<LibraryStats> = combine(

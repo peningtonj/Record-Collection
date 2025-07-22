@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
+import io.github.peningtonj.recordcollection.repository.OnAddToCollection
 import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
 import io.github.peningtonj.recordcollection.ui.components.album.getCollectionActionAlbums
@@ -19,10 +20,12 @@ import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
+import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionDetailViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 
 @Composable
 fun CollectionScreen(
@@ -31,7 +34,8 @@ fun CollectionScreen(
     viewModel: CollectionDetailViewModel = rememberCollectionDetailViewModel(collectionName),
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
     libraryViewModel: LibraryViewModel = rememberLibraryViewModel(),
-    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel()
+    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
+    settingsViewModel: SettingsViewModel = rememberSettingsViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -47,6 +51,8 @@ fun CollectionScreen(
     val currentSession = playbackViewModel.currentSession.collectAsState()
     val playbackState = playbackViewModel.playbackState.collectAsState()
 
+    val settings = settingsViewModel.settings.collectAsState()
+    val addToLibrarySetting = settings.value.collectionAddToLibrary.getOrDefault(collectionName, OnAddToCollection.DEFAULT)
 
     val collectionAlbumActions = getCollectionActionAlbums(
         collection = uiState.collection,
@@ -87,7 +93,12 @@ fun CollectionScreen(
                         )
                     }
                 },
-            isShuffled = currentSession.value?.isShuffled ?: false
+            isShuffled = currentSession.value?.isShuffled ?: false,
+            addToLibrarySetting = addToLibrarySetting,
+            onAddToLibrarySettingChange = { newSetting ->
+                settingsViewModel.updateOnAddToLibrarySetting(collectionName, newSetting)
+            }
+
             )
 
         AlbumGrid(

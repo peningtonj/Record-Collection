@@ -85,7 +85,8 @@ fun AlbumHeader(
                 ) {
                     Text(
                         text = albumDetailUiState.album.name,
-                        style = MaterialTheme.typography.headlineMedium
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
 
                     Spacer(modifier = Modifier.width(24.dp))  // Adds fixed space between text and button
@@ -111,6 +112,7 @@ fun AlbumHeader(
                     text = albumDetailUiState.album.primaryArtist,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.clickable { albumActions.navigateToArtist(albumDetailUiState) },
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
 
                 // Release Year and Track Count
@@ -119,23 +121,28 @@ fun AlbumHeader(
                 ) {
                     Text(
                         text = albumDetailUiState.album.releaseDate.year.toString(),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = "•",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = "${albumDetailUiState.album.totalTracks} tracks",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = "•",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = formattedTotalDuration(albumDetailUiState.totalDuration),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
 

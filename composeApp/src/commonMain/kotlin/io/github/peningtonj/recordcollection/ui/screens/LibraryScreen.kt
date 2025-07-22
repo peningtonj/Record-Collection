@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.ui.components.library.CreateCollectionButton
@@ -76,7 +77,6 @@ fun LibraryScreen(
             )
         }
     }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -90,7 +90,8 @@ fun LibraryScreen(
         ) {
             Text(
                 text = "Saved Albums (${libraryStats.totalAlbums})",
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             SyncLibraryUi(

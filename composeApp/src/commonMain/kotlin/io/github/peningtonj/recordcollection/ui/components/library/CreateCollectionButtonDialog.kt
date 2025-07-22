@@ -9,7 +9,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,7 +45,13 @@ fun CreateCollectionButton(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Create Collection From Filter"
             )
-        }
+        },
+//        colors = AssistChipDefaults.assistChipColors(
+//            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+//            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+//            leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+//        )
+
     )
     
     if (showDialog) {

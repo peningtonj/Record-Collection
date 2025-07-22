@@ -123,13 +123,20 @@ fun SearchScreen(
                         )
                     }
                     AlbumGrid(
-                        (uiState as SearchScreenUiState.Idle).newReleases,
+                        newReleases,
                         albumActions = albumActions,
                         showRating = false
                     )
                 }
             }
             is SearchScreenUiState.Loading -> {
+                LoadingIndicator()
+                if (newReleases.isEmpty() && currentQuery.isEmpty()) {
+                    Text("Loading Search Results")
+                }
+            }
+
+            is SearchScreenUiState.LoadingNewReleases -> {
                 LoadingIndicator()
                 if (newReleases.isEmpty() && currentQuery.isEmpty()) {
                     Text("Loading Spotify's New Release Recommendations")

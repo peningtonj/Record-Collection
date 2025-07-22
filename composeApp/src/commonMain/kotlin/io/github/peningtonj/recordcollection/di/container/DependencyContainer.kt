@@ -13,6 +13,7 @@ import io.github.peningtonj.recordcollection.repository.PlaylistRepository
 import io.github.peningtonj.recordcollection.repository.ProfileRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
+import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
 import io.github.peningtonj.recordcollection.repository.TagRepository
 import io.github.peningtonj.recordcollection.repository.TrackRepository
@@ -22,6 +23,7 @@ import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.TagService
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
+import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
 
 interface DependencyContainer : AutoCloseable {
     val profileRepository: ProfileRepository
@@ -47,4 +49,6 @@ interface DependencyContainer : AutoCloseable {
     val collectionImportService: CollectionImportService
     val playlistRepository: PlaylistRepository
     val trackRepository: TrackRepository
+    val settingsRepository: SettingsRepository
+    val settingsViewModel: SettingsViewModel
 }
