@@ -125,7 +125,6 @@ fun SettingsScreen(
             }
         }
 
-
         // Reset Section
         SettingsSection(title = "Reset") {
             Button(

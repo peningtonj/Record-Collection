@@ -83,7 +83,8 @@ fun CollectionsSection(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(16.dp),
+                    tint = colorScheme.onSurface,
                 )
             }
         }
@@ -99,13 +100,14 @@ fun CollectionsSection(
         Box {
             IconButton(
                 onClick = { showDropdown = true },
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(32.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add new collection or folder",
-                    modifier = Modifier.size(16.dp)
-                )
+                    modifier = Modifier.size(16.dp),
+                    tint = colorScheme.onSurface,
+                    )
             }
 
             DropdownMenu(

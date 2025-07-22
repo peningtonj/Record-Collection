@@ -13,7 +13,7 @@ class SpotifyAuthRepository(
     private val authHandler: AuthHandler,
     private val database: RecordCollectionDatabase
 ) {
-    private val _authState = MutableStateFlow<AuthState>(loadInitialState())
+    private val _authState = MutableStateFlow(loadInitialState())
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     // Primary Public API
@@ -82,7 +82,7 @@ class SpotifyAuthRepository(
 
     // Database Operations
     private fun saveToken(token: AccessToken) {
-        val expiresAt = System.currentTimeMillis() + (token.expiresIn * 1000)
+        val expiresAt = System.currentTimeMillis() + (token.expiresIn * 1000) - (60 * 1000)
         
         database.authsQueries.insertOrUpdateToken(
             Auths(

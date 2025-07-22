@@ -6,8 +6,9 @@ import java.io.File
 
 actual class DatabaseDriver {
     actual fun createDriver(): SqlDriver {
-        val databasePath = "record_collection.db"
-        val dbFile = File(databasePath)
+        val dbPath = "${System.getProperty("user.home")}/Library/Application Support/RecordCollection/recordcollection.db"
+        val dbFile = File(dbPath)
+        dbFile.parentFile.mkdirs()
 
         // Create the driver with the file path
         val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
