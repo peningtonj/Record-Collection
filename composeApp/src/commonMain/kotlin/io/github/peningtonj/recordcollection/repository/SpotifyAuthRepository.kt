@@ -49,12 +49,13 @@ class SpotifyAuthRepository(
             }
             // Fall back to new authentication
             else -> {
-                authenticate()
+                _authState.value = AuthState.NotAuthenticated
+                return Result.failure(Exception("No valid token available"))
             }
         }
     }
 
-    suspend fun logout() {
+    fun logout() {
         // Clear tokens from database
         database.authsQueries.deleteToken()
         
