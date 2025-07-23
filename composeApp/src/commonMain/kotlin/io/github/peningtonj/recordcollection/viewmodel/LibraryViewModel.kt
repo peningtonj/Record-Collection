@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 
 class LibraryViewModel(
@@ -72,7 +73,7 @@ class LibraryViewModel(
                     val albumDetails = coroutineScope {
                         albumDisplayData.map { displayData ->
                             async {
-                                getAlbumDetailUseCase.execute(displayData.album.id)
+                                getAlbumDetailUseCase.execute(displayData.album.id).first()
                             }
                         }.awaitAll()
                     }

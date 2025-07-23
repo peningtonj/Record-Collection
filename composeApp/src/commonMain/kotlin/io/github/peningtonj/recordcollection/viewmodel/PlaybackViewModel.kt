@@ -76,15 +76,15 @@ class PlaybackViewModel(
 
     private suspend fun handleQueueTransitions(playback: Playback?) {
         val session = _currentSession.value
-        if (
-            _isSessionAppInitialized.value &&
-            session != null &&
-            playback?.track?.album?.id != session.album.id &&
-            playback?.track?.spotifyUri != session.transitionTrackUri
-        ) {
-            Napier.d("Not a local session because ${playback?.track?.album?.id} != ${session.album.id}")
-            _isSessionAppInitialized.value = false
-        }
+//        if (
+//            _isSessionAppInitialized.value &&
+//            session != null &&
+//            playback?.track?.album?.id != session.album.id &&
+//            playback?.track?.spotifyUri != session.transitionTrackUri
+//        ) {
+//            Napier.d("Not a local session because ${playback?.track?.album?.id} != ${session.album.id}")
+//            _isSessionAppInitialized.value = false
+//        }
 
         if (_isSessionAppInitialized.value && session != null) {
             // Check for transition track addition
@@ -96,7 +96,7 @@ class PlaybackViewModel(
             }
 
             if (queueManager.albumEnding(session, playback, transitionTime)) {
-                Napier.d("Within the transition time")
+//                Napier.d("Within the transition time")
                 if (settings.transitionTrack) {
                     addTransitionTrack(session)
                 } else {

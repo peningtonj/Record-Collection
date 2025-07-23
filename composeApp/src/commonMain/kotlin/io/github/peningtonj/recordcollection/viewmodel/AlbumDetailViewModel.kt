@@ -2,12 +2,10 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class AlbumDetailViewModel(
@@ -23,9 +21,9 @@ class AlbumDetailViewModel(
             _uiState.value = AlbumScreenUiState.Loading
             try {
                 trackRepository.checkAndUpdateTracksIfNeeded(albumId)
-                _uiState.value = AlbumScreenUiState.Success(
-                    getAlbumDetailUseCase.execute(albumId),
-                )
+                getAlbumDetailUseCase.execute(albumId).collect { albumDetail ->
+                    _uiState.value = AlbumScreenUiState.Success(albumDetail)
+                }
             } catch (e: Exception) {
                 _uiState.value = AlbumScreenUiState.Error(e.message ?: "Unknown error")
             }

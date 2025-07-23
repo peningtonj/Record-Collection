@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.supervisorScope
 
 class SearchViewModel(
@@ -49,7 +50,7 @@ class SearchViewModel(
         val detailedAlbums = supervisorScope {
             newReleases.map { album ->
                 async {
-                    getAlbumUseCase.execute(album.id, false, album)
+                    getAlbumUseCase.execute(album.id, false, album).first()
                 }
             }.awaitAll()
         }

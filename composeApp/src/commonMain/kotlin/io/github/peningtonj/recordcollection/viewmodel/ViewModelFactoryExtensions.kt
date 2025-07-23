@@ -126,6 +126,7 @@ fun rememberCollectionDetailViewModel(
             collectionRepository = dependencies.albumCollectionRepository,
             collectionAlbumRepository = dependencies.collectionAlbumRepository,
             getAlbumDetailUseCase = dependencies.albumDetailUseCase,
+            ratingRepository = dependencies.ratingRepository,
             collectionName = collectionName
         )
     }

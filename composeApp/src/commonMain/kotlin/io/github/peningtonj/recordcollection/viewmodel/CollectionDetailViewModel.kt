@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
+import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -25,6 +27,7 @@ class CollectionDetailViewModel(
     private val collectionRepository: AlbumCollectionRepository,
     private val collectionAlbumRepository: CollectionAlbumRepository,
     private val getAlbumDetailUseCase: GetAlbumDetailUseCase,
+    private val ratingRepository: RatingRepository,
     private val collectionName: String
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CollectionDetailUiState())
@@ -41,8 +44,9 @@ class CollectionDetailViewModel(
 
             combine(
                 collectionRepository.getCollectionByName(collectionName),
-                collectionAlbumRepository.getAlbumsInCollection(collectionName)
-            ) { collection, albums ->
+                collectionAlbumRepository.getAlbumsInCollection(collectionName),
+                ratingRepository.getAllRatings(),
+            ) { collection, albums, ratings ->
                 collection to albums
             }.collect { (collection, albums) ->
                 val albumDetails = if (albums.isEmpty()) {
@@ -51,7 +55,7 @@ class CollectionDetailViewModel(
                     supervisorScope {
                         albums.map { album ->
                             async {
-                                getAlbumDetailUseCase.execute(album.album.id)
+                                getAlbumDetailUseCase.execute(album.album.id).first()
                             }
                         }.awaitAll()
                     }

@@ -43,7 +43,7 @@ class PlaybackQueueService(
 
         val progressMs = playback.progressMs ?: 0
         val remainingMs = currentTrack.durationMs - progressMs
-        Napier.d("Getting close to adding transition track | remainingMs: $remainingMs, transitionTriggerTime: $transitionTriggerTime")
+//        Napier.d("Getting close to adding transition track | remainingMs: $remainingMs, transitionTriggerTime: $transitionTriggerTime")
         return remainingMs <= transitionTriggerTime
     }
 

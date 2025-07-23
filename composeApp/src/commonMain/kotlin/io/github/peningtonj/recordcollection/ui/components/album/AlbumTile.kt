@@ -54,8 +54,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.peningtonj.recordcollection.ui.components.rating.StarRating
 import androidx.compose.ui.window.PopupProperties
-import coil3.ImageLoader
-import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 
 

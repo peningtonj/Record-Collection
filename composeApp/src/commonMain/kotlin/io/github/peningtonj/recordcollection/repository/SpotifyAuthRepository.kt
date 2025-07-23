@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.repository
 
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.db.Auths
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AccessToken
@@ -70,6 +71,8 @@ class SpotifyAuthRepository(
         val refreshToken = getRefreshToken()
             ?: return Result.failure(Exception("No refresh token available"))
 
+        Napier.d { "Refreshing token with $refreshToken" }
+
 
         return authHandler.refreshToken(refreshToken)
             .onSuccess { token ->
@@ -84,7 +87,7 @@ class SpotifyAuthRepository(
     // Database Operations
     private fun saveToken(token: AccessToken) {
         val expiresAt = System.currentTimeMillis() + (token.expiresIn * 1000) - (60 * 1000)
-        
+        Napier.d { "Saving token to database: $expiresAt ${System.currentTimeMillis()} ${token.expiresIn}" }
         database.authsQueries.insertOrUpdateToken(
             Auths(
                 id = 1,

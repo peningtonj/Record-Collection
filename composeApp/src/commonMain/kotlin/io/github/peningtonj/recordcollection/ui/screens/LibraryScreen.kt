@@ -52,7 +52,6 @@ fun LibraryScreen(
     collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel()
 ) {
     val syncState by viewModel.syncState.collectAsState()
-    val libraryStats by viewModel.libraryStats.collectAsState()
     val filteredAlbums by viewModel.filteredAlbums.collectAsState()
     val currentFilter by viewModel.currentFilter.collectAsState()
     val artists by viewModel.allArtists.collectAsState()

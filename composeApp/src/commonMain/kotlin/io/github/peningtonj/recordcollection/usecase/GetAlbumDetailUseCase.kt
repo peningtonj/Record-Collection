@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 class GetAlbumDetailUseCase(
@@ -30,7 +31,7 @@ class GetAlbumDetailUseCase(
     private val albumRatingRepository: RatingRepository
 ) {
 
-    suspend fun execute(albumId: String, getTracks: Boolean = true, albumData: Album? = null): AlbumDetailUiState {
+    suspend fun execute(albumId: String, getTracks: Boolean = true, albumData: Album? = null): Flow<AlbumDetailUiState> {
         val albumExistsInDb = albumRepository.albumExists(albumId)
         if (albumData != null) {
             return getDatabaseAlbum(albumData)
@@ -39,12 +40,12 @@ class GetAlbumDetailUseCase(
             val album = albumRepository.getAlbumById(albumId).first()
             getDatabaseAlbum(album)
         } else {
-            getApiAlbumData(albumId, getTracks = getTracks)
+            flowOf(getApiAlbumData(albumId, getTracks = getTracks))
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun getDatabaseAlbum(album: Album): AlbumDetailUiState {
+    private fun getDatabaseAlbum(album: Album): Flow<AlbumDetailUiState> {
         return combine(
             albumTagRepository.getTagsForAlbum(album.id),
             collectionAlbumRepository.getCollectionsForAlbum(album.id),
@@ -67,7 +68,7 @@ class GetAlbumDetailUseCase(
                 error = null,
                 releaseGroup = releaseGroup
             )
-        }.first()
+        }
     }
 
     private suspend fun getApiAlbumData(albumId: String, getTracks: Boolean = true): AlbumDetailUiState {
@@ -78,7 +79,7 @@ class GetAlbumDetailUseCase(
             } else {
                 emptyList()
             }
-            return AlbumDetailUiState(
+            return  AlbumDetailUiState(
                 album = apiAlbum,
                 tags = emptyList(),
                 collections = emptyList(),
