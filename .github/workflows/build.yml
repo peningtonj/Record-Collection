@@ -168,7 +168,7 @@ jobs:
           path: composeApp/build/compose/binaries/main/app/
           retention-days: 30
 
-  # Optional: Create a release when you push a tag
+  # Create a release when you push a tag
   create-release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-windows, build-macos, build-linux]
@@ -177,13 +177,55 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: List downloaded artifacts (debug)
+        run: |
+          echo "Downloaded artifacts structure:"
+          ls -la
+          echo "Contents of each artifact folder:"
+          for dir in */; do
+            echo "=== $dir ==="
+            ls -la "$dir" || echo "Empty or no access"
+          done
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          
+          # Copy MSI files
+          find windows-msi -name "*.msi" -exec cp {} release-files/ \; 2>/dev/null || echo "No MSI files found"
+          
+          # Copy DMG files  
+          find macos-dmg -name "*.dmg" -exec cp {} release-files/ \; 2>/dev/null || echo "No DMG files found"
+          
+          # Copy DEB files
+          find linux-deb -name "*.deb" -exec cp {} release-files/ \; 2>/dev/null || echo "No DEB files found"
+          
+          # Create portable archives
+          if [ -d "windows-portable" ]; then
+            cd windows-portable
+            zip -r ../release-files/windows-portable.zip . 2>/dev/null || echo "Failed to create Windows portable zip"
+            cd ..
+          fi
+          
+          if [ -d "macos-portable" ]; then
+            cd macos-portable  
+            tar -czf ../release-files/macos-portable.tar.gz . 2>/dev/null || echo "Failed to create macOS portable archive"
+            cd ..
+          fi
+          
+          if [ -d "linux-portable" ]; then
+            cd linux-portable
+            tar -czf ../release-files/linux-portable.tar.gz . 2>/dev/null || echo "Failed to create Linux portable archive"
+            cd ..
+          fi
+          
+          echo "Release files prepared:"
+          ls -la release-files/
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            composeApp/build/compose/binaries/main/msi/*.msi
-            composeApp/build/compose/binaries/main/dmg/*.dmg
-            composeApp/build/compose/binaries/main/deb/*.deb
+          files: release-files/*
           draft: true
           generate_release_notes: true
         env:
