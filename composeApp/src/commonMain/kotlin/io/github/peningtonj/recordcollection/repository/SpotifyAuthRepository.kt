@@ -9,6 +9,7 @@ import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.datetime.Clock
 
 class SpotifyAuthRepository(
     private val authHandler: AuthHandler,
@@ -36,6 +37,9 @@ class SpotifyAuthRepository(
 
     suspend fun ensureValidToken(): Result<AccessToken> {
         val currentToken = getStoredToken()
+        if (currentToken != null && currentToken.isExpired()) {
+            Napier.d { "Found token $currentToken but it was expired at ${Clock.System.now()}" }
+        }
         
         return when {
             // Valid token exists
@@ -50,6 +54,7 @@ class SpotifyAuthRepository(
             }
             // Fall back to new authentication
             else -> {
+                database.authsQueries.deleteToken()
                 _authState.value = AuthState.NotAuthenticated
                 return Result.failure(Exception("No valid token available"))
             }
@@ -73,21 +78,21 @@ class SpotifyAuthRepository(
 
         Napier.d { "Refreshing token with $refreshToken" }
 
-
         return authHandler.refreshToken(refreshToken)
             .onSuccess { token ->
-                saveToken(token)
+                saveToken(token, refreshToken)
                 _authState.value = AuthState.Authenticated(token)
             }
             .onFailure { error ->
+                database.authsQueries.deleteToken()
                 _authState.value = AuthState.Error(error.message ?: "Token refresh failed")
             }
     }
 
     // Database Operations
-    private fun saveToken(token: AccessToken) {
+    private fun saveToken(token: AccessToken, refreshToken: String = "") {
         val expiresAt = System.currentTimeMillis() + (token.expiresIn * 1000) - (60 * 1000)
-        Napier.d { "Saving token to database: $expiresAt ${System.currentTimeMillis()} ${token.expiresIn}" }
+        Napier.d { "Saving token to database with refresh token: ${token.refreshToken ?: refreshToken} ($expiresAt ${System.currentTimeMillis()} ${token.expiresIn})" }
         database.authsQueries.insertOrUpdateToken(
             Auths(
                 id = 1,
@@ -95,7 +100,7 @@ class SpotifyAuthRepository(
                 token_type = token.tokenType,
                 scope = token.scope,
                 expires_in = token.expiresIn,
-                refresh_token = token.refreshToken ?: "",
+                refresh_token = token.refreshToken ?: refreshToken,
                 expires_at = expiresAt
             )
         )

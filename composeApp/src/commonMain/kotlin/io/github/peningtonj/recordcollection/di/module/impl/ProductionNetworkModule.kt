@@ -130,10 +130,10 @@ class ProductionNetworkModule : NetworkModule {
 
     override fun provideSpotifyApi(authRepository: SpotifyAuthRepository): SpotifyApi {
         val spotifyClient = HttpClient(OkHttp) {
-            install(ContentNegotiation) { 
+            install(ContentNegotiation) {
                 json(jsonConfig)
             }
-            
+
 
             install(HttpRequestRetry) {
                 maxRetries = 3
@@ -141,16 +141,16 @@ class ProductionNetworkModule : NetworkModule {
                 retryOnExceptionIf { request, cause ->
                     println("🔄 Spotify Exception: ${cause::class.simpleName}: ${cause.message}")
                     cause.printStackTrace()
-                    
+
                     cause is kotlinx.coroutines.TimeoutCancellationException ||
-                    cause is java.net.SocketTimeoutException ||
-                    cause is java.io.IOException
+                            cause is java.net.SocketTimeoutException ||
+                            cause is java.io.IOException
                 }
-                
+
                 retryIf(maxRetries) { request, response ->
                     val isRateLimit = response.status == HttpStatusCode.TooManyRequests ||
-                                     response.status == HttpStatusCode.ServiceUnavailable
-                    
+                            response.status == HttpStatusCode.ServiceUnavailable
+
                     if (isRateLimit) {
                         val retryAfter = response.headers["Retry-After"]
                         val remaining = response.headers["X-RateLimit-Remaining"]
@@ -169,43 +169,45 @@ class ProductionNetworkModule : NetworkModule {
 
                     isRateLimit
                 }
-                
+
                 exponentialDelay(
                     base = 2.0,
                     maxDelayMs = 60_000,
                     randomizationMs = 2_000
                 )
-                
+
                 modifyRequest { request ->
                     request.header("User-Agent", "RecordCollection/1.0")
                 }
             }
-            
+
             // Add response validation for Spotify API
             HttpResponseValidator {
                 handleResponseExceptionWithRequest { exception, request ->
                     println("❌ Spotify API Exception for ${request.url}")
                     println("   Exception: ${exception::class.simpleName}: ${exception.message}")
-                    
+
                     when (exception) {
                         is kotlinx.serialization.SerializationException -> {
                             println("🔍 SPOTIFY SERIALIZATION ERROR:")
                             println("   Message: ${exception.message}")
                             exception.printStackTrace()
                         }
+
                         is kotlinx.serialization.MissingFieldException -> {
                             println("🔍 SPOTIFY MISSING FIELD ERROR:")
                             println("   Field: ${exception.message}")
                             println("   Request: ${request.method} ${request.url} ")
                             exception.printStackTrace()
                         }
+
                         else -> {
                             println("🔍 SPOTIFY OTHER ERROR:")
                             exception.printStackTrace()
                         }
                     }
                 }
-                
+
                 validateResponse { response ->
                     if (!response.status.isSuccess()) {
                         val responseBody = try {
@@ -213,13 +215,13 @@ class ProductionNetworkModule : NetworkModule {
                         } catch (e: Exception) {
                             "Unable to read response body: ${e.message}"
                         }
-                        
+
                         println("❌ Spotify API Error ${response.status.value} for ${response.request.url} (${response.request.method})")
                         println("   Response body: $responseBody")
                     }
                 }
             }
-            
+
             install(Auth) {
                 bearer {
                     loadTokens {
@@ -231,7 +233,7 @@ class ProductionNetworkModule : NetworkModule {
                             )
                         }
                     }
-                    
+
                     refreshTokens {
                         println("🔄 Refreshing Spotify token...")
                         val result = authRepository.ensureValidToken()
@@ -248,9 +250,22 @@ class ProductionNetworkModule : NetworkModule {
                             null
                         }
                     }
-                    
+
                     sendWithoutRequest { request ->
-                        request.url.host.contains("spotify.com", ignoreCase = true)
+                        // Only send to Spotify if we have a valid token
+                        if (request.url.host.contains("spotify.com", ignoreCase = true)) {
+                            val storedToken = authRepository.getStoredToken()
+                            val hasValidToken = storedToken?.access_token?.isNotEmpty() == true
+
+                            if (!hasValidToken) {
+                                println("⚠️ Blocking Spotify request - no valid token available")
+                                println("   Request: ${request.method} ${request.url}")
+                            }
+
+                            hasValidToken
+                        } else {
+                            false
+                        }
                     }
                 }
             }

@@ -105,6 +105,7 @@ fun SearchScreen(
                         Text(
                             "New Releases: ",
                             style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
                         AssistChip(

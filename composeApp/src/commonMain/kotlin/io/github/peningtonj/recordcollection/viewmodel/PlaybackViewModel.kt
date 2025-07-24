@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 const val PLAYBACK_ACTIVE_POLLING_DELAY = 1500L
-const val PLAYBACK_INACTIVE_POLLING_DELAY = 5000L
+const val PLAYBACK_INACTIVE_POLLING_DELAY = 8000L
 const val TRANSITIONING_POLLING_DELAY_MS = 150L
 
 class PlaybackViewModel(
@@ -178,6 +178,7 @@ class PlaybackViewModel(
                 updatePlaybackState()
 
                 _isSessionAppInitialized.value = true
+                playbackPoller.setPollingDelay(PLAYBACK_ACTIVE_POLLING_DELAY)
             }
         }
     }
@@ -252,7 +253,10 @@ class PlaybackViewModel(
         executePlaybackAction {
             val isPlaying = _playbackState.value?.isPlaying == true
             if (isPlaying) playbackRepository.pausePlayback()
-            else playbackRepository.resumePlayback()
+            else {
+                playbackRepository.resumePlayback()
+                playbackPoller.setPollingDelay(PLAYBACK_ACTIVE_POLLING_DELAY)
+            }
         }
     }
 
