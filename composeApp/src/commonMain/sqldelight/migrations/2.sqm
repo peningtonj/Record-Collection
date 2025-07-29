@@ -1,0 +1,4 @@
+CREATE TABLE collection_filters (
+  collection_name TEXT PRIMARY KEY NOT NULL,
+  filter TEXT NOT NULL
+);

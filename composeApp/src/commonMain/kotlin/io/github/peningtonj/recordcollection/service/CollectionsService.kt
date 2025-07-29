@@ -2,6 +2,7 @@ package io.github.peningtonj.recordcollection.service
 
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.filter.AlbumFilter
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
@@ -11,6 +12,10 @@ class CollectionsService(
     private val albumCollectionRepository: AlbumCollectionRepository,
     private val albumRepository: AlbumRepository,
     ) {
+
+    fun createCollectionFromFilter(filter: AlbumFilter, name: String) {
+        albumCollectionRepository.saveFilterCollection(name, filter)
+    }
     fun createCollectionFromAlbums(albums: List<Album>, name: String) {
         albumCollectionRepository.createCollection(name)
         albums.forEach { album ->

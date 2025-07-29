@@ -1,6 +1,10 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
 import Playlist
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
@@ -21,6 +25,10 @@ class CollectionImportViewModel(
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
+    private val _importSource  = MutableStateFlow<ImportSource?>(null)
+    val importSource: StateFlow<ImportSource?> = _importSource.asStateFlow()
+
+
     private val _userPlaylists = MutableStateFlow<List<Playlist>>(emptyList())
     val userPlaylists: StateFlow<List<Playlist>> = _userPlaylists.asStateFlow()
 
@@ -34,20 +42,25 @@ class CollectionImportViewModel(
         }
     }
 
+    fun setImportSource(source: ImportSource?) {
+        Napier.d { "Setting import source to $source" }
+        _importSource.value = source
+    }
+
     fun draftCollectionFromUrl(url: String) {
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             val response = collectionImportService.getResponseFromOpenAI(url)
-
             try {
                 val albums = collectionImportService.parseAlbumAndArtistResponse(response)
+                Napier.d { "Successfully found ${albums.size} albums" }
                 _uiState.value = UiState.AlbumsList(
 //                    openAiResponse = response,
                     albumNames = albums
                 )
-                _uiState.value = UiState.Idle
+//                _uiState.value = UiState.Idle
             } catch (e: Exception) {
-                _uiState.value = UiState.Error("Failed to parse response: $response")
+                _uiState.value = UiState.Error("Failed to parse response: $response: $e")
             }
         }
     }

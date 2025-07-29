@@ -61,11 +61,12 @@ fun CollectionsSection(
     var showPlaylistsDropdown by remember { mutableStateOf(false) }
     var collectionToRename by remember { mutableStateOf<AlbumCollection?>(null) }
     var collectionToDelete by remember { mutableStateOf<AlbumCollection?>(null) }
+
     // Use the same viewModel instance for both state and actions
     val collectionsUiState by viewModel.uiState.collectAsState()
     val currentFolder by viewModel.currentFolder.collectAsState()
-    var importSource by remember { mutableStateOf<ImportSource?>(null) }
 
+    val importSource by articleImportViewModel.importSource.collectAsState()
     val importUiState by articleImportViewModel.uiState.collectAsState()
     val userPlaylists by articleImportViewModel.userPlaylists.collectAsState()
     var collectionNameSuggestion by remember { mutableStateOf("") }
@@ -126,7 +127,7 @@ fun CollectionsSection(
                     onClick = {
                         showDropdown = false
                         showCollectionFromLinkDialog = true
-                        importSource = ImportSource.ARTICLE
+                        articleImportViewModel.setImportSource(ImportSource.ARTICLE)
                     },
                     enabled = settings.value.openAiApiKeyValid,
                 )
@@ -151,7 +152,7 @@ fun CollectionsSection(
                         showDropdown = false
                     },
                     playlistSelectAction = { playlist ->
-                        importSource = ImportSource.PLAYLIST
+                        articleImportViewModel.setImportSource(ImportSource.PLAYLIST)
                         articleImportViewModel.getAlbumsFromPlaylist(playlist.id)
                         collectionNameSuggestion = playlist.name
                         showImportCollectionDialog = true
@@ -159,7 +160,7 @@ fun CollectionsSection(
                     playlistByLinkAction = {
                         showDropdown = false
                         showCollectionFromLinkDialog = true
-                        importSource = ImportSource.PLAYLIST
+                        articleImportViewModel.setImportSource(ImportSource.PLAYLIST)
                     },
                     userPlaylists = userPlaylists
                 )
@@ -202,7 +203,6 @@ fun CollectionsSection(
         isVisible = showCollectionFromLinkDialog,
         onDismiss = {
             showCollectionFromLinkDialog = false
-            importSource = null
         },
         onConfirm = { input ->
             showImportCollectionDialog = true
@@ -219,6 +219,7 @@ fun CollectionsSection(
         isVisible = showImportCollectionDialog,
         onDismiss = { showImportCollectionDialog = false },
         onSearch = {
+            Napier.d { "Here with import source $importSource" }
             when (importSource) {
                 ImportSource.PLAYLIST -> {
                     Napier.d { "Shouldn't be here onSearch" }
