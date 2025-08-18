@@ -2,6 +2,8 @@
 
 This is an app which provides an alternative front end to Spotify, designed for listening to full albums.
 
+![Record Collection App Screenshot](screenshots/screenshot.png)
+
 ## Importing data into the app
 
 If you have albums saved to your library in Spotify, you can import your saved albums into the app with the _Sync with Spotify Saved Albums_ button.
