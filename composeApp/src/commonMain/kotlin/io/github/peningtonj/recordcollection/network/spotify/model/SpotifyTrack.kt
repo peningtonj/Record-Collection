@@ -66,6 +66,13 @@ data class TrackDto(
 )
 
 @Serializable
+data class SavedTrackDto(
+    @SerialName("added_at")
+    val addedAt: String,
+    val track: TrackDto
+)
+
+@Serializable
 data class LinkedTrackDto(
     @SerialName("external_urls")
     val externalUrls: Map<String, String>,

@@ -11,7 +11,11 @@ import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.put
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.URLBuilder
+import io.ktor.http.contentType
+import kotlinx.serialization.json.Json
 
 class UserApi(
     private val client: HttpClient,
@@ -32,6 +36,29 @@ class UserApi(
             parameters.append("ids", albumIds.joinToString(","))
         }.buildString()
         )
+    }
+
+    suspend fun saveTracksToLikedTracks(trackIds: List<String>) {
+        require(trackIds.size <= 50) { "Spotify API allows maximum 50 tracks per request" }
+
+        val url = "${SpotifyApi.BASE_URL}/me/tracks"
+
+        Napier.d("Saving tracks to liked tracks: ${trackIds.joinToString(",")}")
+
+        client.put(url) {
+            setBody(mapOf("ids" to trackIds)) // Send as object with "ids" field
+            contentType(ContentType.Application.Json)
+        }
+    }
+
+    suspend fun removeTracksFromLikedTracks(trackIds: List<String>) {
+        require(trackIds.size <= 50) { "Spotify API allows maximum 50 tracks per request" }
+
+        val url = URLBuilder("${SpotifyApi.BASE_URL}/me/tracks").apply {
+            parameters.append("ids", trackIds.joinToString(",")) // Comma-separated, not JSON array
+        }.buildString()
+
+        client.delete(url)
     }
 
     suspend fun getUserPlaylists(): Result<PaginatedResponse<SpotifyUserPlaylistDto>> = runCatching{

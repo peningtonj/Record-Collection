@@ -33,15 +33,18 @@ import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumAc
 import io.github.peningtonj.recordcollection.ui.components.filter.ActiveChips
 import io.github.peningtonj.recordcollection.ui.components.filter.HorizontalFilterBar
 import io.github.peningtonj.recordcollection.ui.components.filter.TextSearchBar
+import io.github.peningtonj.recordcollection.ui.components.library.SyncLibraryButton
 import io.github.peningtonj.recordcollection.ui.components.library.SyncLibraryUi
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
+import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.SyncState
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 import kotlinx.datetime.LocalDate
 
 @Composable
@@ -49,9 +52,11 @@ fun LibraryScreen(
     playbackViewModel: PlaybackViewModel,
     viewModel: LibraryViewModel = rememberLibraryViewModel(),
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
-    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel()
+    collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
+    settingsViewModel: SettingsViewModel = rememberSettingsViewModel(),
 ) {
     val syncState by viewModel.syncState.collectAsState()
+    val trackSyncState by viewModel.trackSyncState.collectAsState()
     val filteredAlbums by viewModel.filteredAlbums.collectAsState()
     val currentFilter by viewModel.currentFilter.collectAsState()
     val artists by viewModel.allArtists.collectAsState()
@@ -65,6 +70,7 @@ fun LibraryScreen(
         albumViewModel,
         viewModel,
         collectionsViewModel,
+        settings = settingsViewModel,
         navigator,
     )
 
@@ -93,15 +99,25 @@ fun LibraryScreen(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            SyncLibraryUi(
-                onClick = {
-                    viewModel.startSync()
-                },
-                syncState = syncState,
-                launchSync = { syncAction, removeDuplicates ->
-                    viewModel.launchSync(syncAction, removeDuplicates)
-                }
-            )
+            Column {
+                SyncLibraryUi(
+                    onClick = {
+                        viewModel.startSync()
+                    },
+                    syncState = syncState,
+                    launchSync = { syncAction, removeDuplicates ->
+                        viewModel.launchSync(syncAction, removeDuplicates)
+                    }
+                )
+
+                SyncLibraryButton(
+                    onClick = {
+                        viewModel.startTrackSync()
+                    },
+                    label = "Sync Tracks",
+                    syncState = trackSyncState
+                )
+            }
         }
 
         TextSearchBar(

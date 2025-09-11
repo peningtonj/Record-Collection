@@ -9,12 +9,14 @@ import io.github.peningtonj.recordcollection.db.domain.Tag
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen
+import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
+import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
 
 data class AlbumActions(
     val navigateToPage: (AlbumDetailUiState) -> Unit = {},
@@ -30,7 +32,8 @@ data class AlbumActions(
     val addToCollection: (AlbumDetailUiState, String) -> Unit = {_, _, -> },
     val addToNewCollection: (AlbumDetailUiState) -> Unit = {},
     val removeTag: (AlbumDetailUiState, String) -> Unit = {_, _ -> },
-    val addTag: (AlbumDetailUiState, Tag) -> Unit = {_, _ -> }
+    val addTag: (AlbumDetailUiState, Tag) -> Unit = {_, _ -> },
+    val addAllSongsToSavedSongs: (AlbumDetailUiState) -> Unit = {},
 )
 
 @Composable
@@ -39,11 +42,19 @@ fun rememberAlbumActions(
     albumViewModel: AlbumViewModel,
     libraryViewModel: LibraryViewModel,
     collectionsViewModel: CollectionsViewModel,
+    settings: SettingsViewModel,
     navigator: Navigator = LocalNavigator.current,
 ): AlbumActions {
     val rateAction: (AlbumDetailUiState, Int) -> Unit = remember(albumViewModel) {
         albumViewModel.let { vm ->
-            { album, rating -> vm.setRating(album.album.id, rating) }
+            {
+                album, rating -> vm.setRating(album.album.id, rating)
+                val settings = settings.settings.value
+
+                if (rating == 10 && settings.addTracksOnMaxRating) {
+                    libraryViewModel.addAllSongsFromAlbumToSavedSongs(album.album)
+                }
+            }
         }
     }
 
@@ -70,6 +81,9 @@ fun rememberAlbumActions(
             } else {
                 libraryViewModel.addAlbumToLibrary(album.album)
             }
+        },
+        addAllSongsToSavedSongs = {album ->
+            libraryViewModel.addAllSongsFromAlbumToSavedSongs(album.album)
         }
     )
 }

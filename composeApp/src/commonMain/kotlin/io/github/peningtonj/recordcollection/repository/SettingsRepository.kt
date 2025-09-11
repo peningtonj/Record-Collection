@@ -39,7 +39,7 @@ class SettingsRepository(private val settingsStorage: Settings) {
         // Implement library import logic
     }
 
-    private suspend fun saveToStorage(settings: SettingsState) {
+    private fun saveToStorage(settings: SettingsState) {
         settingsStorage.set("theme", settings.theme.name)
         settingsStorage.set("autoSync", settings.autoSync)
         settingsStorage.set("syncInterval", settings.syncInterval.name)
@@ -51,9 +51,10 @@ class SettingsRepository(private val settingsStorage: Settings) {
         settingsStorage.set("openAiApiKey", settings.openAiApiKey)
         settingsStorage.set("openAiApiKeyValid", settings.openAiApiKeyValid)
         settingsStorage.set("collectionAddToLibrary", Json.encodeToString(settings.collectionAddToLibrary))
+        settingsStorage.set("addTracksOnMaxRating", settings.addTracksOnMaxRating)
     }
 
-    private suspend fun loadFromStorage(): SettingsState {
+    private fun loadFromStorage(): SettingsState {
         val mapJson = settingsStorage.getStringOrNull("collectionAddToLibrary")
         val collectionAddToLibrary = mapJson?.let {
             runCatching {
@@ -72,7 +73,8 @@ class SettingsRepository(private val settingsStorage: Settings) {
             transitionTrack = settingsStorage.get("transitionTrack", true),
             openAiApiKey = settingsStorage.get("openAiApiKey", ""),
             openAiApiKeyValid = settingsStorage.get("openAiApiKeyValid", false),
-            collectionAddToLibrary = collectionAddToLibrary
+            collectionAddToLibrary = collectionAddToLibrary,
+            addTracksOnMaxRating = settingsStorage.get("addTracksOnMaxRating", false),
         )
     }
 }
@@ -89,6 +91,7 @@ data class SettingsState(
     val transitionTrack: Boolean = true,
     val openAiApiKey: String = "",
     val openAiApiKeyValid: Boolean = false,
+    val addTracksOnMaxRating: Boolean = false,
 )
 
 enum class SyncInterval(val displayName: String, val hours: Int) {

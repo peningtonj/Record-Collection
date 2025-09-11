@@ -41,10 +41,12 @@ import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
+import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberArtistDetailViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 
 @Composable
 fun ArtistDetailScreen(
@@ -54,6 +56,7 @@ fun ArtistDetailScreen(
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
     libraryViewModel: LibraryViewModel = rememberLibraryViewModel(),
     collectionsViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
+    settingsViewModel: SettingsViewModel = rememberSettingsViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -61,7 +64,8 @@ fun ArtistDetailScreen(
         playbackViewModel,
         albumViewModel = albumViewModel,
         libraryViewModel = libraryViewModel,
-        collectionsViewModel = collectionsViewModel
+        collectionsViewModel = collectionsViewModel,
+        settings = settingsViewModel
     )
 
     Column(

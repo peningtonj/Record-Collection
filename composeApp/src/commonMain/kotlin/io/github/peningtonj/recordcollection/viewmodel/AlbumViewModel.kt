@@ -35,8 +35,9 @@ class AlbumViewModel (
     private val _releaseGroupStatus = MutableStateFlow(ReleaseGroupStatus.Idle)
     val releaseGroupStatus = _releaseGroupStatus.asStateFlow()
 
-    fun setRating(albumId: String, rating: Int) =
+    fun setRating(albumId: String, rating: Int) {
         ratingRepository.addRating(albumId, rating.toLong())
+    }
 
     fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) {
         tagService.addTagToAlbum(

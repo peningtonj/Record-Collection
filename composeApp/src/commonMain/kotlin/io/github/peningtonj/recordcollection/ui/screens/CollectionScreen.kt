@@ -45,6 +45,7 @@ fun CollectionScreen(
         albumViewModel,
         libraryViewModel,
         collectionsViewModel,
+        settings = settingsViewModel,
         navigator,
     )
 

@@ -2,6 +2,7 @@ package io.github.peningtonj.recordcollection.service
 
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.db.domain.filter.AlbumFilter
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
@@ -10,6 +11,7 @@ import io.github.peningtonj.recordcollection.repository.ArtistRepository
 import io.github.peningtonj.recordcollection.repository.ProfileRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.repository.SettingsRepository
+import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.repository.SortOrder
 import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 import io.github.peningtonj.recordcollection.viewmodel.LibraryDifferences
@@ -23,7 +25,8 @@ class LibraryService(
     private val artistRepository: ArtistRepository,
     private val ratingRepository: RatingRepository,
     private val profileRepository: ProfileRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val trackRepository: TrackRepository
 ) {
     // Core data operations
     fun getAllAlbumsEnriched(): Flow<List<AlbumDisplayData>> = combine(
@@ -37,6 +40,7 @@ class LibraryService(
             AlbumDisplayData(it, 0, ratingsMap[it.id] ?: 0)
         }
     }
+
 
     fun getFilteredAlbums(filter: AlbumFilter): Flow<List<AlbumDisplayData>> =
         getAllAlbumsEnriched().map { albums ->
@@ -132,9 +136,10 @@ class LibraryService(
             .mapValues { it.value.size }
     }
 
-    suspend fun getLibraryDifferences() : LibraryDifferences {
+    suspend fun getLibraryDifferences(): LibraryDifferences {
         Napier.d("Starting library sync")
 
+        // Get album differences (existing code)
         val userSavedAlbums = profileRepository.fetchUserSavedAlbums().map { AlbumMapper.toDomain(it.album) }
         val localLibrary = albumRepository.getAllAlbumsInLibrary().first()
 
@@ -157,7 +162,7 @@ class LibraryService(
             userSavedAlbums = cleanedUserSavedAlbums,
             localLibrary = cleanedLocal,
             localDuplicates = localDuplicates,
-            userSavedAlbumsDuplicates = spotifyDuplicates
+            userSavedAlbumsDuplicates = spotifyDuplicates,
         )
     }
 
@@ -183,13 +188,14 @@ class LibraryService(
     }
 
     suspend fun applySync(differences: LibraryDifferences, action: SyncAction, removeDuplicates: Boolean = true) {
+        // Remove duplicates if requested
         if (removeDuplicates) {
-            Napier.d {"Removing duplicates"}
-            Napier.d {"Removing ${differences.localDuplicates.size} from local"}
+            Napier.d { "Removing duplicates" }
+            Napier.d { "Removing ${differences.localDuplicates.size} from local" }
             differences.localDuplicates.forEach { album ->
                 albumRepository.removeAlbumFromLibrary(album.id)
             }
-            Napier.d {"Removing ${differences.userSavedAlbumsDuplicates.size} from spotify"}
+            Napier.d { "Removing ${differences.userSavedAlbumsDuplicates.size} from spotify" }
             profileRepository.removeAlbumsFromSpotifyLibrary(differences.userSavedAlbumsDuplicates)
         }
 
@@ -204,7 +210,7 @@ class LibraryService(
         when (action) {
             SyncAction.Combine -> {
                 // Add Spotify-only albums to local library
-                println("Saving spotify only albums: ${spotifyOnlyAlbums.size}")
+                Napier.d { "Saving spotify only albums: ${spotifyOnlyAlbums.size}" }
                 batchArtistsThenSaveLocalAlbums(spotifyOnlyAlbums)
 
                 // Add local-only albums to Spotify library
@@ -212,7 +218,7 @@ class LibraryService(
             }
 
             SyncAction.Intersection -> {
-                println("Removing albums that are only in local library: ${localOnlyAlbums.size}")
+                Napier.d { "Removing albums that are only in local library: ${localOnlyAlbums.size}" }
                 localOnlyAlbums.forEach { album ->
                     albumRepository.removeAlbumFromLibrary(album.id)
                 }
@@ -224,19 +230,23 @@ class LibraryService(
             SyncAction.UseLocal -> {
                 profileRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums)
                 profileRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
+                
+                // Don't sync saved tracks in this case as we're using local only
             }
 
             SyncAction.UseSpotify -> {
-                println("Removing albums that are only in local library: ${localOnlyAlbums.size}")
+                Napier.d { "Removing albums that are only in local library: ${localOnlyAlbums.size}" }
                 localOnlyAlbums.forEach { album ->
                     albumRepository.removeAlbumFromLibrary(album.id)
                 }
 
-                println("Saving spotify only albums: ${spotifyOnlyAlbums.size}")
+                Napier.d { "Saving spotify only albums: ${spotifyOnlyAlbums.size}" }
                 batchArtistsThenSaveLocalAlbums(spotifyOnlyAlbums)
+
             }
         }
     }
+
     fun addAlbumToLibrary(album: Album) {
         albumRepository.addAlbumToLibrary(album.id)
     }
@@ -244,6 +254,46 @@ class LibraryService(
     fun removeAlbumFromLibrary(album: Album) {
         albumRepository.removeAlbumFromLibrary(album.id)
     }
+
+    suspend fun updateLibraryTracksFromSpotify() {
+        val remoteSavedTracks = trackRepository.fetchLibraryTracks()
+        val localSavedTracks = trackRepository.getSavedTracks().first()
+
+        val onlyLocal = localSavedTracks - remoteSavedTracks
+        val onlyRemote = remoteSavedTracks - localSavedTracks
+
+        Napier.d { "Updating library tracks from Spotify: ${onlyLocal.size} local, ${onlyRemote.size} remote" }
+
+        onlyLocal.forEach { track ->
+            trackRepository.removeTrackFromLibrary(track.id)
+        }
+
+        onlyRemote.forEach { track ->
+            trackRepository.addTrackToLibrary(track.id)
+        }
+    }
+
+    suspend fun saveTrackLocalAndRemote(trackId: String) {
+        trackRepository.saveTracksRemote(listOf(trackId))
+        trackRepository.addTrackToLibrary(trackId)
+    }
+    suspend fun removeTrackLocalAndRemote(trackId: String) {
+        trackRepository.removeTracksRemote(listOf(trackId))
+        trackRepository.removeTrackFromLibrary(trackId)
+    }
+
+    suspend fun addAllSongsFromAlbumToSavedSongs(album: Album) {
+        val tracks = trackRepository.getTracksForAlbum(album.id).first()
+        Napier.d { "Adding ${tracks.size} tracks to saved songs" }
+        trackRepository.saveTracksRemote(
+            tracks.map { it.id }
+        )
+        trackRepository.saveTracksLocalAndRemote(
+            tracks.map { it.id }
+        )
+
+    }
+
 }
 
 data class LibraryStats(

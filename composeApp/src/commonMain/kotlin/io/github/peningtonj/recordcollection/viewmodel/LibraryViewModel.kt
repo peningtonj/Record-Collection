@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.db.domain.filter.AlbumFilter
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
@@ -38,6 +39,9 @@ class LibraryViewModel(
 ) : ViewModel() {
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val syncState = _syncState.asStateFlow()
+
+    private val _trackSyncState = MutableStateFlow<SyncState>(SyncState.Idle)
+    val trackSyncState = _trackSyncState.asStateFlow()
 
     // Load saved filter state on initialization
     private val _currentFilter = MutableStateFlow(loadSavedFilter())
@@ -162,6 +166,28 @@ class LibraryViewModel(
                 Napier.d { "Tried to start a sync with ${_syncState.value}" }
             }
         }
+
+    fun startTrackSync() =
+        viewModelScope.launch {
+            _trackSyncState.value = SyncState.Syncing
+            libraryService.updateLibraryTracksFromSpotify()
+            _trackSyncState.value = SyncState.Idle
+    }
+
+    fun saveTrack(trackId: String) =
+        viewModelScope.launch {
+            libraryService.saveTrackLocalAndRemote(trackId)
+        }
+
+    fun removeTrack(trackId: String) =
+        viewModelScope.launch {
+            libraryService.removeTrackLocalAndRemote(trackId)
+        }
+
+    fun addAllSongsFromAlbumToSavedSongs(album: Album) =
+        viewModelScope.launch {
+            libraryService.addAllSongsFromAlbumToSavedSongs(album)
+        }
 }
 
 sealed class SyncState {
@@ -174,6 +200,7 @@ sealed class SyncState {
     data class Error(val message: String) : SyncState()
 }
 
+
 data class LibraryDifferences(
     val localCount: Int,
     val spotifyCount: Int,
@@ -183,5 +210,5 @@ data class LibraryDifferences(
     val userSavedAlbums: List<Album>,
     val localLibrary: List<Album>,
     val localDuplicates: List<Album>,
-    val userSavedAlbumsDuplicates: List<Album>
+    val userSavedAlbumsDuplicates: List<Album>,
 )

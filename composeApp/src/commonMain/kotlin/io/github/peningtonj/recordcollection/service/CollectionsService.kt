@@ -13,9 +13,6 @@ class CollectionsService(
     private val albumRepository: AlbumRepository,
     ) {
 
-    fun createCollectionFromFilter(filter: AlbumFilter, name: String) {
-        albumCollectionRepository.saveFilterCollection(name, filter)
-    }
     fun createCollectionFromAlbums(albums: List<Album>, name: String) {
         albumCollectionRepository.createCollection(name)
         albums.forEach { album ->

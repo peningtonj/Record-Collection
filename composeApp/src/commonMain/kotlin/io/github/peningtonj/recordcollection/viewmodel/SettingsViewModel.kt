@@ -56,6 +56,13 @@ class SettingsViewModel(
         }
     }
 
+    fun toggleAddTracksOnMaxRating() {
+        viewModelScope.launch {
+            val currentSettings = settings.value
+            settingsRepository.updateSettings(currentSettings.copy(addTracksOnMaxRating = !currentSettings.addTracksOnMaxRating))
+        }
+    }
+
 
     fun toggleTransitionTrack() {
         viewModelScope.launch {

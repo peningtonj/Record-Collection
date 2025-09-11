@@ -39,7 +39,7 @@ object TrackMapper {
             trackNumber = 0,
             discNumber = 0,
             albumId = entity.album.id,
-            spotifyUri = entity.uri
+            spotifyUri = entity.uri,
         )
     }
 
@@ -55,7 +55,7 @@ object TrackMapper {
             trackNumber = entity.trackNumber.toLong(),
             discNumber = entity.discNumber.toLong(),
             albumId = album.id,
-            spotifyUri = entity.uri
+            spotifyUri = entity.uri,
         )
     }
 
@@ -71,7 +71,8 @@ object TrackMapper {
             discNumber = entity.disc_number,
             isExplicit = entity.is_explicit == 1L,
             albumId = entity.album_id,
-            spotifyUri = entity.spotify_uri
+            spotifyUri = entity.spotify_uri,
+            isSaved = entity.is_saved == 1L,
         )
     }
 

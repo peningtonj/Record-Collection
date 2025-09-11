@@ -177,6 +177,10 @@ fun AlbumHeader(
                 },
                 createCollectionWithAlbum = { albumActions.addToNewCollection(albumDetailUiState) }
             )
+
+            AddAllToSavedSongsButton(
+                onClick = { albumActions.addAllSongsToSavedSongs(albumDetailUiState) }
+            )
         }
 
         TagsSection(albumDetailUiState,
@@ -189,6 +193,25 @@ fun AlbumHeader(
     }
 }
 
+@Composable
+fun AddAllToSavedSongsButton(
+    onClick: () -> Unit,
+) {
+    AssistChip(
+        onClick = onClick,
+        label = {
+            Text("Add All to Saved Songs")
+        },
+        trailingIcon = {
+            Icon(
+                Icons.Default.Favorite,
+                contentDescription = null,
+                modifier = Modifier.size(AssistChipDefaults.IconSize)
+
+            )
+        }
+    )
+}
 
 @Composable
 fun AddToLibraryButton(

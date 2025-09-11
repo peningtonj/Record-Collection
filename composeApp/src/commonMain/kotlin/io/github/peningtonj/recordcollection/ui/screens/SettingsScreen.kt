@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -25,9 +22,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -96,6 +91,16 @@ fun SettingsScreen(
                 Switch(
                     checked = settings.defaultOnAddToCollection,
                     onCheckedChange = { viewModel.toggleDefaultOnAddToCollection() }
+                )
+            }
+
+            SettingsRow(
+                title = "Save all tracks on 4.5+ ratings",
+                subtitle = "Auto add tracks for favourite albums"
+            ) {
+                Switch(
+                    checked = settings.addTracksOnMaxRating,
+                    onCheckedChange = { viewModel.toggleAddTracksOnMaxRating() }
                 )
             }
         }

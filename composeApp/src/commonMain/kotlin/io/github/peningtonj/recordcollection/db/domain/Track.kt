@@ -12,4 +12,5 @@ data class Track(
     val durationMs: Long,
     val imageUrl: String? = null,
     val spotifyUri: String,
+    val isSaved: Boolean = false,
 )

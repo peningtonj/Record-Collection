@@ -13,6 +13,7 @@ import io.github.peningtonj.recordcollection.network.spotify.model.PlaybackTrack
 import io.github.peningtonj.recordcollection.network.spotify.model.PlaylistItemWrapper
 import io.github.peningtonj.recordcollection.network.spotify.model.PlaylistTracks
 import io.github.peningtonj.recordcollection.network.spotify.model.SavedAlbumDto
+import io.github.peningtonj.recordcollection.network.spotify.model.SavedTrackDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedTrackDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyPlaylistDto
@@ -68,6 +69,14 @@ class LibraryApi(
         client.get(url).body()
     }
 
+    suspend fun getUsersSavedTracks(limit: Int = 50, offset: Int = 0): Result<PaginatedResponse<SavedTrackDto>> = runCatching {
+        val url = URLBuilder("${SpotifyApi.BASE_URL}/me/tracks").apply {
+            parameters.append("limit", limit.toString())
+            parameters.append("offset", offset.toString())
+        }.buildString()
+
+        client.get(url).body()
+    }
     suspend fun getArtistsAlbums(
         request: AristAlbumsRequest
     ): Result<PaginatedResponse<SimplifiedAlbumDto>> = runCatching {

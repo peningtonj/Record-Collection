@@ -61,7 +61,8 @@ fun SyncLibraryUi(
             alertVisible = true
             onClick()
         },
-        syncState
+        syncState = syncState,
+        label = "Sync with Spotify Albums",
     )
 
     if (alertVisible) {
@@ -77,13 +78,15 @@ fun SyncLibraryUi(
     }
 }
 
+// Update the AssistChip label in SyncLibraryButton
 @Composable
 fun SyncLibraryButton(
     onClick: () -> Unit,
-    syncState: SyncState
-) {
+    syncState: SyncState,
+    label: String,
+    ) {
     AssistChip(
-        onClick =  onClick,
+        onClick = onClick,
         trailingIcon = {
             when (syncState) {
                 SyncState.Syncing -> {
@@ -92,18 +95,16 @@ fun SyncLibraryButton(
                         modifier = Modifier.size(AssistChipDefaults.IconSize)
                     )
                 }
-
                 else -> {
                     Icon(
                         Icons.Default.Refresh,
                         contentDescription = null,
                         modifier = Modifier.size(AssistChipDefaults.IconSize)
                     )
-
                 }
             }
         },
-        label = { Text("Sync with Spotify Saved Albums") },
+        label = { Text(label) },
     )
 }
 @Composable
@@ -281,6 +282,13 @@ private fun LibraryDifferencesCard(differences: LibraryDifferences) {
                 fontWeight = FontWeight.Medium
             )
 
+            // Albums section
+            Text(
+                text = "Albums",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
             DifferenceRow(
                 icon = Icons.Default.LibraryMusic,
                 label = "Local Library",
@@ -322,12 +330,20 @@ private fun LibraryDifferencesCard(differences: LibraryDifferences) {
                 )
             }
 
+
+
             // Show duplicates if any exist
             val totalDuplicates = differences.localDuplicates.size + differences.userSavedAlbumsDuplicates.size
             if (totalDuplicates > 0) {
                 HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 4.dp),
+                    modifier = Modifier.padding(vertical = 8.dp),
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                )
+
+                Text(
+                    text = "Duplicates",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 if (differences.localDuplicates.isNotEmpty()) {

@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.navigation.*
-import io.github.peningtonj.recordcollection.repository.Theme
 import io.github.peningtonj.recordcollection.ui.components.navigation.NavigationPanel
 import io.github.peningtonj.recordcollection.ui.components.playback.PlaybackBar
 import io.github.peningtonj.recordcollection.ui.screens.AlbumScreen
@@ -34,7 +33,16 @@ import io.github.peningtonj.recordcollection.ui.screens.SettingsScreen
 import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberSearchViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.runtime.collectAsState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordCollectionApp(
     navigator: Navigator,
@@ -48,83 +56,114 @@ fun RecordCollectionApp(
     RecordCollectionTheme(
         viewModel = settingsViewModel
     ) {
+        CompositionLocalProvider(LocalNavigator provides navigator) {
+            AuthNavigationWrapper {
+                var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
 
-    CompositionLocalProvider(LocalNavigator provides navigator) {
-        AuthNavigationWrapper {
-            var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
-
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Main content area with navigation
-                Row(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Add TopAppBar here, only show when not on login screen
                     if (currentScreen != Screen.Login) {
-                        NavigationPanel(
-                            navigator = navigator,
-                            currentScreen = currentScreen,
-                            modifier = Modifier
-                                .widthIn(min = 100.dp, max = 300.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                        )
+                        TopAppBar(
+                            title = { 
+                                Text(
+                                    when (currentScreen) {
+                                        Screen.Library -> "Library"
+                                        Screen.Search -> "Search"
+                                        Screen.Profile -> "Profile"
+                                        Screen.Settings -> "Settings"
+                                        is Screen.Album -> "Album Details"
+                                        is Screen.Artist -> "Artist Details"
+                                        is Screen.Collection -> "Collection"
+                                        else -> ""
+                                    }
+                                )
+                            },
+                            navigationIcon = {
+                                val canNavigateBack by navigator.canNavigateBack.collectAsState()
 
-                        // Vertical divider
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(1.dp),
+                                IconButton(onClick = { navigator.navigateBack() },
+                                        enabled = canNavigateBack
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = "Navigate back"
+                                        )
+                                    }
+                                }
                         )
                     }
 
-                    // Main content area
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        NavigationHost(
-                            startScreen = Screen.Login,
-                            navigator = navigator
-                        ) { screen ->
-                            Napier.d("NavigationHost rendering screen: $screen")
-                            currentScreen = screen // Update current screen state
+                    // Your existing Row with navigation and content
+                    Row(modifier = Modifier.weight(1f)) {
+                        if (currentScreen != Screen.Login) {
+                            NavigationPanel(
+                                navigator = navigator,
+                                currentScreen = currentScreen,
+                                modifier = Modifier
+                                    .widthIn(min = 100.dp, max = 300.dp)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                            )
 
-                            when (screen) {
-                                Screen.Login -> LoginScreen()
-                                Screen.Profile -> ProfileScreen()
-                                Screen.Settings -> SettingsScreen()
-                                Screen.Library -> LibraryScreen(
-                                    playbackViewModel = playbackViewModel
-                                )
+                            // Vertical divider
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(1.dp),
+                            )
+                        }
 
-                                Screen.Search -> SearchScreen(
-                                    playbackViewModel = playbackViewModel,
-                                    viewModel = searchViewModel
-                                )
+                        // Main content area
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            NavigationHost(
+                                startScreen = Screen.Login,
+                                navigator = navigator
+                            ) { screen ->
+                                Napier.d("NavigationHost rendering screen: $screen")
+                                currentScreen = screen // Update current screen state
 
-                                is Screen.Album -> AlbumScreen(
-                                    albumId = screen.albumId,
-                                    playbackViewModel = playbackViewModel
-                                )
+                                when (screen) {
+                                    Screen.Login -> LoginScreen()
+                                    Screen.Profile -> ProfileScreen()
+                                    Screen.Settings -> SettingsScreen()
+                                    Screen.Library -> LibraryScreen(
+                                        playbackViewModel = playbackViewModel
+                                    )
 
-                                is Screen.Artist -> ArtistDetailScreen(
-                                    artistId = screen.artistId,
-                                    playbackViewModel = playbackViewModel
-                                )
+                                    Screen.Search -> SearchScreen(
+                                        playbackViewModel = playbackViewModel,
+                                        viewModel = searchViewModel
+                                    )
 
-                                is Screen.Collection -> CollectionScreen(
-                                    collectionName = screen.collectionName,
-                                    playbackViewModel = playbackViewModel
-                                )
+                                    is Screen.Album -> AlbumScreen(
+                                        albumId = screen.albumId,
+                                        playbackViewModel = playbackViewModel
+                                    )
+
+                                    is Screen.Artist -> ArtistDetailScreen(
+                                        artistId = screen.artistId,
+                                        playbackViewModel = playbackViewModel
+                                    )
+
+                                    is Screen.Collection -> CollectionScreen(
+                                        collectionName = screen.collectionName,
+                                        playbackViewModel = playbackViewModel
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                // Playback bar at the bottom spanning full width
-                if (currentScreen != Screen.Login) {
-                    PlaybackBar(playbackViewModel)
+                    // Your existing PlaybackBar
+                    if (currentScreen != Screen.Login) {
+                        PlaybackBar(playbackViewModel)
+                    }
                 }
             }
         }
-    }
     }
 }

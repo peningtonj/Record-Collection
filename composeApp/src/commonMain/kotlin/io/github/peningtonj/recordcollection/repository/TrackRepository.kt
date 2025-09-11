@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 
 class TrackRepository(
     private val database: RecordCollectionDatabase,
@@ -26,6 +27,7 @@ class TrackRepository(
             .map { it.map { track -> TrackMapper.toDomain(track, null) } }
     }
 
+
     suspend fun checkAndUpdateTracksIfNeeded(albumId: String) {
         Napier.d("Checking if tracks exist for album $albumId")
         val tracksExist = database.tracksQueries
@@ -38,6 +40,15 @@ class TrackRepository(
         }
     }
 
+    suspend fun fetchLibraryTracks(): List<Track> {
+        val savedTracksResult =  spotifyApi.library.getUsersSavedTracks()
+        return savedTracksResult.getOrNull()
+            ?.getAllItems { nextUrl ->
+                spotifyApi.library.getNextPaginated(nextUrl)
+            }
+            ?.getOrNull()
+            ?.map { track -> TrackMapper.toDomain(track.track) } ?: emptyList()
+    }
     suspend fun fetchTracksForAlbum(album: Album): List<Track> {
         Napier.d("Fetching tracks for album ${album.id}")
         return spotifyApi.library.getAlbumTracks(album.id)
@@ -71,6 +82,7 @@ class TrackRepository(
                             is_explicit = if (track.explicit) 1 else 0,
                             disc_number = track.discNumber.toLong(),
                             popularity = null,
+                            is_saved = 0
                         )
                     }
                 }
@@ -79,4 +91,35 @@ class TrackRepository(
                 Napier.e("Failed to fetch tracks for album $albumId", error)
             }
     }
+
+    suspend fun saveTracksLocalAndRemote(trackIds: List<String>) {
+        saveTracksRemote(trackIds)
+        trackIds.forEach { trackId ->
+            addTrackToLibrary(trackId)
+        }
+    }
+
+    fun addTrackToLibrary(trackId: String) {
+        database.tracksQueries.updateInLibraryStatus(1, trackId)
+    }
+
+    suspend fun saveTracksRemote(trackIds: List<String>) {
+        spotifyApi.user.saveTracksToLikedTracks(trackIds)
+    }
+
+    suspend fun removeTracksRemote(trackIds: List<String>) {
+        spotifyApi.user.removeTracksFromLikedTracks(trackIds)
+    }
+
+    fun getSavedTracks(): Flow<List<Track>> = database.tracksQueries
+            .getSavedTracks()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { it.map { track -> TrackMapper.toDomain(track, null) } }
+
+
+    fun removeTrackFromLibrary(trackId: String) {
+        database.tracksQueries.updateInLibraryStatus(0, trackId)
+    }
+
 }

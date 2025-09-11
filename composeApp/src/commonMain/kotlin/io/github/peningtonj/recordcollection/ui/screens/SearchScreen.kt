@@ -44,6 +44,7 @@ import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberSearchViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -61,6 +62,7 @@ fun SearchScreen(
         rememberAlbumViewModel(),
         rememberLibraryViewModel(),
         rememberCollectionsViewModel(),
+        settings = rememberSettingsViewModel(),
         LocalNavigator.current,
     )
 

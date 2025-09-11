@@ -20,6 +20,9 @@ class DesktopNavigator : Navigator {
         Napier.d("DesktopNavigator initialized with Login screen")
     }
 
+    private val _canNavigateBack = MutableStateFlow(false)
+    override val canNavigateBack: StateFlow<Boolean> = _canNavigateBack.asStateFlow()
+
     override fun navigate(event: NavigationEvent) {
         Napier.d("Navigation event received: $event")
         when (event) {
@@ -46,5 +49,7 @@ class DesktopNavigator : Navigator {
                 }
             }
         }
+        _canNavigateBack.value = _backStack.value.size > 1
+
     }
 }

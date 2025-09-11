@@ -1,8 +1,10 @@
 package io.github.peningtonj.recordcollection.db
 
+import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import java.io.File
+import java.sql.SQLException
 
 actual class DatabaseDriver {
     fun getDbPath(): String {
@@ -19,6 +21,26 @@ actual class DatabaseDriver {
             File(it).parentFile.mkdirs()
         }
     }
+
+    private fun setUserVersion(driver: SqlDriver, version: Long) {
+        driver.execute(null, "PRAGMA user_version = $version;", 0)
+    }
+
+    private fun getCurrentVersion(driver: JdbcSqliteDriver): Long {
+        return try {
+            driver.executeQuery(
+                identifier = null,
+                sql = "PRAGMA user_version;",
+                parameters = 0,
+                mapper = { cursor ->
+                    cursor.next()
+                    QueryResult.Value(cursor.getLong(0))
+                }
+            ).value ?: 0L
+        } catch (e: Exception) {
+            0L
+        }
+    }
     actual fun createDriver(): SqlDriver {
         val dbPath = getDbPath()
         val dbFile = File(dbPath)
@@ -32,6 +54,17 @@ actual class DatabaseDriver {
             RecordCollectionDatabase.Schema.create(driver)
         }
 
+        val dbVersion = getCurrentVersion(driver)
+        val schemaVersion = RecordCollectionDatabase.Schema.version
+        if (schemaVersion > dbVersion) {
+            println("Migrating database from version ${RecordCollectionDatabase.Schema.version} to $dbVersion")
+            RecordCollectionDatabase.Schema.migrate(
+                driver,
+                dbVersion,
+                schemaVersion,
+            )
+            setUserVersion(driver, schemaVersion)
+        }
         return driver
     }
 }

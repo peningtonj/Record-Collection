@@ -11,8 +11,27 @@ CREATE TABLE tracks (
     spotify_uri TEXT NOT NULL,
     preview_url TEXT,
     popularity INTEGER,
+    is_saved INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY(album_id) REFERENCES albums(id)
 );
+
+-- Add these new queries:
+
+-- Update track's saved status
+updateSavedStatus:
+UPDATE tracks
+SET is_saved = :isSaved
+WHERE id = :trackId;
+
+-- Get saved status for a track
+getSavedStatus:
+SELECT is_saved FROM tracks
+WHERE id = :trackId;
+
+-- Get all saved tracks
+getSavedTracks:
+SELECT * FROM tracks
+WHERE is_saved = 1;
 
 -- Select all tracks ordered by when they were added
 selectAll:
@@ -33,8 +52,9 @@ INSERT OR REPLACE INTO tracks(
     disc_number,
     spotify_uri,
     preview_url,
-    popularity
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    popularity,
+    is_saved
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- Delete all tracks
 deleteAll:
@@ -59,4 +79,10 @@ WHERE primary_artist = :artist;
 countTracksForAlbum:
 SELECT count(*) FROM tracks
 WHERE album_id = :albumId;
+
+updateInLibraryStatus:
+UPDATE tracks
+SET is_saved = :is_saved
+WHERE id = :id;
+
 

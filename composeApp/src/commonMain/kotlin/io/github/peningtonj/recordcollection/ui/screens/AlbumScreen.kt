@@ -31,9 +31,11 @@ import io.github.peningtonj.recordcollection.ui.components.tag.AddTagDialog
 import io.github.peningtonj.recordcollection.viewmodel.AlbumDetailViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
+import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumDetailViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 
 
 @Composable
@@ -43,7 +45,8 @@ fun AlbumScreen(
     viewModel: AlbumDetailViewModel = rememberAlbumDetailViewModel(albumId),
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
     collectionViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
-    libraryViewModel: LibraryViewModel = rememberLibraryViewModel()
+    libraryViewModel: LibraryViewModel = rememberLibraryViewModel(),
+    settingsViewModel: SettingsViewModel = rememberSettingsViewModel(),
 ) {
     LaunchedEffect(albumId) {
         viewModel.loadAlbum()
@@ -62,6 +65,7 @@ fun AlbumScreen(
         albumViewModel = albumViewModel,
         libraryViewModel = libraryViewModel,
         collectionsViewModel = collectionViewModel,
+        settings = settingsViewModel,
         navigator = navigator
     )
 
@@ -136,6 +140,12 @@ fun AlbumScreen(
                     },
                     isPlaying = { track ->
                             playbackState?.track?.id == track.id && playbackState?.isPlaying == true
+                    },
+                    onAddToLibraryClick = { track ->
+                        libraryViewModel.saveTrack(track.id)
+                    },
+                    onRemoveFromLibraryClick = { track ->
+                        libraryViewModel.removeTrack(track.id)
                     }
                 )
 

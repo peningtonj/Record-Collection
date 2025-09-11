@@ -15,6 +15,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.getValue
@@ -28,7 +29,9 @@ fun TrackListing(
     onPauseClick: () -> Unit,
     modifier: Modifier = Modifier,
     isPlaying: (Track) -> Boolean = { false },
-) {
+    onAddToLibraryClick: (Track) -> Unit = {},
+    onRemoveFromLibraryClick: (Track) -> Unit = {},
+    ) {
     // Group tracks by disc number
     val tracksByDisc = tracks.groupBy { it.discNumber }.toSortedMap()
     val hasMultipleDiscs = tracksByDisc.size > 1
@@ -58,7 +61,10 @@ fun TrackListing(
                     track = track,
                     onPlayClick = onPlayClick,
                     isPlaying = isPlaying,
-                    onPauseClick = onPauseClick
+                    onPauseClick = onPauseClick,
+                    onAddToLibraryClick = onAddToLibraryClick,
+                    onRemoveFromLibraryClick = onRemoveFromLibraryClick,
+
                 )
             }
         }
@@ -133,7 +139,9 @@ fun TrackListingItem(
     modifier: Modifier = Modifier,
     isPlaying: (Track) -> Boolean = { false },
     onPlayClick: (Track) -> Unit = {},
-    onPauseClick: () -> Unit = {}
+    onPauseClick: () -> Unit = {},
+    onAddToLibraryClick: (Track) -> Unit = {},
+    onRemoveFromLibraryClick: (Track) -> Unit = {},
 ) {
 
     val interactionSource = remember { MutableInteractionSource() }
@@ -148,6 +156,27 @@ fun TrackListingItem(
         verticalAlignment = Alignment.CenterVertically,
 
     ) {
+        if (track.isSaved) {
+            IconButton(
+                onClick = { onRemoveFromLibraryClick(track) },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = "Saved",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        } else {
+            IconButton(
+                onClick = { onAddToLibraryClick(track) },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = "Not Saved",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                )
+            }
+        }
         // Track number
         Box(
             modifier = Modifier.width(24.dp),
