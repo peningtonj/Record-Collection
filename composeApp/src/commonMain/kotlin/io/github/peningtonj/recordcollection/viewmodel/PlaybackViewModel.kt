@@ -33,9 +33,11 @@ class PlaybackViewModel(
     private val queueManager: PlaybackQueueService,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
-
     private val _currentSession = MutableStateFlow<PlaybackQueueService.QueueSession?>(null)
     val currentSession: StateFlow<PlaybackQueueService.QueueSession?> = _currentSession.asStateFlow()
+
+    private val _differentPlaybackCount = MutableStateFlow(0)
+    val differentPlaybackCount: StateFlow<Int> = _differentPlaybackCount.asStateFlow()
 
     private val _playbackState = MutableStateFlow<Playback?>(null)
     val playbackState: StateFlow<Playback?> = _playbackState.asStateFlow()
@@ -76,15 +78,23 @@ class PlaybackViewModel(
 
     private suspend fun handleQueueTransitions(playback: Playback?) {
         val session = _currentSession.value
-//        if (
-//            _isSessionAppInitialized.value &&
-//            session != null &&
-//            playback?.track?.album?.id != session.album.id &&
-//            playback?.track?.spotifyUri != session.transitionTrackUri
-//        ) {
-//            Napier.d("Not a local session because ${playback?.track?.album?.id} != ${session.album.id}")
-//            _isSessionAppInitialized.value = false
-//        }
+        if (
+            _isSessionAppInitialized.value &&
+            session != null &&
+            playback?.track?.album?.id != session.album.id &&
+            playback?.track?.album?.id != null &&
+            playback.track.spotifyUri != session.transitionTrackUri
+        ) {
+            Napier.d("Not a local session because ${playback.track.album.id} != ${session.album.id}")
+            _differentPlaybackCount.value += 1
+
+            if (differentPlaybackCount.value > 3) {
+                _isSessionAppInitialized.value = false
+                _currentSession.value = null
+            }
+        } else {
+            _differentPlaybackCount.value = 0
+        }
 
         if (_isSessionAppInitialized.value && session != null) {
             // Check for transition track addition
@@ -96,7 +106,6 @@ class PlaybackViewModel(
             }
 
             if (queueManager.albumEnding(session, playback, transitionTime)) {
-//                Napier.d("Within the transition time")
                 if (settings.transitionTrack) {
                     addTransitionTrack(session)
                 } else {

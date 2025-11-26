@@ -23,7 +23,8 @@ class PlaybackQueueService(
         val queue: List<AlbumDetailUiState> = emptyList(),
         val transitionTrackUri: String = "spotify:track:6xXAl2w0mqyxsRB8ak2S7N",
         val playingFrom: AlbumCollection? = null,
-        val isShuffled: Boolean
+        val isShuffled: Boolean,
+        val playbackDifferenceCount: Int = 0,
     )
 
     fun isLastTrackInAlbum(session: QueueSession?, playback: Playback?): Boolean {
