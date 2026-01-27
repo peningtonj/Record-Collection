@@ -14,6 +14,18 @@ import kotlinx.serialization.json.Json
 
 object AlbumMapper {
 
+    /**
+     * Generate a stable ID from album name and artist.
+     * This ensures that albums with the same name and artist always get the same ID,
+     * even if Spotify changes their internal IDs.
+     */
+    private fun generateAlbumId(name: String, artist: String): String {
+        return "${name.lowercase().trim()}|${artist.lowercase().trim()}"
+            .hashCode()
+            .toString(36)
+            .replace("-", "0") // Ensure positive IDs
+    }
+
     fun toDomain(entity: Albums): Album {
         return Album(
             id = entity.id,
@@ -36,10 +48,11 @@ object AlbumMapper {
     }
 
     fun toDomain(entity: AlbumDto): Album {
+        val primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist"
         return Album(
-            id = entity.id,
+            id = generateAlbumId(entity.name, primaryArtist),
             name = entity.name,
-            primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist",
+            primaryArtist = primaryArtist,
             artists = entity.artists.map { ArtistMapper.toDomain(it) },
             releaseDate = parseReleaseDate(entity.releaseDate),
             totalTracks = entity.totalTracks,
@@ -52,10 +65,11 @@ object AlbumMapper {
     }
     
     fun toDomain(entity: SimplifiedAlbumDto): Album {
+        val primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist"
         return Album(
-            id = entity.id,
+            id = generateAlbumId(entity.name, primaryArtist),
             name = entity.name,
-            primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist",
+            primaryArtist = primaryArtist,
             artists = entity.artists.map { ArtistMapper.toDomain(it) },
             releaseDate = parseReleaseDate(entity.releaseDate),
             totalTracks = entity.totalTracks,
