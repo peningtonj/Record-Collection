@@ -1,0 +1,7 @@
+-- Migration 1: Change albums to use composite primary key (name, primary_artist) instead of spotify_id
+-- This handles cases where Spotify changes album IDs
+
+-- Note: This migration is handled programmatically in AlbumKeyMigration.kt
+-- because SQLite doesn't support complex migrations easily through ALTER statements.
+-- SQLDelight will track this version number but the actual migration logic
+-- is in the Kotlin migration class.

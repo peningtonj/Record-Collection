@@ -34,6 +34,13 @@ class ProductionNetworkModule : NetworkModule {
     
     override fun provideHttpClient(): HttpClient {
         return httpClient ?: HttpClient(OkHttp) {
+            // Configure timeouts
+            install(HttpTimeout) {
+                requestTimeoutMillis = 30_000  // 30 seconds for the entire request
+                connectTimeoutMillis = 10_000  // 10 seconds to establish connection
+                socketTimeoutMillis = 30_000   // 30 seconds for socket read/write
+            }
+            
             install(ContentNegotiation) { 
                 json(jsonConfig)
             }
@@ -130,6 +137,13 @@ class ProductionNetworkModule : NetworkModule {
 
     override fun provideSpotifyApi(authRepository: SpotifyAuthRepository): SpotifyApi {
         val spotifyClient = HttpClient(OkHttp) {
+            // Configure timeouts for Spotify API
+            install(HttpTimeout) {
+                requestTimeoutMillis = 30_000  // 30 seconds for the entire request
+                connectTimeoutMillis = 10_000  // 10 seconds to establish connection
+                socketTimeoutMillis = 30_000   // 30 seconds for socket read/write
+            }
+            
             install(ContentNegotiation) {
                 json(jsonConfig)
             }

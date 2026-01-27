@@ -16,6 +16,7 @@ import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
+import io.github.peningtonj.recordcollection.util.LoggingUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -36,6 +37,10 @@ class AlbumRepository(
      * DATABASE OPERATIONS
      */
     fun saveAlbum(album: AlbumDto, addToUsersLibrary: Boolean = true) {
+        LoggingUtils.d(
+            LoggingUtils.Category.REPOSITORY,
+            "Saving album: ${album.name} by ${album.artists.firstOrNull()?.name} (ID: ${album.id}, inLibrary: $addToUsersLibrary)"
+        )
         database.albumsQueries.insert(
             id = album.id,
             name = album.name,
@@ -57,6 +62,10 @@ class AlbumRepository(
 
     fun saveAlbum(album: Album, overrideInLibrary: Boolean? = null) {
         val addToLibrary = overrideInLibrary ?: album.inLibrary
+        LoggingUtils.d(
+            LoggingUtils.Category.REPOSITORY,
+            "Saving album: ${album.name} by ${album.artists.firstOrNull()?.name} (ID: ${album.id}, inLibrary: $addToLibrary)"
+        )
 
         database.albumsQueries.insert(
             id = album.id,
