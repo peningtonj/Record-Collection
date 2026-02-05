@@ -29,6 +29,7 @@ object AlbumMapper {
     fun toDomain(entity: Albums): Album {
         return Album(
             id = entity.id,
+            spotifyId = entity.spotify_id,
             name = entity.name,
             primaryArtist = entity.primary_artist,
             artists = Json.decodeFromString<List<SimplifiedArtistDto>>(entity.artists)
@@ -51,6 +52,7 @@ object AlbumMapper {
         val primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist"
         return Album(
             id = generateAlbumId(entity.name, primaryArtist),
+            spotifyId = entity.id,
             name = entity.name,
             primaryArtist = primaryArtist,
             artists = entity.artists.map { ArtistMapper.toDomain(it) },
@@ -68,6 +70,7 @@ object AlbumMapper {
         val primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist"
         return Album(
             id = generateAlbumId(entity.name, primaryArtist),
+            spotifyId = entity.id,
             name = entity.name,
             primaryArtist = primaryArtist,
             artists = entity.artists.map { ArtistMapper.toDomain(it) },

@@ -50,8 +50,9 @@ class TrackRepository(
             ?.map { track -> TrackMapper.toDomain(track.track) } ?: emptyList()
     }
     suspend fun fetchTracksForAlbum(album: Album): List<Track> {
-        Napier.d("Fetching tracks for album ${album.id}")
-        return spotifyApi.library.getAlbumTracks(album.id)
+        val spotifyId = album.spotifyId ?: album.id
+        Napier.d("Fetching tracks for album ${album.id} (Spotify ID: $spotifyId)")
+        return spotifyApi.library.getAlbumTracks(spotifyId)
             .mapCatching { response ->
                 response.items.map { track ->
                     TrackMapper.toDomain(track, album)
@@ -64,8 +65,15 @@ class TrackRepository(
     }
 
     suspend fun fetchAndSaveTracks(albumId: String) {
-        Napier.d("Fetching tracks for album $albumId")
-        spotifyApi.library.getAlbumTracks(albumId)
+        // Look up spotify_id from our database
+        val spotifyId = database.albumsQueries
+            .getAlbumById(albumId)
+            .executeAsOneOrNull()
+            ?.spotify_id
+            ?: albumId // If not found, assume it's already a Spotify ID
+        
+        Napier.d("Fetching tracks for album $albumId (Spotify ID: $spotifyId)")
+        spotifyApi.library.getAlbumTracks(spotifyId)
             .onSuccess { response ->
                 database.transaction {
                     response.items.forEach { track ->

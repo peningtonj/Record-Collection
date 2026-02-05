@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalDate
 
 data class Album(
     val id: String,
+    val spotifyId: String? = null,
     val name: String,
     val primaryArtist: String,
     val artists: List<SimplifiedArtist>,

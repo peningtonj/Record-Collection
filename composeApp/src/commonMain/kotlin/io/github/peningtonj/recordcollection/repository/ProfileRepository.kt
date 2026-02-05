@@ -44,7 +44,7 @@ class ProfileRepository(
         } ?: emptyList()
 
     suspend fun removeAlbumsFromSpotifyLibrary(albums: List<Album>) {
-        albums.map { it.id }
+        albums.mapNotNull { it.spotifyId ?: it.id }
             .chunked(20)
             .forEach { chunk ->
                 spotifyApi.user.removeAlbumsFromCurrentUsersLibrary(chunk)
@@ -52,7 +52,7 @@ class ProfileRepository(
     }
 
     suspend fun addAlbumsToSpotifyLibrary(albums: List<Album>) {
-        albums.map { it.id }
+        albums.mapNotNull { it.spotifyId ?: it.id }
             .chunked(20)
             .forEach { chunk ->
                 spotifyApi.user.saveAlbumsToCurrentUsersLibrary(chunk)

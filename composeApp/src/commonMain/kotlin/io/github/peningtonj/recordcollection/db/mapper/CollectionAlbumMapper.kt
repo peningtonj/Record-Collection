@@ -33,6 +33,7 @@ object CollectionAlbumMapper {
     private fun SelectAlbumsInCollection.toAlbumEntity(): Albums {
         return Albums(
             id = this.id,
+            spotify_id = this.spotify_id,
             name = this.name,
             primary_artist = this.primary_artist,
             artists = this.artists,

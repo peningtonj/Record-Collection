@@ -24,13 +24,16 @@ class SpotifyAuthRepository(
         
         return authHandler.authenticate()
             .mapCatching { code ->
-                authHandler.exchangeCodeForToken(code).getOrThrow()
+                // Get code_verifier from auth handler
+                val codeVerifier = authHandler.getCodeVerifier()
+                authHandler.exchangeCodeForToken(code, codeVerifier).getOrThrow()
             }
             .onSuccess { token ->
                 saveToken(token)
                 _authState.value = AuthState.Authenticated(token)
             }
             .onFailure { error ->
+                Napier.e("Authentication failed", error)
                 _authState.value = AuthState.Error(error.message ?: "Authentication failed")
             }
     }

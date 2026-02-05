@@ -1,5 +1,6 @@
 CREATE TABLE albums (
     id TEXT NOT NULL PRIMARY KEY,
+    spotify_id TEXT,
     name TEXT NOT NULL,
     primary_artist TEXT NOT NULL,
     artists TEXT NOT NULL,
@@ -23,6 +24,7 @@ ORDER BY added_at DESC;
 insert:
 INSERT OR REPLACE INTO albums(
     id,
+    spotify_id,
     name,
     primary_artist,
     artists,
@@ -36,7 +38,7 @@ INSERT OR REPLACE INTO albums(
     external_ids,
     in_library,
     release_group_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 deleteAll:
 DELETE FROM albums;
@@ -100,3 +102,8 @@ WHERE name = :name
 AND primary_artist = :primary_artist
 ORDER BY in_library DESC, added_at DESC
 LIMIT 1;
+
+getAlbumBySpotifyId:
+SELECT *
+FROM albums
+WHERE spotify_id = :spotifyId;

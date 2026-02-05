@@ -81,11 +81,11 @@ class PlaybackViewModel(
         if (
             _isSessionAppInitialized.value &&
             session != null &&
-            playback?.track?.album?.id != session.album.id &&
+            playback?.track?.album?.name != session.album.name &&
             playback?.track?.album?.id != null &&
             playback.track.spotifyUri != session.transitionTrackUri
         ) {
-            Napier.d("Not a local session because ${playback.track.album.id} != ${session.album.id}")
+            Napier.d("Not a local session because ${playback.track.album.name} != ${session.album.name}")
             _differentPlaybackCount.value += 1
 
             if (differentPlaybackCount.value > 3) {

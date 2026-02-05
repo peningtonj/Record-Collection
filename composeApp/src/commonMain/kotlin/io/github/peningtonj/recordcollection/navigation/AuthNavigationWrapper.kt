@@ -16,18 +16,23 @@ fun AuthNavigationWrapper(
 ) {
     val navigator = LocalNavigator.current
     val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
+    val currentScreen by navigator.currentScreen.collectAsState()
     
     LaunchedEffect(isAuthenticated) {
-        Napier.d("Checking if already authenticated")
+        Napier.d("Auth state changed: isAuthenticated=$isAuthenticated, currentScreen=$currentScreen")
 
         when (isAuthenticated) {
             true -> {
-                // If we're on the login screen, navigate to library
-                navigator.navigateTo(Screen.Library)
+                // Only navigate to library if we're currently on the login screen
+                if (currentScreen == Screen.Login) {
+                    Napier.d("User authenticated, navigating from Login to Library")
+                    navigator.navigateTo(Screen.Library)
+                }
             }
             false -> {
-                // If we're not on the login screen, navigate to login
-                if (navigator.currentRoute != Screen.Login.route) {
+                // If not authenticated and not on login screen, go to login
+                if (currentScreen != Screen.Login) {
+                    Napier.d("User not authenticated, navigating to Login")
                     navigator.navigateTo(Screen.Login)
                 }
             }

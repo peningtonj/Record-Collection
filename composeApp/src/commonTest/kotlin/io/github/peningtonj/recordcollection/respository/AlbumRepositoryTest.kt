@@ -61,12 +61,13 @@ class AlbumRepositoryTest {
 
     @Test
     fun `saveAlbum with AlbumDto saves album to database with correct parameters`() {
-        every { albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
+        every { albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
         repository.saveAlbum(testAlbumDto, addToUsersLibrary = true)
 
         verify {
             albumsQueries.insert(
                 id = "test-album-id",
+                spotify_id = "test-album-id",
                 name = "Test Album",
                 primary_artist = "Test Artist",
                 artists = any(),
@@ -86,13 +87,14 @@ class AlbumRepositoryTest {
 
     @Test
     fun `saveAlbum with Album domain object saves to database correctly`() {
-        every { albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
+        every { albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
         repository.saveAlbum(testAlbum)
 
         // Then
         verify {
             albumsQueries.insert(
                 id = "test-album-id",
+                spotify_id = any(),
                 name = "Test Album",
                 primary_artist = "Test Artist",
                 artists = any(),
@@ -152,7 +154,7 @@ class AlbumRepositoryTest {
         every { spotifyApi.library } returns mockLibraryApi
         every { mockResponse.albums } returns mockAlbums.take(20) andThen mockAlbums.drop(20)
         coEvery { mockLibraryApi.getMultipleAlbums(any()) } returns Result.success(mockResponse)
-        every { albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
+        every { albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
         every { eventDispatcher.dispatch(any()) } just Runs
 
         mockkObject(AlbumMapper)
@@ -170,7 +172,7 @@ class AlbumRepositoryTest {
 
         // Verify all albums were saved
         verify(exactly = 25) {
-            albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+            albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         }
 
         // Verify events were dispatched
@@ -198,7 +200,7 @@ class AlbumRepositoryTest {
 
         // Then
         verify(exactly = 0) {
-            albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+            albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         }
     }
 

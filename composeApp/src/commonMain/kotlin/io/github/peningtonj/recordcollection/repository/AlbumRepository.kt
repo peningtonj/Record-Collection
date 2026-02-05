@@ -43,6 +43,7 @@ class AlbumRepository(
         )
         database.albumsQueries.insert(
             id = album.id,
+            spotify_id = album.id,
             name = album.name,
             primary_artist = album.artists.firstOrNull()?.name ?: "Unknown Artist",
             artists = Json.encodeToString(album.artists),
@@ -69,6 +70,7 @@ class AlbumRepository(
 
         database.albumsQueries.insert(
             id = album.id,
+            spotify_id = album.spotifyId,
             name = album.name,
             primary_artist = album.artists.firstOrNull()?.name ?: "Unknown Artist",
             artists = Json.encodeToString(album.artists),
@@ -172,7 +174,14 @@ class AlbumRepository(
      * SPOTIFY OPERATIONS
      */
     suspend fun fetchAlbum(albumId: String): Album? {
-        spotifyApi.library.getAlbum(albumId)
+        // First check if this is our internal ID and get the spotify_id
+        val spotifyId = database.albumsQueries
+            .getAlbumById(albumId)
+            .executeAsOneOrNull()
+            ?.spotify_id
+            ?: albumId // If not found in DB, assume it's already a Spotify ID
+        
+        spotifyApi.library.getAlbum(spotifyId)
             .onSuccess { response ->
                 return AlbumMapper.toDomain(response)
             }.onFailure { error ->
@@ -197,10 +206,19 @@ class AlbumRepository(
     suspend fun fetchMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = runCatching {
         if (ids.isEmpty()) return@runCatching emptyList()
 
+        // Convert internal IDs to Spotify IDs by looking up in database
+        val spotifyIds = ids.map { id ->
+            database.albumsQueries
+                .getAlbumById(id)
+                .executeAsOneOrNull()
+                ?.spotify_id
+                ?: id // If not found in DB, assume it's already a Spotify ID
+        }
+
         val albums = mutableListOf<Album>()
 
         // Process in batches of 20 (Spotify API limit)
-        ids.chunked(20).forEach { batch ->
+        spotifyIds.chunked(20).forEach { batch ->
             spotifyApi.library.getMultipleAlbums(batch)
                 .onSuccess { response ->
                     response.albums.forEach { albumDto ->
