@@ -31,7 +31,7 @@ class GetAlbumDetailUseCase(
     private val albumRatingRepository: RatingRepository
 ) {
 
-    suspend fun execute(albumId: String, getTracks: Boolean = true, albumData: Album? = null): Flow<AlbumDetailUiState> {
+    suspend fun execute(albumId: String, spotifyId: String, getTracks: Boolean = true, albumData: Album? = null): Flow<AlbumDetailUiState> {
         val albumExistsInDb = albumRepository.albumExists(albumId)
         if (albumData != null) {
             return getDatabaseAlbum(albumData)
@@ -40,7 +40,7 @@ class GetAlbumDetailUseCase(
             val album = albumRepository.getAlbumById(albumId).first()
             getDatabaseAlbum(album)
         } else {
-            flowOf(getApiAlbumData(albumId, getTracks = getTracks))
+            flowOf(getApiAlbumData(spotifyId, getTracks = getTracks))
         }
     }
 

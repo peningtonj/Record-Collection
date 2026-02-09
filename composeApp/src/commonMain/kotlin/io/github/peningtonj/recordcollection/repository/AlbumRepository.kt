@@ -52,7 +52,7 @@ class AlbumRepository(
             spotify_uri = album.uri,
             added_at = Clock.System.now().toString(),
             album_type = album.albumType.toString(),
-            images = Json.encodeToString(album.images),
+            images = Json.encodeToString(album.images ?: emptyList()),
             updated_at = System.currentTimeMillis(),
             external_ids = album.externalIds.let { Json.encodeToString(it) },
             in_library = if (addToUsersLibrary) 1 else 0,
@@ -108,6 +108,12 @@ class AlbumRepository(
             it?.let { AlbumMapper.toDomain(it) }
                 ?: throw NoSuchElementException("Album with id '$id' not found")
         }
+
+    suspend fun getAlbumBySpotifyId(spotifyId: String): Album? = 
+        database.albumsQueries
+            .getAlbumBySpotifyId(spotifyId)
+            .executeAsOneOrNull()
+            ?.let { AlbumMapper.toDomain(it) }
 
 
     fun getEarliestReleaseDate(): Flow<LocalDate?> = getAllAlbums()
@@ -174,12 +180,20 @@ class AlbumRepository(
      * SPOTIFY OPERATIONS
      */
     suspend fun fetchAlbum(albumId: String): Album? {
-        // First check if this is our internal ID and get the spotify_id
-        val spotifyId = database.albumsQueries
-            .getAlbumById(albumId)
-            .executeAsOneOrNull()
-            ?.spotify_id
-            ?: albumId // If not found in DB, assume it's already a Spotify ID
+        // Determine if this is an internal ID (short hash) or Spotify ID (22 chars)
+        val isInternalId = albumId.length < 20
+        
+        val spotifyId = if (isInternalId) {
+            // Internal ID - look up spotify_id from database
+            database.albumsQueries
+                .getAlbumById(albumId)
+                .executeAsOneOrNull()
+                ?.spotify_id
+                ?: albumId // If not found, try using the ID as-is (might be a valid Spotify ID)
+        } else {
+            // Already a Spotify ID
+            albumId
+        }
         
         spotifyApi.library.getAlbum(spotifyId)
             .onSuccess { response ->

@@ -81,11 +81,13 @@ fun rememberAlbumViewModel(
 @Composable
 fun rememberAlbumDetailViewModel(
     albumId: String,
+    spotifyId: String,
     dependencies: DependencyContainer = LocalDependencyContainer.current
 ): AlbumDetailViewModel {
     return remember {
         AlbumDetailViewModel(
             albumId = albumId,
+            spotifyId = spotifyId,
             getAlbumDetailUseCase = dependencies.albumDetailUseCase,
             trackRepository = dependencies.trackRepository
         )

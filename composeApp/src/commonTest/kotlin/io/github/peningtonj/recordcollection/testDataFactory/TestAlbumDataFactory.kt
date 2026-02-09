@@ -29,18 +29,24 @@ object TestAlbumDataFactory {
     ): AlbumDto = AlbumDto(
         id = id,
         name = name,
-        artists = artists,
-        releaseDate = releaseDate,
-        totalTracks = totalTracks,
-        uri = uri,
         albumType = albumType,
-        images = images,
-        externalIds = externalIds,
+        artists = artists,
+        totalTracks = totalTracks,
+        releaseDate = releaseDate,
         releaseDatePrecision = ReleaseDatePrecision.DAY,
+        uri = uri,
         externalUrls = emptyMap(),
+        externalIds = externalIds,
+        images = images,
+        popularity = 50,
+        label = "Test Label",
+        copyrights = emptyList(),
         availableMarkets = listOf("AU"),
         href = "http://linkToResult.com",
-        type = "album"
+        restrictions = null,
+        type = "album",
+        genres = emptyList(),
+        tracks = null
     )
 
     @OptIn(ExperimentalTime::class)

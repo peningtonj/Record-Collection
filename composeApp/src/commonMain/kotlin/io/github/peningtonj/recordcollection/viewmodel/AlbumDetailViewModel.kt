@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 
 class AlbumDetailViewModel(
     private val albumId: String,
+    private val spotifyId: String,
     private val getAlbumDetailUseCase: GetAlbumDetailUseCase,
     private val trackRepository: TrackRepository,
 ): ViewModel() {
@@ -20,8 +21,8 @@ class AlbumDetailViewModel(
         viewModelScope.launch {
             _uiState.value = AlbumScreenUiState.Loading
             try {
-                trackRepository.checkAndUpdateTracksIfNeeded(albumId)
-                getAlbumDetailUseCase.execute(albumId).collect { albumDetail ->
+                trackRepository.checkAndUpdateTracksIfNeeded(albumId, spotifyId)
+                getAlbumDetailUseCase.execute(albumId, spotifyId).collect { albumDetail ->
                     _uiState.value = AlbumScreenUiState.Success(albumDetail)
                 }
             } catch (e: Exception) {

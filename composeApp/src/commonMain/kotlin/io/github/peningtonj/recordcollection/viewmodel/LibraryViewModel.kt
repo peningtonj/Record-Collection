@@ -77,7 +77,7 @@ class LibraryViewModel(
                     val albumDetails = coroutineScope {
                         albumDisplayData.map { displayData ->
                             async {
-                                getAlbumDetailUseCase.execute(displayData.album.id).first()
+                                getAlbumDetailUseCase.execute(displayData.album.id, displayData.album.spotifyId).first()
                             }
                         }.awaitAll()
                     }

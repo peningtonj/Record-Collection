@@ -18,15 +18,15 @@ data class AlbumDto(
     val releaseDatePrecision: ReleaseDatePrecision,
     val uri: String,
     @SerialName("external_urls")
-    val externalUrls: Map<String, String>,
+    val externalUrls: Map<String, String>? = null,
     @SerialName("external_ids")
     val externalIds: Map<String, String>? = null,
-    val images: List<ImageDto>,
+    val images: List<ImageDto>? = emptyList(),
     val popularity: Int? = null,
     val label: String? = null,
     val copyrights: List<Copyright>? = emptyList(),
     @SerialName("available_markets")
-    val availableMarkets: List<String>,
+    val availableMarkets: List<String>? = emptyList(),
     val href: String,
     val restrictions: Restrictions? = null,
     val type: String,
@@ -51,10 +51,10 @@ data class SimplifiedAlbumDto(
     val releaseDatePrecision: ReleaseDatePrecision,
     val uri: String,
     @SerialName("external_urls")
-    val externalUrls: Map<String, String>,
-    val images: List<ImageDto>,
+    val externalUrls: Map<String, String>? = null,
+    val images: List<ImageDto>? = emptyList(),
     @SerialName("available_markets")
-    val availableMarkets: List<String>,
+    val availableMarkets: List<String>? = emptyList(),
     val href: String,
     val restrictions: Restrictions? = null,
     val type: String

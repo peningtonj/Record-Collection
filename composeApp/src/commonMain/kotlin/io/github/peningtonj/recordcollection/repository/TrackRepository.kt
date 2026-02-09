@@ -28,7 +28,7 @@ class TrackRepository(
     }
 
 
-    suspend fun checkAndUpdateTracksIfNeeded(albumId: String) {
+    suspend fun checkAndUpdateTracksIfNeeded(albumId: String, spotifyId: String) {
         Napier.d("Checking if tracks exist for album $albumId")
         val tracksExist = database.tracksQueries
             .countTracksForAlbum(albumId)
@@ -36,7 +36,7 @@ class TrackRepository(
 
         Napier.d { "Tracks exist: $tracksExist" }
         if (!tracksExist) {
-            fetchAndSaveTracks(albumId)
+            fetchAndSaveTracks(spotifyId)
         }
     }
 

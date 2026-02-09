@@ -55,7 +55,7 @@ class CollectionDetailViewModel(
                     supervisorScope {
                         albums.map { album ->
                             async {
-                                getAlbumDetailUseCase.execute(album.album.id).first()
+                                getAlbumDetailUseCase.execute(album.album.id, album.album.spotifyId).first()
                             }
                         }.awaitAll()
                     }

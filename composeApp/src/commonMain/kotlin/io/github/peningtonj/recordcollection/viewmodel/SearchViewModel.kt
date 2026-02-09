@@ -50,7 +50,7 @@ class SearchViewModel(
         val detailedAlbums = supervisorScope {
             newReleases.map { album ->
                 async {
-                    getAlbumUseCase.execute(album.id, false, album).first()
+                    getAlbumUseCase.execute(album.id, album.spotifyId, false, album).first()
                 }
             }.awaitAll()
         }

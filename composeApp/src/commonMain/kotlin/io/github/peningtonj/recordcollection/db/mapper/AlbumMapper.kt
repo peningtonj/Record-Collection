@@ -29,7 +29,7 @@ object AlbumMapper {
     fun toDomain(entity: Albums): Album {
         return Album(
             id = entity.id,
-            spotifyId = entity.spotify_id,
+            spotifyId = entity.spotify_id ?: "",
             name = entity.name,
             primaryArtist = entity.primary_artist,
             artists = Json.decodeFromString<List<SimplifiedArtistDto>>(entity.artists)
@@ -60,8 +60,7 @@ object AlbumMapper {
             totalTracks = entity.totalTracks,
             spotifyUri = entity.uri,
             albumType = AlbumType.fromString(entity.albumType.name),
-            images = entity.images
-                .map { ImageMapper.toDomain(it) },
+            images = entity.images?.map { ImageMapper.toDomain(it) } ?: emptyList(),
             externalIds = entity.externalIds
         )
     }
@@ -77,8 +76,7 @@ object AlbumMapper {
             releaseDate = parseReleaseDate(entity.releaseDate),
             totalTracks = entity.totalTracks,
             spotifyUri = entity.uri,
-            images = entity.images
-                .map { ImageMapper.toDomain(it) },
+            images = entity.images?.map { ImageMapper.toDomain(it) } ?: emptyList(),
             albumType = AlbumType.fromString(entity.albumType.name),
 
         )
