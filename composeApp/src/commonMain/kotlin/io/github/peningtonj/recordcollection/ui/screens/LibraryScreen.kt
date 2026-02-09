@@ -1,50 +1,32 @@
 // commonMain/ui/screens/LibraryScreen.kt
 package io.github.peningtonj.recordcollection.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
-import io.github.peningtonj.recordcollection.ui.components.library.CreateCollectionButton
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
 import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumActions
+import io.github.peningtonj.recordcollection.ui.components.common.ScreenHeader
+import io.github.peningtonj.recordcollection.ui.components.common.HeaderActionButton
 import io.github.peningtonj.recordcollection.ui.components.filter.ActiveChips
 import io.github.peningtonj.recordcollection.ui.components.filter.HorizontalFilterBar
 import io.github.peningtonj.recordcollection.ui.components.filter.TextSearchBar
+import io.github.peningtonj.recordcollection.ui.components.library.CreateCollectionButton
 import io.github.peningtonj.recordcollection.ui.components.library.SyncLibraryButton
 import io.github.peningtonj.recordcollection.ui.components.library.SyncLibraryUi
-import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
-import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
-import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
-import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
-import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
-import io.github.peningtonj.recordcollection.viewmodel.SyncState
-import io.github.peningtonj.recordcollection.viewmodel.rememberAlbumViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberCollectionsViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
-import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
+import io.github.peningtonj.recordcollection.viewmodel.*
 import kotlinx.datetime.LocalDate
 
 @Composable
@@ -82,116 +64,125 @@ fun LibraryScreen(
             )
         }
     }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Library",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-
-            Column {
+    
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Header
+        ScreenHeader(
+            title = "Library",
+            subtitle = "${filteredAlbums.size} ${if (filteredAlbums.size == 1) "album" else "albums"}",
+            icon = Icons.Default.LibraryMusic,
+            actions = {
                 SyncLibraryUi(
-                    onClick = {
-                        viewModel.startSync()
-                    },
+                    onClick = { viewModel.startSync() },
                     syncState = syncState,
                     launchSync = { syncAction, removeDuplicates ->
                         viewModel.launchSync(syncAction, removeDuplicates)
                     }
                 )
-
+                
                 SyncLibraryButton(
-                    onClick = {
-                        viewModel.startTrackSync()
-                    },
-                    label = "Sync Tracks",
+                    onClick = { viewModel.startTrackSync() },
+                    label = "Tracks",
                     syncState = trackSyncState
                 )
             }
-        }
-
-        TextSearchBar(
-            currentFilter,
-            options = filterOptions,
-            onFilterChange = { newFilter ->
-                viewModel.updateFilter(newFilter)
-            },
         )
-
-        HorizontalFilterBar(
-            currentFilter = currentFilter,
-            onRatingChange = { newRating ->
-                    viewModel.updateFilter(currentFilter.copy(minRating = newRating))
-                },
-            onYearFilterChange = { start, end, label ->
-                    val newYearRange = DateRange(
-                        LocalDate(start, 1, 1),
-                        LocalDate(end, 12, 31),
-                        name = label
+        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Search and Filters
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextSearchBar(
+                        currentFilter,
+                        options = filterOptions,
+                        onFilterChange = { newFilter ->
+                            viewModel.updateFilter(newFilter)
+                        },
                     )
-                    viewModel.updateFilter(currentFilter.copy(releaseDateRange = newYearRange))
-                },
-            startYear = earliestReleaseDate?.year ?: 1950
-        )
 
-        if (currentFilter.tags.isNotEmpty() || currentFilter.releaseDateRange != null) {
-            ActiveChips(
-                currentFilter = currentFilter,
-                onFilterChange = { newFilter ->
-                    viewModel.updateFilter(newFilter)
-                },
-            )
-        }
+                    HorizontalFilterBar(
+                        currentFilter = currentFilter,
+                        onRatingChange = { newRating ->
+                            viewModel.updateFilter(currentFilter.copy(minRating = newRating))
+                        },
+                        onYearFilterChange = { start, end, label ->
+                            val newYearRange = DateRange(
+                                LocalDate(start, 1, 1),
+                                LocalDate(end, 12, 31),
+                                name = label
+                            )
+                            viewModel.updateFilter(currentFilter.copy(releaseDateRange = newYearRange))
+                        },
+                        startYear = earliestReleaseDate?.year ?: 1950
+                    )
 
-        Row() {
-            AssistChip(
-                onClick = {
-                    playbackViewModel.playAlbum(filteredAlbums.random())
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Shuffle,
-                        contentDescription = "Random Album")
-                },
-                label = { Text("Play Random Album From Filtered Albums") }
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            CreateCollectionButton(
-                onCreateCollection = { name ->
-                    viewModel.createCollectionFromCurrentFilter(name)
+                    if (currentFilter.tags.isNotEmpty() || currentFilter.releaseDateRange != null) {
+                        ActiveChips(
+                            currentFilter = currentFilter,
+                            onFilterChange = { newFilter ->
+                                viewModel.updateFilter(newFilter)
+                            },
+                        )
+                    }
                 }
-            )
-        }
+            }
 
-        Text(
-            "${filteredAlbums.size} albums",
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
-
-        AlbumGrid(
-            filteredAlbums,
-            albumActions = albumTileActions
-        )
-
-        if (syncState is SyncState.Error) {
-            Text(
-                text = (syncState as SyncState.Error).message,
-                color = MaterialTheme.colorScheme.error,
+            // Quick Actions
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
+            ) {
+                HeaderActionButton(
+                    onClick = {
+                        if (filteredAlbums.isNotEmpty()) {
+                            playbackViewModel.playAlbum(filteredAlbums.random())
+                        }
+                    },
+                    icon = Icons.Default.Shuffle,
+                    label = "Random Album",
+                    primary = true
+                )
+
+                CreateCollectionButton(
+                    onCreateCollection = { name ->
+                        viewModel.createCollectionFromCurrentFilter(name)
+                    }
+                )
+            }
+
+            // Albums Grid
+            AlbumGrid(
+                filteredAlbums,
+                albumActions = albumTileActions
             )
+
+            if (syncState is SyncState.Error) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = (syncState as SyncState.Error).message,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
     }
 }

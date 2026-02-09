@@ -30,7 +30,7 @@ import io.github.peningtonj.recordcollection.viewmodel.ReleaseGroupStatus
 fun ReleaseGroupUi(
     albumDetailUiState: AlbumDetailUiState,
     releaseGroupStatus: ReleaseGroupStatus,
-    onReleaseSelect: (String) -> Unit,
+    onReleaseSelect: (String, String) -> Unit,
     albumActions: AlbumActions
 ) {
     val releaseGroup = albumDetailUiState.releaseGroup
@@ -55,7 +55,7 @@ fun ReleaseGroupUi(
 @Composable
 fun ReleaseGroupSelector(
     releases: List<Album>,
-    onReleaseSelect: (String) -> Unit,
+    onReleaseSelect: (String, String) -> Unit,
     onUpdateClick: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -87,7 +87,7 @@ fun ReleaseGroupSelector(
                     Text(release.name)
                 },
                 onClick = {
-                    onReleaseSelect(release.id)
+                    onReleaseSelect(release.id, release.spotifyId)
                     expanded = false
                 }
             )

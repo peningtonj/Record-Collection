@@ -41,8 +41,9 @@ import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 @Composable
 fun AlbumScreen(
     albumId: String,
+    spotifyId: String,
     playbackViewModel: PlaybackViewModel,
-    viewModel: AlbumDetailViewModel = rememberAlbumDetailViewModel(albumId),
+    viewModel: AlbumDetailViewModel = rememberAlbumDetailViewModel(albumId, spotifyId),
     albumViewModel: AlbumViewModel = rememberAlbumViewModel(),
     collectionViewModel: CollectionsViewModel = rememberCollectionsViewModel(),
     libraryViewModel: LibraryViewModel = rememberLibraryViewModel(),
@@ -104,8 +105,8 @@ fun AlbumScreen(
                         playbackState?.track?.album?.id == albumDetail.album.id &&
                                 playbackState?.isPlaying == true
                     },
-                    onReleaseSelect = { albumId ->
-                        navigator.navigateTo(Screen.Album(albumId))
+                    onReleaseSelect = { albumId, spotifyId ->
+                        navigator.navigateTo(Screen.Album(albumId, spotifyId))
                     },
                     albumActions = albumActions,
                     playbackActions = playbackActions

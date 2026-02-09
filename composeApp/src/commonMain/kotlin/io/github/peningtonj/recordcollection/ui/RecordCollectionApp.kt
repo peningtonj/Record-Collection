@@ -141,6 +141,7 @@ fun RecordCollectionApp(
 
                                     is Screen.Album -> AlbumScreen(
                                         albumId = screen.albumId,
+                                        spotifyId = screen.spotifyId,
                                         playbackViewModel = playbackViewModel
                                     )
 

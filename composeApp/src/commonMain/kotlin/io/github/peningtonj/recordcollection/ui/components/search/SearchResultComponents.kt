@@ -30,10 +30,11 @@ fun AlbumSearchItem(
     modifier: Modifier = Modifier
 ) {
     val navigator = LocalNavigator.current
+    println(album);
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = {
-            navigator.navigateTo(Screen.Album(album.id))
+            navigator.navigateTo(Screen.Album(album.id, album.spotifyId))
         }
     ) {
         Row {

@@ -49,7 +49,7 @@ fun AlbumHeader(
     showAddTagDialogClick: () -> Unit,
     modifier: Modifier = Modifier,
     isPlaying: () -> Boolean = { false },
-    onReleaseSelect: (String) -> Unit = {}
+    onReleaseSelect: (String, String) -> Unit = { _, _ -> }
 ) {
     Column(
         modifier = modifier

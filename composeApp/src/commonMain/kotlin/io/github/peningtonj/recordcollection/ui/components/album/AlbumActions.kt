@@ -59,7 +59,7 @@ fun rememberAlbumActions(
     }
 
     return AlbumActions(
-        navigateToPage = { album -> navigator.navigateTo(Screen.Album(album.album.id)) },
+        navigateToPage = { album -> navigator.navigateTo(Screen.Album(album.album.id, album.album.spotifyId)) },
         navigateToArtist = { album -> navigator.navigateTo(Screen.Artist(album.album.artists.first().id)) },
         play = { album -> playbackViewModel.playAlbum(album) },
         updateRating = rateAction,
