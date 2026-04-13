@@ -1,16 +1,5 @@
 package io.github.peningtonj.recordcollection.di.module
 
-import dev.gitlive.firebase.Firebase
-import dev.gitlive.firebase.firestore.FirebaseFirestore
-import dev.gitlive.firebase.firestore.firestore
-
-actual class PlatformFirebaseModule {
-    actual fun initialize() {
-        // On Android, Firebase is initialized automatically via google-services.json
-        // No manual initialization needed
-    }
-    
-    actual fun provideAuth(): FirebaseAuth = Firebase.auth
-    
-    actual fun provideFirestore(): FirebaseFirestore = Firebase.firestore
-}
+// PlatformFirebaseModule was an earlier iteration; Firebase is now accessed
+// directly via ProductionFirebaseModule (Firebase.firestore). This file is
+// retained as a placeholder but contains no active declarations.

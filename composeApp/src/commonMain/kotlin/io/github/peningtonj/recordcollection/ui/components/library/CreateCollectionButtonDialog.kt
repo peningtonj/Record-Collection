@@ -1,15 +1,19 @@
 package io.github.peningtonj.recordcollection.ui.components.library
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -36,23 +40,19 @@ fun CreateCollectionButton(
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
-    AssistChip(
+    FilledTonalButton(
         onClick = { showDialog = true },
-        modifier = modifier,
-        label = { Text("Create Collection From Filtered Albums") },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Create Collection From Filter"
-            )
-        },
-//        colors = AssistChipDefaults.assistChipColors(
-//            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-//            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-//            leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-//        )
-
-    )
+        modifier = modifier.height(40.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text("New Collection", style = MaterialTheme.typography.labelLarge)
+    }
     
     if (showDialog) {
         CreateCollectionDialog(

@@ -6,8 +6,10 @@ import io.github.peningtonj.recordcollection.db.domain.CollectionAlbum
 import io.github.peningtonj.recordcollection.db.domain.CollectionAlbumEntry
 import io.github.peningtonj.recordcollection.db.domain.CollectionDocument
 import io.github.peningtonj.recordcollection.util.LoggingUtils
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -20,25 +22,38 @@ class CollectionAlbumRepository(
 
     // ── Reads ─────────────────────────────────────────────────────────────────
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun getAlbumsInCollection(collectionName: String): Flow<List<CollectionAlbum>> {
         LoggingUtils.logFirebaseQuery("collections", "snapshot (albums array)", mapOf("collectionName" to collectionName))
         return collectionsRef.document(collectionName).snapshots
-            .map { snapshot ->
+            .flatMapLatest { snapshot ->
                 val entries = snapshot.data<CollectionDocument?>()?.albums ?: emptyList()
                 LoggingUtils.logFirebaseResult("collections", "getAlbumsInCollection(collection=$collectionName)", entries.size)
-                entries
-                    .sortedBy { it.position }
-                    .mapNotNull { entry ->
-                        runCatching {
-                            val album = albumRepository.getAlbumById(entry.albumId).first()
+                if (entries.isEmpty()) return@flatMapLatest flowOf(emptyList())
+
+                val sorted = entries.sortedBy { it.position }
+                val albumIds = sorted.map { it.albumId }
+
+                albumRepository.getAlbumsByIds(albumIds).map { albums ->
+                    val albumMap = albums.associateBy { it.id }
+                    sorted.mapNotNull { entry ->
+                        val album = albumMap[entry.albumId]
+                        if (album == null) {
+                            LoggingUtils.w(
+                                LoggingUtils.Category.REPOSITORY,
+                                "Album '${entry.albumId}' in collection '$collectionName' not found"
+                            )
+                            null
+                        } else {
                             CollectionAlbum(
                                 collectionName = collectionName,
                                 album = album,
                                 position = entry.position,
                                 addedAt = Instant.fromEpochSeconds(entry.addedAt)
                             )
-                        }.getOrNull()
+                        }
                     }
+                }
             }
     }
 

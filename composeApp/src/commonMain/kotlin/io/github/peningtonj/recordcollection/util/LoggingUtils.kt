@@ -21,7 +21,8 @@ object LoggingUtils {
         VIEWMODEL("ViewModel"),
         MIGRATION("Migration"),
         SYNC("Sync"),
-        FIREBASE("Firebase")
+        FIREBASE("Firebase"),
+        SPOTIFY("Spotify")
     }
     
     /**
@@ -149,6 +150,38 @@ object LoggingUtils {
     fun logFirebaseWrite(collection: String, operation: String, docId: String, params: Map<String, Any>? = null) {
         val paramsStr = params?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
         d(Category.FIREBASE, "[$collection] $operation doc=$docId${if (paramsStr.isNotEmpty()) " {$paramsStr}" else ""}")
+    }
+
+    /**
+     * Log a Spotify API request at debug level.
+     * @param method   HTTP method (GET, PUT, DELETE, …)
+     * @param path     URL path after the base, e.g. "/albums/abc123"
+     * @param params   Optional extra info (query params, batch size, …)
+     */
+    fun logSpotifyRequest(method: String, path: String, params: Map<String, Any>? = null) {
+        val paramsStr = params?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
+        d(Category.SPOTIFY, "→ $method $path${if (paramsStr.isNotEmpty()) " {$paramsStr}" else ""}")
+    }
+
+    /**
+     * Log a Spotify API response. Logs as warning for 4xx/5xx.
+     */
+    fun logSpotifyResponse(
+        method: String,
+        path: String,
+        status: Int,
+        durationMs: Long,
+        rateLimitRemaining: String? = null,
+        rateLimitLimit: String? = null,
+        retryAfter: String? = null,
+    ) {
+        val extras = buildString {
+            rateLimitRemaining?.let { append(" remaining=$it") }
+            rateLimitLimit?.let { append("/$it") }
+            retryAfter?.let { append(" ⚠️ retry-after=${it}s") }
+        }
+        val msg = "← $status ${method} $path (${durationMs}ms)$extras"
+        if (status >= 400) w(Category.SPOTIFY, msg) else d(Category.SPOTIFY, msg)
     }
 
     /**

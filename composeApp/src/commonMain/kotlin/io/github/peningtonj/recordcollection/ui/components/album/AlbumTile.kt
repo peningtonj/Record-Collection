@@ -10,23 +10,27 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,12 +44,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerButton
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import io.github.peningtonj.recordcollection.ui.util.onRightClick
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
@@ -55,9 +57,11 @@ import coil3.compose.AsyncImage
 import io.github.peningtonj.recordcollection.ui.components.rating.StarRating
 import androidx.compose.ui.window.PopupProperties
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import io.github.peningtonj.recordcollection.ui.AppPlatform
+import io.github.peningtonj.recordcollection.ui.LocalPlatform
 
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CompactAlbumTile(
     album: AlbumDetailUiState,
@@ -76,6 +80,10 @@ fun CompactAlbumTile(
     var cardSize by remember { mutableStateOf(IntSize.Zero) }
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
+
+    // On Android hover never fires — always show the play button so the tile is usable
+    val showPlayButton = isHovered || isAndroid
 
     val density = LocalDensity.current
 
@@ -87,7 +95,6 @@ fun CompactAlbumTile(
                 onClick = onClick,
                 onLongClick = { 
                     onContextMenu()
-                    // For long press, center the menu on the card
                     contextMenuPosition = with(density) {
                         DpOffset(
                             x = (cardSize.width / 2).toDp(),
@@ -97,23 +104,12 @@ fun CompactAlbumTile(
                     showContextMenu = true 
                 }
             )
-            .onPointerEvent(PointerEventType.Press) { pointerEvent ->
-                if (pointerEvent.button == PointerButton.Secondary) {
-                    onContextMenu()
-                    // For right click, the position menu at mouse location
-                    // Clamp the position to ensure it stays within the card bounds
-                    val mouseX = pointerEvent.changes.first().position.x
-                    val mouseY = pointerEvent.changes.first().position.y
-
-                    contextMenuPosition = with(density) {
-                        DpOffset(
-                            x = mouseX.toDp().coerceIn(0.dp, (cardSize.width).toDp()),
-                            y = mouseY.toDp().coerceIn(0.dp, (cardSize.height).toDp())
-                        )
-                    }
-                    showContextMenu = true
-                }
-            }.hoverable(
+            .onRightClick(density, cardSize) { position ->
+                onContextMenu()
+                contextMenuPosition = position
+                showContextMenu = true
+            }
+            .hoverable(
                     interactionSource
                 ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -134,7 +130,7 @@ fun CompactAlbumTile(
                         contentScale = ContentScale.Crop
                     )
 
-                    if (isHovered) {
+                    if (showPlayButton) {
                         PlayButton(
                             onPlayClick = onPlayClick,
                             modifier = Modifier
@@ -148,13 +144,12 @@ fun CompactAlbumTile(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight()          // give the Box the whole remaining height
+                        .fillMaxHeight()
                 ) {
-                    // ─── Text + stars ────────────────────────────────
                     Column(
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(end = 12.dp) // keep text away from the heart
+                            .padding(end = 12.dp)
                     ) {
                         Text(
                             text = album.album.name,
@@ -177,25 +172,23 @@ fun CompactAlbumTile(
                         )
                         if (showRating) {
                             StarRating(
-                                album.rating?.rating ?: 0,
+                                album.rating ?: 0,
                                 starSpacing = 0.dp,
                                 onRatingChange = onRatingChange,
                             )
                         }
                     }
 
-                    // ─── Heart icon pinned to the real bottom‑right ──
                     HeartButton(
                         isInLibrary = album.album.inLibrary,
                         onToggle = onLibraryToggle,
                         modifier = Modifier
-                            .align(Alignment.BottomEnd) // now flush to the edge
-                            .padding(4.dp)               // small margin if you want it
+                            .align(Alignment.BottomEnd)
+                            .padding(4.dp)
                     )
                 }
             }
 
-            // Context menu positioned at mouse location
             DropdownMenu(
                 expanded = showContextMenu,
                 onDismissRequest = { showContextMenu = false },
@@ -204,11 +197,104 @@ fun CompactAlbumTile(
                     focusable = true,
                     dismissOnBackPress = true,
                     dismissOnClickOutside = true,
-                    clippingEnabled = false // Allow the menu to extend beyond parent bounds
+                    clippingEnabled = false
                 )
             ) {
                 contextMenuContent { showContextMenu = false }
             }
+        }
+    }
+}
+
+/** Spotify-style list row: small album art on the left, title/artist/rating on the right. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun AlbumListItem(
+    album: AlbumDetailUiState,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
+    onPlayClick: () -> Unit = {},
+    onContextMenu: () -> Unit = {},
+    onRatingChange: (Int) -> Unit = {},
+    onArtistClick: () -> Unit = {},
+    contextMenuContent: @Composable (onDismiss: () -> Unit) -> Unit = { _ -> },
+    onLibraryToggle: () -> Unit = {},
+    showRating: Boolean = true,
+) {
+    var showContextMenu by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = {
+                        onContextMenu()
+                        showContextMenu = true
+                    }
+                )
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Small square album art
+            AsyncImage(
+                model = album.album.images.firstOrNull()?.url ?: "",
+                contentDescription = album.album.name,
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            // Title + artist (+ optional rating)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = album.album.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = album.album.primaryArtist,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable { onArtistClick() }
+                )
+                if (showRating && (album.rating ?: 0) > 0) {
+                    StarRating(
+                        album.rating ?: 0,
+                        starSpacing = 0.dp,
+                        onRatingChange = onRatingChange
+                    )
+                }
+            }
+
+            // Play button
+            IconButton(onClick = onPlayClick, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Play ${album.album.name}",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            // Library heart
+            HeartButton(
+                isInLibrary = album.album.inLibrary,
+                onToggle = onLibraryToggle
+            )
+        }
+
+        DropdownMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false }
+        ) {
+            contextMenuContent { showContextMenu = false }
         }
     }
 }
@@ -221,34 +307,65 @@ fun AlbumGrid(
     collectionAlbumActions: CollectionAlbumActions? = null,
     showRating: Boolean = true
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 175.dp),
-        modifier = modifier,
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(albums) { album ->
-            CompactAlbumTile(
-                album = album,
-                onClick = { albumActions.navigateToPage(album) },
-                onPlayClick = { collectionAlbumActions?.playFromCollection(album) ?: albumActions.play(album) },
-                onContextMenu = { albumActions.showContextMenu(album) },
-                contextMenuContent = { onDismiss ->
-                    DefaultAlbumContextMenu(
-                        album = album,
-                        actions = albumActions,
-                        onDismiss = onDismiss,
-                        collectionAlbumActions = collectionAlbumActions
-                    )
-                 },
-                onRatingChange = { rating ->
-                    albumActions.updateRating(album, rating)
-                },
-                onArtistClick = { albumActions.navigateToArtist(album) },
-                onLibraryToggle = { albumActions.toggleLibraryStatus(album) },
-                showRating = showRating
-            )
+    val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
+
+    if (isAndroid) {
+        // Spotify-style list on Android
+        LazyColumn(modifier = modifier) {
+            items(albums) { album ->
+                AlbumListItem(
+                    album = album,
+                    onClick = { albumActions.navigateToPage(album) },
+                    onPlayClick = { collectionAlbumActions?.playFromCollection(album) ?: albumActions.play(album) },
+                    onContextMenu = { albumActions.showContextMenu(album) },
+                    contextMenuContent = { onDismiss ->
+                        DefaultAlbumContextMenu(
+                            album = album,
+                            actions = albumActions,
+                            onDismiss = onDismiss,
+                            collectionAlbumActions = collectionAlbumActions
+                        )
+                    },
+                    onRatingChange = { rating -> albumActions.updateRating(album, rating) },
+                    onArtistClick = { albumActions.navigateToArtist(album) },
+                    onLibraryToggle = { albumActions.toggleLibraryStatus(album) },
+                    showRating = showRating
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                )
+            }
+        }
+    } else {
+        // Desktop grid
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 175.dp),
+            modifier = modifier,
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            gridItems(albums) { album ->
+                CompactAlbumTile(
+                    album = album,
+                    onClick = { albumActions.navigateToPage(album) },
+                    onPlayClick = { collectionAlbumActions?.playFromCollection(album) ?: albumActions.play(album) },
+                    onContextMenu = { albumActions.showContextMenu(album) },
+                    contextMenuContent = { onDismiss ->
+                        DefaultAlbumContextMenu(
+                            album = album,
+                            actions = albumActions,
+                            onDismiss = onDismiss,
+                            collectionAlbumActions = collectionAlbumActions
+                        )
+                    },
+                    onRatingChange = { rating -> albumActions.updateRating(album, rating) },
+                    onArtistClick = { albumActions.navigateToArtist(album) },
+                    onLibraryToggle = { albumActions.toggleLibraryStatus(album) },
+                    showRating = showRating
+                )
+            }
         }
     }
 }
@@ -261,13 +378,13 @@ fun HeartButton(
 ) {
     IconButton(
         onClick = onToggle,
-        modifier = modifier
-            .size(30.dp) // put size here
+        modifier = modifier.size(30.dp)
     ) {
         Icon(
             imageVector = if (isInLibrary) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
             contentDescription = if (isInLibrary) "Remove from Library" else "Add to Library",
-            tint = if (isInLibrary) Color.Red.copy(alpha = 0.6f) else Color.White,
+            tint = if (isInLibrary) Color.Red.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
+

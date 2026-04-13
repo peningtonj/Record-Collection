@@ -21,7 +21,8 @@ data class Album(
     val genres: List<String> = emptyList(),
     val externalIds: Map<String, String>? = emptyMap(),
     val inLibrary: Boolean = false,
-    val releaseGroupId: String? = null
+    val releaseGroupId: String? = null,
+    val rating: Int? = null
 )
 
 enum class AlbumType {
@@ -59,5 +60,6 @@ data class AlbumDocument(
     @SerialName("updated_at") val updatedAt: Long? = null,
     @SerialName("external_ids") val externalIds: String? = null, // JSON-encoded Map<String, String>
     @SerialName("in_library") val inLibrary: Boolean = false,
-    @SerialName("release_group_id") val releaseGroupId: String? = null
+    @SerialName("release_group_id") val releaseGroupId: String? = null,
+    val rating: Int? = null
 )

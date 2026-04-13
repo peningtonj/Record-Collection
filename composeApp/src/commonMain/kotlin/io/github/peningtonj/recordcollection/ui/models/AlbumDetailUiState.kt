@@ -2,7 +2,6 @@ package io.github.peningtonj.recordcollection.ui.models
 
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
-import io.github.peningtonj.recordcollection.db.domain.AlbumRating
 import io.github.peningtonj.recordcollection.db.domain.Tag
 import io.github.peningtonj.recordcollection.db.domain.TagType
 import io.github.peningtonj.recordcollection.db.domain.Track
@@ -16,7 +15,7 @@ data class AlbumDetailUiState(
     val tracks: List<Track>,
     val releaseGroup: List<Album>,
     val totalDuration: Long,
-    val rating: AlbumRating? = null,
+    val rating: Int? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
 )

@@ -23,11 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.PointerButton
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,8 +32,9 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
+import io.github.peningtonj.recordcollection.ui.util.onRightClick
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CollectionItem(
     collection: AlbumCollection,
@@ -62,7 +59,6 @@ fun CollectionItem(
                 onClick = onClick,
                 onLongClick = { 
                     onContextMenu()
-                    // For long press, center the menu on the card
                     contextMenuPosition = with(density) {
                         DpOffset(
                             x = (cardSize.width / 2).toDp(),
@@ -72,21 +68,10 @@ fun CollectionItem(
                     showContextMenu = true 
                 }
             )
-            .onPointerEvent(PointerEventType.Press) { pointerEvent ->
-                if (pointerEvent.button == PointerButton.Secondary) {
-                    onContextMenu()
-                    // For right click, position menu at mouse location
-                    val mouseX = pointerEvent.changes.first().position.x
-                    val mouseY = pointerEvent.changes.first().position.y
-                    
-                    contextMenuPosition = with(density) {
-                        DpOffset(
-                            x = mouseX.toDp().coerceIn(0.dp, (cardSize.width).toDp()),
-                            y = mouseY.toDp().coerceIn(0.dp, (cardSize.height).toDp())
-                        )
-                    }
-                    showContextMenu = true
-                }
+            .onRightClick(density, cardSize) { position ->
+                onContextMenu()
+                contextMenuPosition = position
+                showContextMenu = true
             },
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) {

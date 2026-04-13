@@ -9,7 +9,6 @@ import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
 import io.github.peningtonj.recordcollection.repository.ProfileRepository
-import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.repository.SortOrder
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.map
 class LibraryService(
     private val albumRepository: AlbumRepository,
     private val artistRepository: ArtistRepository,
-    private val ratingRepository: RatingRepository,
     private val profileRepository: ProfileRepository,
     private val settingsRepository: SettingsRepository,
     private val trackRepository: TrackRepository
@@ -31,15 +29,12 @@ class LibraryService(
     // Core data operations
     fun getAllAlbumsEnriched(): Flow<List<AlbumDisplayData>> = combine(
         albumRepository.getAllAlbumsInLibrary(),
-        artistRepository.getAllArtists(),
-        ratingRepository.getAllRatings()
-    ) { albums, artists, ratings ->
-        println("Enriching ${albums.size} albums with genres and ratings")
-        println("${albums.first().name}, ${albums.first().id}, ${albums.first().spotifyId}")
+        artistRepository.getAllArtists()
+    ) { albums, artists ->
+        Napier.d { "Enriching ${albums.size} albums with genres" }
         val artistGenreMap = artists.associate { it.id to it.genres }
-        val ratingsMap = ratings.associate { it.albumId to it.rating }
-        enrichAlbumsWithGenres(albums, artistGenreMap).map {
-            AlbumDisplayData(it, 0, ratingsMap[it.id] ?: 0)
+        enrichAlbumsWithGenres(albums, artistGenreMap).map { album ->
+            AlbumDisplayData(album, 0, album.rating ?: 0)
         }
     }
 

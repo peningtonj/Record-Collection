@@ -42,14 +42,24 @@ import io.github.peningtonj.recordcollection.repository.CacheSize
 import io.github.peningtonj.recordcollection.repository.SortOrder
 import io.github.peningtonj.recordcollection.repository.SyncInterval
 import io.github.peningtonj.recordcollection.repository.Theme
+import io.github.peningtonj.recordcollection.ui.AppPlatform
+import io.github.peningtonj.recordcollection.ui.LocalPlatform
+import io.github.peningtonj.recordcollection.ui.components.library.SyncLibraryButton
+import io.github.peningtonj.recordcollection.ui.components.library.SyncLibraryUi
+import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
+import io.github.peningtonj.recordcollection.viewmodel.rememberLibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = rememberSettingsViewModel()
+    viewModel: SettingsViewModel = rememberSettingsViewModel(),
+    libraryViewModel: LibraryViewModel = rememberLibraryViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
+    val syncState by libraryViewModel.syncState.collectAsState()
+    val trackSyncState by libraryViewModel.trackSyncState.collectAsState()
+    val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
 
     Column(
         modifier = Modifier
@@ -58,10 +68,12 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineMedium
-        )
+        if (!isAndroid) {
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.headlineMedium
+            )
+        }
 
         // Appearance Section
         SettingsSection(title = "Appearance") {
@@ -126,6 +138,32 @@ fun SettingsScreen(
                     key = settings.openAiApiKey,
                     onKeyChange = { viewModel.updateOpenAiApiKey(it) },
                     onValidate = { viewModel.validateOpenAiApiKey() }
+                )
+            }
+        }
+
+        // Sync Section
+        SettingsSection(title = "Sync") {
+            SettingsRow(
+                title = "Sync with Spotify Albums",
+                subtitle = "Compare and merge your local library with Spotify"
+            ) {
+                SyncLibraryUi(
+                    onClick = { libraryViewModel.startSync() },
+                    syncState = syncState,
+                    launchSync = { syncAction, removeDuplicates ->
+                        libraryViewModel.launchSync(syncAction, removeDuplicates)
+                    }
+                )
+            }
+            SettingsRow(
+                title = "Sync Tracks",
+                subtitle = "Sync track data for your saved albums"
+            ) {
+                SyncLibraryButton(
+                    onClick = { libraryViewModel.startTrackSync() },
+                    label = "Sync Tracks",
+                    syncState = trackSyncState
                 )
             }
         }

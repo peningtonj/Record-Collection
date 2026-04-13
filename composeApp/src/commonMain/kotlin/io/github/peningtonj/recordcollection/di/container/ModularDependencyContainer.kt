@@ -99,7 +99,7 @@ class ModularDependencyContainer(
     }
     
     override val libraryService by lazy {
-        LibraryService(albumRepository, artistRepository, ratingRepository, profileRepository, settingsRepository, trackRepository)
+        LibraryService(albumRepository, artistRepository, profileRepository, settingsRepository, trackRepository)
     }
 
     override val collectionImportService by lazy {
@@ -145,7 +145,6 @@ class ModularDependencyContainer(
             albumRepository,
             albumTagRepository,
             collectionAlbumRepository,
-            ratingRepository,
             trackRepository
         )
     }

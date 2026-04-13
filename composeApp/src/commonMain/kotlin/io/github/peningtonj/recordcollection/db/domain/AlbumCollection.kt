@@ -19,7 +19,7 @@ data class CollectionAlbumEntry(
  */
 @Serializable
 data class CollectionDocument(
-    val name: String = "",
+    val name: String,
     val description: String? = null,
     @SerialName("created_at") val createdAt: Long = 0L,
     @SerialName("updated_at") val updatedAt: Long = 0L,

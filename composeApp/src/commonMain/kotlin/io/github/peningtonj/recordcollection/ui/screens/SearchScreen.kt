@@ -36,6 +36,8 @@ import io.github.peningtonj.recordcollection.ui.components.common.LoadingIndicat
 import io.github.peningtonj.recordcollection.ui.components.search.AlbumSearchItem
 import io.github.peningtonj.recordcollection.ui.components.search.ArtistSearchItem
 import io.github.peningtonj.recordcollection.util.RankedSearchResults
+import io.github.peningtonj.recordcollection.ui.AppPlatform
+import io.github.peningtonj.recordcollection.ui.LocalPlatform
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.SearchScreenUiState
@@ -56,6 +58,7 @@ fun SearchScreen(
     val uiState by viewModel.uiState.collectAsState()
     val currentQuery by viewModel.currentQuery.collectAsState()
     val newReleases by viewModel.newReleaseAlbums.collectAsState()
+    val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
 
     val albumActions = rememberAlbumActions(
         playbackViewModel,
@@ -105,8 +108,9 @@ fun SearchScreen(
                 Column {
                     Row {
                         Text(
-                            "New Releases: ",
-                            style = MaterialTheme.typography.headlineMedium,
+                            "New Releases",
+                            style = if (isAndroid) MaterialTheme.typography.titleMedium
+                                    else MaterialTheme.typography.headlineMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )

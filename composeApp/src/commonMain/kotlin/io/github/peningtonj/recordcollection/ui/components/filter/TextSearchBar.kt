@@ -50,9 +50,8 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.filter.AlbumFilter
-import sun.tools.jconsole.LabeledComponent.layout
- import androidx.compose.foundation.layout.*
- import androidx.compose.ui.layout.Layout
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup

@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthState
+import io.github.peningtonj.recordcollection.ui.AppPlatform
+import io.github.peningtonj.recordcollection.ui.LocalPlatform
 import io.github.peningtonj.recordcollection.viewmodel.AuthViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberAuthViewModel
 
@@ -34,41 +36,39 @@ fun ProfileScreen(
 ) {
     val authState by authViewModel.authState.collectAsState()
     val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
-    
+    val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Profile Header
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+        // Profile Header — hidden on Android (TopAppBar already shows the title)
+        if (!isAndroid) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                Text(
-                    text = "Profile",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = if (isAuthenticated) "Connected to Spotify" else "Not connected",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isAuthenticated) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Profile",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isAuthenticated) "Connected to Spotify" else "Not connected",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isAuthenticated) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
         

@@ -46,6 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.repository.OnAddToCollection
+import io.github.peningtonj.recordcollection.ui.AppPlatform
+import io.github.peningtonj.recordcollection.ui.LocalPlatform
 import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
 import io.github.peningtonj.recordcollection.ui.components.album.getCollectionActionAlbums
@@ -172,10 +174,11 @@ private fun HeroCollectionHeader(
             .background(
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             )
-            .padding(32.dp)
+            .padding(if (LocalPlatform.current == AppPlatform.ANDROID) 16.dp else 32.dp)
     ) {
+        val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
         Column(
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(if (isAndroid) 12.dp else 24.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -184,58 +187,63 @@ private fun HeroCollectionHeader(
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(if (isAndroid) 4.dp else 8.dp)
                 ) {
-                    // Collection icon badge
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    // Collection icon badge — hide on Android (TopAppBar already labels it)
+                    if (!isAndroid) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(bottom = 8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Album,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "COLLECTION",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Album,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "COLLECTION",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
-                    
-                    // Collection name
+
+                    // Collection name — much smaller on Android
                     Text(
                         text = collectionName,
-                        style = MaterialTheme.typography.displayMedium,
+                        style = if (isAndroid) MaterialTheme.typography.titleLarge
+                                else MaterialTheme.typography.displayMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
-                    
-                    // Album count with styled number
+
+                    // Album count
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.Bottom
                     ) {
                         Text(
                             text = albumCount.toString(),
-                            style = MaterialTheme.typography.headlineLarge,
+                            style = if (isAndroid) MaterialTheme.typography.titleMedium
+                                    else MaterialTheme.typography.headlineLarge,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = if (albumCount == 1) "album" else "albums",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = if (isAndroid) MaterialTheme.typography.bodyMedium
+                                    else MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 4.dp)
+                            modifier = Modifier.padding(bottom = if (isAndroid) 2.dp else 4.dp)
                         )
                     }
                 }

@@ -4,18 +4,24 @@ import io.github.aakira.napier.Antilog
 import io.github.aakira.napier.LogLevel
 
 /**
- * A console Antilog that suppresses Firebase-tagged debug messages from the terminal.
+ * A console Antilog that suppresses Firebase- and Spotify-tagged debug messages
+ * from the terminal.
  *
- * Firebase DEBUG / VERBOSE / INFO messages are already captured in full by
- * [FirebaseFileAntilog], so echoing them to the terminal only creates noise that
+ * Those messages are already captured in full by [FirebaseFileAntilog] /
+ * [SpotifyFileAntilog], so echoing them to the terminal only creates noise that
  * buries more critical output.
  *
- * WARNING and ERROR level Firebase messages are still shown so that genuine
- * problems surface immediately during development without requiring a log review.
+ * WARNING and ERROR level messages are still shown for both categories so that
+ * genuine problems (rate limits, auth failures, etc.) surface immediately.
  *
  * All other log categories are printed at every level as normal.
  */
 class FilteredConsoleAntilog : Antilog() {
+
+    private val fileOnlyTags = setOf(
+        LoggingUtils.Category.FIREBASE.tag,
+        LoggingUtils.Category.SPOTIFY.tag,
+    )
 
     override fun performLog(
         priority: LogLevel,
@@ -23,9 +29,10 @@ class FilteredConsoleAntilog : Antilog() {
         throwable: Throwable?,
         message: String?
     ) {
-        // Firebase debug/info already written to the log file — suppress from console.
-        // WARNING and above still surface so critical Firebase errors are not hidden.
-        if (tag == LoggingUtils.Category.FIREBASE.tag && priority < LogLevel.WARNING) return
+        // DEBUG/INFO for file-only categories are written to their dedicated log
+        // files — suppress from console to keep it clean.
+        // WARNING and above still surface so critical errors are not hidden.
+        if (tag in fileOnlyTags && priority < LogLevel.WARNING) return
 
         val levelChar = when (priority) {
             LogLevel.VERBOSE -> 'V'

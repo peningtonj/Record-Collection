@@ -10,12 +10,14 @@ import io.github.peningtonj.recordcollection.di.DependencyContainerFactory
 import io.github.peningtonj.recordcollection.navigation.DesktopNavigator
 import io.github.peningtonj.recordcollection.util.FilteredConsoleAntilog
 import io.github.peningtonj.recordcollection.util.FirebaseFileAntilog
+import io.github.peningtonj.recordcollection.util.SpotifyFileAntilog
 
 fun main() {
     // Initialise logging before anything else so every message — including
-    // Firebase boot-time logs — is captured and routed correctly.
-    Napier.base(FilteredConsoleAntilog()) // console: all categories except Firebase debug
+    // Firebase and Spotify boot-time logs — is captured and routed correctly.
+    Napier.base(FilteredConsoleAntilog()) // console: all categories except Firebase/Spotify debug
     Napier.base(FirebaseFileAntilog())    // file:    Firebase-tagged messages only
+    Napier.base(SpotifyFileAntilog())     // file:    Spotify-tagged messages only
 
     application {
         val dependencies = remember { DependencyContainerFactory.create() }

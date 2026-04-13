@@ -41,7 +41,6 @@ fun rememberLibraryViewModel(
         LibraryViewModel(
             dependencies.libraryService,
             dependencies.collectionsService,
-            dependencies.albumDetailUseCase,
             dependencies.albumRepository,
             dependencies.artistRepository,
         )
@@ -127,8 +126,6 @@ fun rememberCollectionDetailViewModel(
         CollectionDetailViewModel(
             collectionRepository = dependencies.albumCollectionRepository,
             collectionAlbumRepository = dependencies.collectionAlbumRepository,
-            getAlbumDetailUseCase = dependencies.albumDetailUseCase,
-            ratingRepository = dependencies.ratingRepository,
             collectionName = collectionName
         )
     }
@@ -156,7 +153,6 @@ fun rememberSearchViewModel(
         SearchViewModel(
             searchRepository = dependencies.searchRepository,
             albumRepository = dependencies.albumRepository,
-            getAlbumUseCase = dependencies.albumDetailUseCase,
         )
     }
 }

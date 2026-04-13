@@ -3,6 +3,7 @@ package io.github.peningtonj.recordcollection.repository
 import AlbumResult
 import Playlist
 import dev.gitlive.firebase.firestore.DocumentSnapshot
+import dev.gitlive.firebase.firestore.FieldPath
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
@@ -16,6 +17,7 @@ import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 import io.github.peningtonj.recordcollection.util.LoggingUtils
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
@@ -95,6 +97,30 @@ class AlbumRepository(
                 if (!snapshot.exists) throw NoSuchElementException("Album with id '$id' not found")
                 snapshot.toAlbum() ?: throw NoSuchElementException("Album with id '$id' failed to deserialize")
             }
+    }
+
+    /**
+     * Fetches multiple albums in a single batched Firestore query using whereIn on document IDs.
+     * Handles the 30-document Firestore whereIn limit by chunking and combining.
+     */
+    fun getAlbumsByIds(ids: List<String>): Flow<List<Album>> {
+        if (ids.isEmpty()) return flowOf(emptyList())
+        val chunks = ids.chunked(30)
+        LoggingUtils.logFirebaseQuery("albums", "snapshots whereIn (${ids.size} ids, ${chunks.size} chunks)")
+        val chunkFlows = chunks.map { chunk ->
+            albumsRef
+                .where { FieldPath.documentId inArray chunk }
+                .snapshots
+                .map { snapshot ->
+                    LoggingUtils.logFirebaseResult("albums", "getAlbumsByIds chunk", snapshot.documents.size)
+                    snapshot.documents.mapNotNull { it.toAlbum() }
+                }
+        }
+        return if (chunkFlows.size == 1) {
+            chunkFlows.first()
+        } else {
+            combine(chunkFlows) { results -> results.flatMap { it } }
+        }
     }
 
     suspend fun getAlbumBySpotifyId(spotifyId: String): Album? {

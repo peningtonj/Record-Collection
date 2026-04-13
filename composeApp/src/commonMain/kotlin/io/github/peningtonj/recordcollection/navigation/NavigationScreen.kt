@@ -8,6 +8,7 @@ sealed class Screen(val route: String) {
     data object Search : Screen("search")
     data object Settings : Screen("settings")
     data object TagDebug : Screen("tag-debug")
+    data object Collections : Screen("collections")
 
     data class Album(val albumId: String, val spotifyId: String) : Screen("album/$albumId")
     data class Artist(val artistId: String) : Screen("artist/$artistId")
@@ -18,6 +19,7 @@ sealed class Screen(val route: String) {
             Login.route -> Login
             Profile.route -> Profile
             Library.route -> Library
+            Collections.route -> Collections
             else -> throw IllegalArgumentException("Unknown route: $route")
         }
     }

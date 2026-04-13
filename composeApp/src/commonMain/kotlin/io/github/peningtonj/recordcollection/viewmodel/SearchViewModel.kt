@@ -2,28 +2,20 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.SearchResult
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
-import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
-import io.github.peningtonj.recordcollection.util.RankedSearchResults
-import io.github.peningtonj.recordcollection.util.rankByRelevance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.supervisorScope
 
 class SearchViewModel(
     private val searchRepository: SearchRepository,
     private val albumRepository: AlbumRepository,
-    private val getAlbumUseCase: GetAlbumDetailUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SearchScreenUiState>(SearchScreenUiState.LoadingNewReleases)
@@ -44,19 +36,38 @@ class SearchViewModel(
     }
 
     suspend fun updateNewReleaseAlbums() {
-        _uiState.value = if(_uiState.value is SearchScreenUiState.Idle) { SearchScreenUiState.LoadingNewReleases } else { _uiState.value }
+        _uiState.value = if (_uiState.value is SearchScreenUiState.Idle) SearchScreenUiState.LoadingNewReleases else _uiState.value
+
         val newReleases = albumRepository.fetchAllNewReleases()
 
-        val detailedAlbums = supervisorScope {
-            newReleases.map { album ->
-                async {
-                    getAlbumUseCase.execute(album.id, album.spotifyId, false, album).first()
-                }
-            }.awaitAll()
+        if (newReleases.isEmpty()) {
+            _newReleaseAlbums.value = emptyList()
+            _uiState.value = if (_uiState.value is SearchScreenUiState.LoadingNewReleases) SearchScreenUiState.Idle else _uiState.value
+            return
         }
 
-        _newReleaseAlbums.value = detailedAlbums
-        _uiState.value = if(_uiState.value is SearchScreenUiState.LoadingNewReleases) { SearchScreenUiState.Idle } else { _uiState.value }
+        // Single batched Firestore query: find which of these albums the user already has
+        // (gives us inLibrary status, rating, etc. without touching Spotify at all).
+        val albumIds = newReleases.map { it.id }
+        val firestoreAlbums = albumRepository.getAlbumsByIds(albumIds).first()
+            .associateBy { it.id }
+
+        _newReleaseAlbums.value = newReleases.map { album ->
+            val knownAlbum = firestoreAlbums[album.id] ?: album  // prefer Firestore data if available
+            AlbumDetailUiState(
+                album = knownAlbum,
+                tags = emptyList(),
+                collections = emptyList(),
+                tracks = emptyList(),
+                totalDuration = 0L,
+                rating = knownAlbum.rating,
+                isLoading = false,
+                error = null,
+                releaseGroup = emptyList()
+            )
+        }
+
+        _uiState.value = if (_uiState.value is SearchScreenUiState.LoadingNewReleases) SearchScreenUiState.Idle else _uiState.value
     }
 
 

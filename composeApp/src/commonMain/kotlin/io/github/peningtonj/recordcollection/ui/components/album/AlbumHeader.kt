@@ -2,7 +2,9 @@ package io.github.peningtonj.recordcollection.ui.components.album
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
@@ -29,10 +31,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
+import io.github.peningtonj.recordcollection.ui.AppPlatform
+import io.github.peningtonj.recordcollection.ui.LocalPlatform
 import io.github.peningtonj.recordcollection.ui.components.playback.PlaybackActions
 import io.github.peningtonj.recordcollection.ui.components.rating.StarRating
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
@@ -51,24 +56,27 @@ fun AlbumHeader(
     isPlaying: () -> Boolean = { false },
     onReleaseSelect: (String, String) -> Unit = { _, _ -> }
 ) {
+    val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(if (isAndroid) 12.dp else 16.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isAndroid) 10.dp else 16.dp)
     ) {
         // Main album info row
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Album Cover Image
+            // Album Cover — smaller on Android to leave more room for text
+            val imageSize = if (isAndroid) 88.dp else 120.dp
             AsyncImage(
                 model = albumDetailUiState.album.images.firstOrNull()?.url,
                 contentDescription = "Album cover for ${albumDetailUiState.album.name}",
                 modifier = Modifier
-                    .width(120.dp)
+                    .width(imageSize)
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(4.dp)),
                 contentScale = ContentScale.Crop
@@ -85,25 +93,25 @@ fun AlbumHeader(
                 ) {
                     Text(
                         text = albumDetailUiState.album.name,
-                        style = MaterialTheme.typography.headlineMedium,
+                        // Smaller title on Android so it doesn't overflow beside the image
+                        style = if (isAndroid) MaterialTheme.typography.titleLarge
+                                else MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
-
-                    Spacer(modifier = Modifier.width(24.dp))  // Adds fixed space between text and button
 
                     if (isPlaying()) {
                         PauseButton(
                             onPauseClick = playbackActions.togglePlayPause,
-                            modifier = Modifier
-                                .padding(top = 4.dp)
+                            modifier = Modifier.padding(start = 8.dp)
                         )
                     } else {
                         PlayButton(
                             onPlayClick = { albumActions.play(albumDetailUiState) },
-                            modifier = Modifier
-                                .padding(top = 4.dp)
+                            modifier = Modifier.padding(start = 8.dp)
                         )
-
                     }
                 }
 
@@ -124,21 +132,13 @@ fun AlbumHeader(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Text(
-                        text = "•",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Text(text = "•", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                     Text(
                         text = "${albumDetailUiState.album.totalTracks} tracks",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Text(
-                        text = "•",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Text(text = "•", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                     Text(
                         text = formattedTotalDuration(albumDetailUiState.totalDuration),
                         style = MaterialTheme.typography.bodyMedium,
@@ -147,14 +147,16 @@ fun AlbumHeader(
                 }
 
                 StarRating(
-                    albumDetailUiState.rating?.rating ?: 0,
+                    albumDetailUiState.rating ?: 0,
                     onRatingChange = { newRating -> albumActions.updateRating(albumDetailUiState, newRating) },
                 )
             }
         }
 
+        // Action chips — horizontally scrollable so they never overflow on narrow screens
         Row(
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ReleaseGroupUi(
                 albumDetailUiState = albumDetailUiState,
@@ -185,7 +187,7 @@ fun AlbumHeader(
 
         TagsSection(albumDetailUiState,
             addTag = showAddTagDialogClick,
-            removeTag = {tagId ->
+            removeTag = { tagId ->
                 albumActions.removeTag(albumDetailUiState, tagId)
             }
         )

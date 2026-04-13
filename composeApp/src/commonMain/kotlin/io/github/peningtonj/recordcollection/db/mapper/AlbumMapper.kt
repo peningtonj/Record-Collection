@@ -74,7 +74,8 @@ object AlbumMapper {
             updatedAt = entity.updatedAt,
             externalIds = entity.externalIds?.let { runCatching { Json.decodeFromString<Map<String, String>>(it) }.getOrNull() },
             inLibrary = entity.inLibrary,
-            releaseGroupId = entity.releaseGroupId
+            releaseGroupId = entity.releaseGroupId,
+            rating = entity.rating
         )
     }
 
@@ -94,7 +95,8 @@ object AlbumMapper {
             updatedAt = album.updatedAt,
             externalIds = album.externalIds?.let { Json.encodeToString(it) },
             inLibrary = album.inLibrary,
-            releaseGroupId = album.releaseGroupId
+            releaseGroupId = album.releaseGroupId,
+            rating = album.rating
         )
     }
 

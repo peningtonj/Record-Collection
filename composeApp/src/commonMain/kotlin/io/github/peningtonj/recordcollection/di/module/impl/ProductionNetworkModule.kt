@@ -5,6 +5,8 @@ import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
+import io.github.peningtonj.recordcollection.util.LoggingUtils
+import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.auth.*
@@ -23,6 +25,10 @@ class ProductionNetworkModule : NetworkModule {
     // Track rate limiting statistics
     private var rateLimitCount = 0
     private var totalRequests = 0
+
+    /** Strips the Spotify base URL so log lines are concise. */
+    private fun String.spotifyPath() = removePrefix("https://api.spotify.com/v1")
+        .removePrefix("https://api.spotify.com")
     
     // Configure JSON with more lenient settings and logging
     private val jsonConfig = Json {
@@ -153,9 +159,11 @@ class ProductionNetworkModule : NetworkModule {
                 maxRetries = 3
                 retryOnServerErrors(maxRetries)
                 retryOnExceptionIf { request, cause ->
-                    println("🔄 Spotify Exception: ${cause::class.simpleName}: ${cause.message}")
-                    cause.printStackTrace()
-
+                    Napier.w(
+                        "Spotify exception: ${cause::class.simpleName}: ${cause.message} — ${request.method.value} ${request.url.buildString().spotifyPath()}",
+                        cause,
+                        LoggingUtils.Category.SPOTIFY.tag
+                    )
                     cause is kotlinx.coroutines.TimeoutCancellationException ||
                             cause is java.net.SocketTimeoutException ||
                             cause is java.io.IOException
@@ -169,16 +177,12 @@ class ProductionNetworkModule : NetworkModule {
                         val retryAfter = response.headers["Retry-After"]
                         val remaining = response.headers["X-RateLimit-Remaining"]
                         val limit = response.headers["X-RateLimit-Limit"]
-
-                        println("🎵 SPOTIFY RATE LIMITED! ${response.status}")
-                        println("   Retry-After: $retryAfter")
-                        println("   Rate limit: $remaining/$limit remaining")
-                        println("   Request: $maxRetries -- ${request.method} ${request.url}")
-
+                        Napier.w(
+                            "RATE LIMITED ${response.status} — ${request.method.value} ${request.url.toString().spotifyPath()} | retry-after=${retryAfter}s remaining=$remaining/$limit",
+                            tag = LoggingUtils.Category.SPOTIFY.tag
+                        )
                         val isPolling = request.headers["X-No-Retry"] == "true"
-                        if (isPolling) {
-                            return@retryIf false // Don't retry polling requests
-                        }
+                        if (isPolling) return@retryIf false
                     }
 
                     isRateLimit
@@ -192,46 +196,43 @@ class ProductionNetworkModule : NetworkModule {
 
                 modifyRequest { request ->
                     request.header("User-Agent", "RecordCollection/1.0")
+                    LoggingUtils.logSpotifyRequest(
+                        method = request.method.value,
+                        path = request.url.buildString().spotifyPath()
+                    )
                 }
             }
 
-            // Add response validation for Spotify API
+            // Log every Spotify request and response via Napier → SpotifyFileAntilog
             HttpResponseValidator {
                 handleResponseExceptionWithRequest { exception, request ->
-                    println("❌ Spotify API Exception for ${request.url}")
-                    println("   Exception: ${exception::class.simpleName}: ${exception.message}")
-
-                    when (exception) {
-                        is kotlinx.serialization.SerializationException -> {
-                            println("🔍 SPOTIFY SERIALIZATION ERROR:")
-                            println("   Message: ${exception.message}")
-                            exception.printStackTrace()
-                        }
-
-                        is kotlinx.serialization.MissingFieldException -> {
-                            println("🔍 SPOTIFY MISSING FIELD ERROR:")
-                            println("   Field: ${exception.message}")
-                            println("   Request: ${request.method} ${request.url} ")
-                            exception.printStackTrace()
-                        }
-
-                        else -> {
-                            println("🔍 SPOTIFY OTHER ERROR:")
-                            exception.printStackTrace()
-                        }
-                    }
+                    val path = request.url.toString().spotifyPath()
+                    Napier.e(
+                        "Exception for ${request.method.value} $path: ${exception::class.simpleName}: ${exception.message}",
+                        exception,
+                        LoggingUtils.Category.SPOTIFY.tag
+                    )
                 }
 
                 validateResponse { response ->
-                    if (!response.status.isSuccess()) {
-                        val responseBody = try {
-                            response.bodyAsText()
-                        } catch (e: Exception) {
-                            "Unable to read response body: ${e.message}"
-                        }
-
-                        println("❌ Spotify API Error ${response.status.value} for ${response.request.url} (${response.request.method})")
-                        println("   Response body: $responseBody")
+                    val path = response.request.url.toString().spotifyPath()
+                    val method = response.request.method.value
+                    val status = response.status.value
+                    val retryAfter = response.headers["Retry-After"]
+                    val remaining = response.headers["X-RateLimit-Remaining"]
+                    val limit = response.headers["X-RateLimit-Limit"]
+                    LoggingUtils.logSpotifyResponse(
+                        method = method,
+                        path = path,
+                        status = status,
+                        durationMs = 0L,
+                        rateLimitRemaining = remaining,
+                        rateLimitLimit = limit,
+                        retryAfter = retryAfter,
+                    )
+                    if (status >= 400) {
+                        val body = try { response.bodyAsText() } catch (e: Exception) { "<unreadable>" }
+                        Napier.w("Response body: $body", tag = LoggingUtils.Category.SPOTIFY.tag)
                     }
                 }
             }
@@ -249,18 +250,17 @@ class ProductionNetworkModule : NetworkModule {
                     }
 
                     refreshTokens {
-                        println("🔄 Refreshing Spotify token...")
+                        Napier.d("Refreshing Spotify token…", tag = LoggingUtils.Category.SPOTIFY.tag)
                         val result = authRepository.ensureValidToken()
                         if (result.isSuccess) {
                             val newToken = result.getOrThrow()
-                            println("✅ Token refreshed successfully")
+                            Napier.i("Token refreshed successfully", tag = LoggingUtils.Category.SPOTIFY.tag)
                             BearerTokens(
                                 accessToken = newToken.accessToken,
                                 refreshToken = newToken.refreshToken
                             )
                         } else {
-                            println("❌ Token refresh failed: ${result.exceptionOrNull()?.message}")
-                            result.exceptionOrNull()?.printStackTrace()
+                            Napier.e("Token refresh failed: ${result.exceptionOrNull()?.message}", tag = LoggingUtils.Category.SPOTIFY.tag)
                             null
                         }
                     }
@@ -270,10 +270,8 @@ class ProductionNetworkModule : NetworkModule {
                         if (request.url.host.contains("spotify.com", ignoreCase = true)) {
                             val storedToken = authRepository.getStoredToken()
                             val hasValidToken = storedToken?.accessToken?.isNotEmpty() == true
-
                             if (!hasValidToken) {
-                                println("⚠️ Blocking Spotify request - no valid token available")
-                                println("   Request: ${request.method} ${request.url}")
+                                Napier.w("Blocking Spotify request — no valid token | ${request.method.value} ${request.url.buildString().spotifyPath()}", tag = LoggingUtils.Category.SPOTIFY.tag)
                             }
 
                             hasValidToken
