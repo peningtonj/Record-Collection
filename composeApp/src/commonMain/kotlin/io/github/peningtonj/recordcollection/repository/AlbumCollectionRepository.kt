@@ -1,109 +1,138 @@
 package io.github.peningtonj.recordcollection.repository
 
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
-import app.cash.sqldelight.coroutines.mapToOne
-import app.cash.sqldelight.coroutines.mapToOneOrNull
-import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
-import io.github.peningtonj.recordcollection.db.domain.Album
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
+import io.github.peningtonj.recordcollection.db.domain.CollectionDocument
 import io.github.peningtonj.recordcollection.db.domain.CollectionFolder
-import io.github.peningtonj.recordcollection.db.mapper.AlbumCollectionMapper
-import io.github.peningtonj.recordcollection.db.mapper.CollectionFolderMapper
+import io.github.peningtonj.recordcollection.db.domain.CollectionFolderDocument
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
-import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
-import kotlinx.coroutines.Dispatchers
+import io.github.peningtonj.recordcollection.util.LoggingUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.json.Json
+import kotlinx.datetime.Clock
 
 class AlbumCollectionRepository(
-    private val database: RecordCollectionDatabase,
+    private val firestore: FirebaseFirestore,
     private val openAiApi: OpenAiApi
 ) {
-    
-    fun getAllCollections(): Flow<List<AlbumCollection>> = 
-        database.albumCollectionsQueries
-            .selectAll()
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { it.map(AlbumCollectionMapper::toDomain) }
-    
-    fun getCollectionByName(name: String): Flow<AlbumCollection?> =
-        database.albumCollectionsQueries
-            .selectByName(name)
-            .asFlow()
-            .mapToOneOrNull(Dispatchers.IO)
-            .map { it?.let(AlbumCollectionMapper::toDomain) }
-    
-    fun createCollection(
-        name: String,
-        description: String? = null,
-        parent: String? = null,
-    ) = database.albumCollectionsQueries.insert(
-            name = name,
-            description = description,
-            parent_name = parent
-        )
+    private val collectionsRef = firestore.collection("collections")
+    private val foldersRef = firestore.collection("collection_folders")
 
-    fun updateCollectionByName(
-        newCollectionDetails: AlbumCollection,
-        existingName: String,
-    ) {
-        database.albumCollectionsQueries.update(
-            existing_name = existingName,
-            new_description = newCollectionDetails.description,
-            new_parent = newCollectionDetails.parentName,
-            new_name = newCollectionDetails.name,
+    // ── Collection CRUD (Firestore) ───────────────────────────────────────────
+
+    fun getAllCollections(): Flow<List<AlbumCollection>> {
+        LoggingUtils.logFirebaseQuery("collections", "snapshots (all collections)")
+        return collectionsRef.snapshots.map { snapshot ->
+            LoggingUtils.logFirebaseResult("collections", "getAllCollections", snapshot.documents.size)
+            snapshot.documents.mapNotNull { it.data<CollectionDocument?>()?.toAlbumCollection() }
+        }
+    }
+
+    fun getCollectionByName(name: String): Flow<AlbumCollection?> {
+        LoggingUtils.logFirebaseQuery("collection", "snapshot by name", mapOf("name" to name))
+        return collectionsRef.document(name).snapshots.map { snapshot ->
+            LoggingUtils.logFirebaseResult("collection", "getCollectionByName(name=$name)", if (snapshot.exists) 1 else 0)
+            if (snapshot.exists) snapshot.data<CollectionDocument?>()?.toAlbumCollection() else null
+        }
+    }
+
+    suspend fun createCollection(name: String, description: String? = null, parent: String? = null) {
+        val now = Clock.System.now().epochSeconds
+        LoggingUtils.logFirebaseWrite("collection", "set (create)", name, mapOf("description" to (description ?: ""), "parent" to (parent ?: "")))
+        collectionsRef.document(name).set(
+            CollectionDocument(
+                name = name,
+                description = description,
+                createdAt = now,
+                updatedAt = now,
+                parentName = parent,
+                albums = emptyList()
+            )
         )
     }
-    
-    fun deleteCollection(name: String) {
-        database.albumCollectionsQueries.delete(name)
-        database.collectionAlbumsQueries.deleteByCollectionName(name)
+
+    suspend fun updateCollectionByName(newCollectionDetails: AlbumCollection, existingName: String) {
+        val now = Clock.System.now().epochSeconds
+        if (newCollectionDetails.name != existingName) {
+            // Rename: copy document (preserving albums array) then delete old one
+            LoggingUtils.logFirebaseQuery("collection", "get for rename", mapOf("from" to existingName, "to" to newCollectionDetails.name))
+            val existing = collectionsRef.document(existingName).get().data<CollectionDocument?>()
+            LoggingUtils.logFirebaseWrite("collection", "set (rename – new doc)", newCollectionDetails.name)
+            collectionsRef.document(newCollectionDetails.name).set(
+                CollectionDocument(
+                    name = newCollectionDetails.name,
+                    description = newCollectionDetails.description,
+                    createdAt = existing?.createdAt ?: now,
+                    updatedAt = now,
+                    parentName = newCollectionDetails.parentName,
+                    albums = existing?.albums ?: emptyList()
+                )
+            )
+            LoggingUtils.logFirebaseWrite("collection", "delete (rename – old doc)", existingName)
+            collectionsRef.document(existingName).delete()
+        } else {
+            LoggingUtils.logFirebaseWrite("collection", "set merge (update fields)", existingName)
+            collectionsRef.document(existingName).set(
+                mapOf(
+                    "description" to newCollectionDetails.description,
+                    "parent_name" to newCollectionDetails.parentName,
+                    "updated_at" to now
+                ),
+                merge = true
+            )
+        }
     }
-    
-    fun getCollectionCount(): Flow<Long> = 
-        database.albumCollectionsQueries
-            .getCount()
-            .asFlow()
-            .mapToOne(Dispatchers.IO)
 
-    fun createFolder(folder: CollectionFolder) =
-        database.collectionFoldersQueries.insert(
-            folder_name = folder.folderName,
-            collections = Json.encodeToString(folder.collections),
-            folders = Json.encodeToString(folder.folders),
-            parent = folder.parentName,
+    suspend fun deleteCollection(name: String) {
+        LoggingUtils.logFirebaseWrite("collection", "delete", name)
+        collectionsRef.document(name).delete()
+    }
+
+    fun getCollectionCount(): Flow<Long> {
+        LoggingUtils.logFirebaseQuery("collection", "snapshots (count)")
+        return collectionsRef.snapshots.map { it.documents.size.toLong() }
+    }
+
+    fun getAllTopLevelCollections(): Flow<List<AlbumCollection>> =
+        getAllCollections().map { collections -> collections.filter { it.parentName == null } }
+
+    fun getCollectionsByFolder(folderName: String): Flow<List<AlbumCollection>> {
+        LoggingUtils.logFirebaseQuery("collection", "snapshots where parent_name ==", mapOf("folderName" to folderName))
+        return collectionsRef
+            .where { "parent_name" equalTo folderName }
+            .snapshots
+            .map { snapshot ->
+                LoggingUtils.logFirebaseResult("collection", "getCollectionsByFolder(folder=$folderName)", snapshot.documents.size)
+                snapshot.documents.mapNotNull { it.data<CollectionDocument?>()?.toAlbumCollection() }
+            }
+    }
+
+    // ── Folder operations (Firestore) ─────────────────────────────────────────
+
+    suspend fun createFolder(folder: CollectionFolder) {
+        LoggingUtils.logFirebaseWrite("collection_folders", "set (create)", folder.folderName)
+        foldersRef.document(folder.folderName).set(
+            CollectionFolderDocument(
+                folderName = folder.folderName,
+                parent = folder.parentName
+            )
         )
+    }
 
-    fun getAllTopLevelCollections() =
-        database.albumCollectionsQueries
-            .selectAllTopLevelCollections()
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { it.map(AlbumCollectionMapper::toDomain) }
+    private fun getAllFolders(): Flow<List<CollectionFolder>> {
+        LoggingUtils.logFirebaseQuery("collection_folders", "snapshots (all)")
+        return foldersRef.snapshots.map { snapshot ->
+            snapshot.documents.mapNotNull { it.data<CollectionFolderDocument?>()?.toDomain() }
+        }
+    }
 
-    fun getAllTopLevelFolders() =
-        database.collectionFoldersQueries
-            .getTopLevelFolders()
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { it.map(CollectionFolderMapper::toDomain) }
-
-    fun getCollectionsByFolder(folderName: String): Flow<List<AlbumCollection>> =
-        database.albumCollectionsQueries
-            .selectByParent(folderName)
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { it.map(AlbumCollectionMapper::toDomain) }
+    fun getAllTopLevelFolders(): Flow<List<CollectionFolder>> =
+        getAllFolders().map { folders -> folders.filter { it.parentName == null } }
 
     fun getFoldersByParent(parentName: String): Flow<List<CollectionFolder>> =
-        database.collectionFoldersQueries
-            .getFoldersByParent(parentName)
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { it.map(CollectionFolderMapper::toDomain) }
+        getAllFolders().map { folders -> folders.filter { it.parentName == parentName } }
+
+    // ── AI helper ────────────────────────────────────────────────────────────
 
     suspend fun draftCollectionFromPrompt(prompt: String, url: String, openAiApiKey: String): String {
         val urlText = openAiApi.getUrlContent(url)

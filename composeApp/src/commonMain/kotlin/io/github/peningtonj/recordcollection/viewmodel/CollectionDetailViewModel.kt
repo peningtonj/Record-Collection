@@ -55,6 +55,7 @@ class CollectionDetailViewModel(
                     supervisorScope {
                         albums.map { album ->
                             async {
+                                println("Loading details for album ${album.album.id} in collection $collectionName")
                                 getAlbumDetailUseCase.execute(album.album.id, album.album.spotifyId).first()
                             }
                         }.awaitAll()

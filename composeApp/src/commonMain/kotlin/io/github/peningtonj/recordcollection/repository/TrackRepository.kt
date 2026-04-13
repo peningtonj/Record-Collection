@@ -1,114 +1,80 @@
 package io.github.peningtonj.recordcollection.repository
 
+import dev.gitlive.firebase.firestore.DocumentSnapshot
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.aakira.napier.Napier
-import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Track
+import io.github.peningtonj.recordcollection.db.domain.TrackDocument
 import io.github.peningtonj.recordcollection.db.mapper.TrackMapper
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
-import kotlinx.coroutines.Dispatchers
+import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.json.Json
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
-import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 
 class TrackRepository(
-    private val database: RecordCollectionDatabase,
+    firestore: FirebaseFirestore,
     private val spotifyApi: SpotifyApi
 ) {
+    private val tracksCollection = firestore.collection("tracks")
 
-    fun getTracksForAlbum(albumId: String): Flow<List<Track>> {
-        return database.tracksQueries
-            .getByAlbumId(albumId = albumId)
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { it.map { track -> TrackMapper.toDomain(track, null) } }
-    }
-
+    fun getTracksForAlbum(albumId: String): Flow<List<Track>> =
+        tracksCollection
+            .where { "album_id" equalTo albumId }
+            .orderBy("track_number")
+            .snapshots
+            .map { snapshot -> snapshot.documents.mapNotNull { it.toTrack() } }
 
     suspend fun checkAndUpdateTracksIfNeeded(albumId: String, spotifyId: String) {
         Napier.d("Checking if tracks exist for album $albumId")
-        val tracksExist = database.tracksQueries
-            .countTracksForAlbum(albumId)
-            .executeAsOne() > 0
-
+        val tracksExist = tracksCollection
+            .where { "album_id" equalTo albumId }
+            .get()
+            .documents
+            .isNotEmpty()
         Napier.d { "Tracks exist: $tracksExist" }
         if (!tracksExist) {
-            fetchAndSaveTracks(spotifyId)
+            fetchAndSaveTracks(albumId, spotifyId)
         }
     }
 
     suspend fun fetchLibraryTracks(): List<Track> {
-        val savedTracksResult =  spotifyApi.library.getUsersSavedTracks()
+        val savedTracksResult = spotifyApi.library.getUsersSavedTracks()
         return savedTracksResult.getOrNull()
-            ?.getAllItems { nextUrl ->
-                spotifyApi.library.getNextPaginated(nextUrl)
-            }
+            ?.getAllItems { nextUrl -> spotifyApi.library.getNextPaginated(nextUrl) }
             ?.getOrNull()
             ?.map { track -> TrackMapper.toDomain(track.track) } ?: emptyList()
     }
+
     suspend fun fetchTracksForAlbum(album: Album): List<Track> {
         val spotifyId = album.spotifyId ?: album.id
         Napier.d("Fetching tracks for album ${album.id} (Spotify ID: $spotifyId)")
         return spotifyApi.library.getAlbumTracks(spotifyId)
-            .mapCatching { response ->
-                response.items.map { track ->
-                    TrackMapper.toDomain(track, album)
-                }
-            }
+            .mapCatching { response -> response.items.map { TrackMapper.toDomain(it, album) } }
             .getOrElse {
                 Napier.e("Failed to fetch tracks for album ${album.id}", it)
                 emptyList()
             }
     }
 
-    suspend fun fetchAndSaveTracks(albumId: String) {
-        // Look up spotify_id from our database
-        val spotifyId = database.albumsQueries
-            .getAlbumById(albumId)
-            .executeAsOneOrNull()
-            ?.spotify_id
-            ?: albumId // If not found, assume it's already a Spotify ID
-        
+    suspend fun fetchAndSaveTracks(albumId: String, spotifyId: String) {
         Napier.d("Fetching tracks for album $albumId (Spotify ID: $spotifyId)")
         spotifyApi.library.getAlbumTracks(spotifyId)
             .onSuccess { response ->
-                database.transaction {
-                    response.items.forEach { track ->
-                        database.tracksQueries.insert(
-                            id = track.id,
-                            album_id = albumId,
-                            name = track.name,
-                            track_number = track.trackNumber.toLong(),
-                            duration_ms = track.durationMs.toLong(),
-                            spotify_uri = track.uri,
-                            artists = Json.encodeToString(track.artists),
-                            preview_url = track.previewUrl,
-                            primary_artist = track.artists.firstOrNull()?.name ?: "Unknown Artist",
-                            is_explicit = if (track.explicit) 1 else 0,
-                            disc_number = track.discNumber.toLong(),
-                            popularity = null,
-                            is_saved = 0
-                        )
-                    }
+                response.items.forEach { track ->
+                    tracksCollection.document(track.id).set(TrackMapper.toDocument(track, albumId))
                 }
             }
-            .onFailure { error ->
-                Napier.e("Failed to fetch tracks for album $albumId", error)
-            }
+            .onFailure { error -> Napier.e("Failed to fetch tracks for album $albumId", error) }
     }
 
     suspend fun saveTracksLocalAndRemote(trackIds: List<String>) {
         saveTracksRemote(trackIds)
-        trackIds.forEach { trackId ->
-            addTrackToLibrary(trackId)
-        }
+        trackIds.forEach { addTrackToLibrary(it) }
     }
 
-    fun addTrackToLibrary(trackId: String) {
-        database.tracksQueries.updateInLibraryStatus(1, trackId)
+    suspend fun addTrackToLibrary(trackId: String) {
+        tracksCollection.document(trackId).set(mapOf("is_saved" to true), merge = true)
     }
 
     suspend fun saveTracksRemote(trackIds: List<String>) {
@@ -119,15 +85,18 @@ class TrackRepository(
         spotifyApi.user.removeTracksFromLikedTracks(trackIds)
     }
 
-    fun getSavedTracks(): Flow<List<Track>> = database.tracksQueries
-            .getSavedTracks()
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { it.map { track -> TrackMapper.toDomain(track, null) } }
+    fun getSavedTracks(): Flow<List<Track>> =
+        tracksCollection
+            .where { "is_saved" equalTo true }
+            .snapshots
+            .map { snapshot -> snapshot.documents.mapNotNull { it.toTrack() } }
 
-
-    fun removeTrackFromLibrary(trackId: String) {
-        database.tracksQueries.updateInLibraryStatus(0, trackId)
+    suspend fun removeTrackFromLibrary(trackId: String) {
+        tracksCollection.document(trackId).set(mapOf("is_saved" to false), merge = true)
     }
 
+    private fun DocumentSnapshot.toTrack(): Track? {
+        val doc = data<TrackDocument?>() ?: return null
+        return TrackMapper.toDomain(id, doc)
+    }
 }

@@ -72,7 +72,7 @@ class PlaybackQueueService(
 
     suspend fun ensureTracksLoaded(album: AlbumDetailUiState): AlbumDetailUiState {
         return if (album.tracks.isEmpty()) {
-            trackRepository.fetchAndSaveTracks(album.album.id)
+            trackRepository.fetchAndSaveTracks(album.album.id, album.album.spotifyId)
             val tracks = trackRepository.getTracksForAlbum(album.album.id).first()
             album.copy(tracks = tracks)
         } else {

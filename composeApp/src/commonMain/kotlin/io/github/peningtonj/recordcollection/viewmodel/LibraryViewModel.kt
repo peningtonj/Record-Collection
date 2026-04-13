@@ -141,7 +141,9 @@ class LibraryViewModel(
     }
 
     fun createCollectionFromCurrentFilter(name: String) =
-        collectionsService.createCollectionFromAlbums(filteredAlbums.value.map { it.album }, name)
+        viewModelScope.launch {
+            collectionsService.createCollectionFromAlbums(filteredAlbums.value.map { it.album }, name)
+        }
 
     fun import() =
         viewModelScope.launch {
@@ -149,11 +151,14 @@ class LibraryViewModel(
         }
 
     fun addAlbumToLibrary(album: Album) =
-        libraryService.addAlbumToLibrary(album)
-
+        viewModelScope.launch {
+            libraryService.addAlbumToLibrary(album)
+        }
 
     fun removeAlbumFromLibrary(album: Album) =
-        libraryService.removeAlbumFromLibrary(album)
+        viewModelScope.launch {
+            libraryService.removeAlbumFromLibrary(album)
+        }
 
     fun launchSync(syncAction: SyncAction, removeDuplicates: Boolean) =
         viewModelScope.launch {

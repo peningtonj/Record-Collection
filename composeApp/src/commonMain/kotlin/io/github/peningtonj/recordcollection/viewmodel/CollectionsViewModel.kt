@@ -62,16 +62,31 @@ class CollectionsViewModel(
     fun updateCollectionParent(
         collection: AlbumCollection,
         newParentName: String?
-    ) = repository
-        .updateCollectionByName(
-            collection.copy(parentName = newParentName),
-            collection.name
-        )
+    ) {
+        viewModelScope.launch {
+            try {
+                repository.updateCollectionByName(
+                    collection.copy(parentName = newParentName),
+                    collection.name
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
 
     fun updateCollection(
         existingName: String,
-        newCollectionDetails: AlbumCollection) =
-    repository.updateCollectionByName(newCollectionDetails, existingName)
+        newCollectionDetails: AlbumCollection
+    ) {
+        viewModelScope.launch {
+            try {
+                repository.updateCollectionByName(newCollectionDetails, existingName)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
 
     private fun loadFolderContents(folderName: String) {
         viewModelScope.launch {

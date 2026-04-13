@@ -6,7 +6,6 @@ import io.github.peningtonj.recordcollection.network.miscApi.model.Release
 import io.github.peningtonj.recordcollection.network.spotify.model.SearchType
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
-import kotlinx.coroutines.delay
 
 class ReleaseGroupUseCase(
     private val albumRepository: AlbumRepository,
@@ -60,7 +59,7 @@ class ReleaseGroupUseCase(
         }
     }
 
-    fun updateAlbums(releaseGroupId: String, albums: List<Album>) {
+    suspend fun updateAlbums(releaseGroupId: String, albums: List<Album>) {
         albums.forEach { album ->
             Napier.d { "Updating Album ${album.name}" }
             if (albumRepository.albumExists(album.id)) {

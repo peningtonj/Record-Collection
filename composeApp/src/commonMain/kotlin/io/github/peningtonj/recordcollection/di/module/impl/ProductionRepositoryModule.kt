@@ -1,7 +1,7 @@
-
 package io.github.peningtonj.recordcollection.di.module.impl
 
-import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
+import com.russhwolf.settings.Settings
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.di.module.RepositoryModule
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
@@ -14,55 +14,51 @@ import io.github.peningtonj.recordcollection.repository.*
 class ProductionRepositoryModule : RepositoryModule {
     override fun provideAuthRepository(
         authHandler: AuthHandler,
-        database: RecordCollectionDatabase
-    ): SpotifyAuthRepository = SpotifyAuthRepository(authHandler, database)
+        settings: Settings
+    ): SpotifyAuthRepository = SpotifyAuthRepository(authHandler, settings)
     
     override fun provideAlbumRepository(
-        database: RecordCollectionDatabase,
+        firestore: FirebaseFirestore,
         spotifyApi: SpotifyApi,
         miscApi: MiscApi,
         eventDispatcher: AlbumEventDispatcher
-    ): AlbumRepository = AlbumRepository(database, spotifyApi, miscApi, eventDispatcher)
+    ): AlbumRepository = AlbumRepository(firestore, spotifyApi, miscApi, eventDispatcher)
     
     override fun provideArtistRepository(
-        database: RecordCollectionDatabase,
+        firestore: FirebaseFirestore,
         spotifyApi: SpotifyApi,
         miscApi: MiscApi
-    ): ArtistRepository = ArtistRepository(database, spotifyApi, miscApi)
+    ): ArtistRepository = ArtistRepository(firestore, spotifyApi, miscApi)
     
     override fun providePlaybackRepository(
         spotifyApi: SpotifyApi
     ): PlaybackRepository = PlaybackRepository(spotifyApi)
     
     override fun provideProfileRepository(
-        database: RecordCollectionDatabase,
         spotifyApi: SpotifyApi
-    ): ProfileRepository = ProfileRepository(
-        database,
-        spotifyApi
-    )
+    ): ProfileRepository = ProfileRepository(spotifyApi)
 
     override fun provideRatingRepository(
-        database: RecordCollectionDatabase
-    ): RatingRepository = RatingRepository(database)
+        firestore: FirebaseFirestore
+    ): RatingRepository = RatingRepository(firestore)
 
     override fun provideAlbumCollectionRepository(
-        database: RecordCollectionDatabase,
+        firestore: FirebaseFirestore,
         openAiApi: OpenAiApi
-    ): AlbumCollectionRepository = AlbumCollectionRepository(database, openAiApi)
-
+    ): AlbumCollectionRepository = AlbumCollectionRepository(firestore, openAiApi)
 
     override fun provideCollectionAlbumRepository(
-        database: RecordCollectionDatabase
-    ): CollectionAlbumRepository = CollectionAlbumRepository(database)
+        firestore: FirebaseFirestore,
+        albumRepository: AlbumRepository
+    ): CollectionAlbumRepository = CollectionAlbumRepository(firestore, albumRepository)
 
     override fun provideAlbumTagRepository(
-        database: RecordCollectionDatabase
-    ): AlbumTagRepository = AlbumTagRepository(database)
+        firestore: FirebaseFirestore
+    ): AlbumTagRepository = AlbumTagRepository(firestore)
 
     override fun provideTagRepository(
-        database: RecordCollectionDatabase
-    ): TagRepository = TagRepository(database)
+        firestore: FirebaseFirestore
+    ): TagRepository = TagRepository(firestore)
 
     override fun provideSearchRepository(
         spotifyApi: SpotifyApi
@@ -73,7 +69,7 @@ class ProductionRepositoryModule : RepositoryModule {
     ): PlaylistRepository = PlaylistRepository(spotifyApi)
 
     override fun provideTrackRepository(
-        database: RecordCollectionDatabase,
+        firestore: FirebaseFirestore,
         spotifyApi: SpotifyApi
-    ): TrackRepository = TrackRepository(database, spotifyApi)
+    ): TrackRepository = TrackRepository(firestore, spotifyApi)
 }

@@ -1,8 +1,9 @@
 package io.github.peningtonj.recordcollection.respository
 
-import app.cash.sqldelight.TransactionWithoutReturn
-import io.github.peningtonj.recordcollection.db.AlbumsQueries
-import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
+import dev.gitlive.firebase.firestore.CollectionReference
+import dev.gitlive.firebase.firestore.DocumentReference
+import dev.gitlive.firebase.firestore.DocumentSnapshot
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.events.AlbumEvent
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
@@ -24,10 +25,16 @@ import kotlin.test.assertFailsWith
 class AlbumRepositoryTest {
 
     @MockK
-    private lateinit var database: RecordCollectionDatabase
+    private lateinit var firestore: FirebaseFirestore
 
     @MockK
-    private lateinit var albumsQueries: AlbumsQueries
+    private lateinit var albumsCollection: CollectionReference
+
+    @MockK
+    private lateinit var albumDocRef: DocumentReference
+
+    @MockK
+    private lateinit var albumDocSnapshot: DocumentSnapshot
 
     @MockK
     private lateinit var spotifyApi: SpotifyApi
@@ -47,74 +54,60 @@ class AlbumRepositoryTest {
     fun setup() {
         MockKAnnotations.init(this)
 
-        every { database.albumsQueries } returns albumsQueries
+        every { firestore.collection("albums") } returns albumsCollection
+        every { albumsCollection.document(any()) } returns albumDocRef
+        every { albumDocSnapshot.exists } returns false
+        coEvery { albumDocRef.get() } returns albumDocSnapshot
+        coEvery { albumDocRef.set(any<Any>()) } just Runs
+        coEvery { albumDocRef.set(any<Map<String, Any>>(), merge = true) } just Runs
+        coEvery { eventDispatcher.dispatch(any()) } just Runs
 
         repository = AlbumRepository(
-            database = database,
+            firestore = firestore,
             spotifyApi = spotifyApi,
             miscApi = miscApi,
             eventDispatcher = eventDispatcher
         )
     }
 
-    // DATABASE OPERATIONS TESTS
+    // FIRESTORE OPERATIONS TESTS
 
     @Test
-    fun `saveAlbum with AlbumDto saves album to database with correct parameters`() {
-        every { albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
+    fun `saveAlbum with AlbumDto saves album to Firestore`() = runTest {
         repository.saveAlbum(testAlbumDto, addToUsersLibrary = true)
 
-        verify {
-            albumsQueries.insert(
-                id = "test-album-id",
-                spotify_id = "test-album-id",
-                name = "Test Album",
-                primary_artist = "Test Artist",
-                artists = any(),
-                release_date = "2023-01-01",
-                total_tracks = 10L,
-                spotify_uri = "spotify:album:test-album-id",
-                added_at = any(),
-                album_type = any(),
-                images = any(),
-                updated_at = any(),
-                external_ids = any(),
-                in_library = 1,
-                release_group_id = null
-            )
-        }
+        coVerify { albumDocRef.set(any<Any>()) }
+        coVerify { eventDispatcher.dispatch(any<AlbumEvent.AlbumAdded>()) }
     }
 
     @Test
-    fun `saveAlbum with Album domain object saves to database correctly`() {
-        every { albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
+    fun `saveAlbum with Album domain object saves to Firestore`() = runTest {
         repository.saveAlbum(testAlbum)
 
-        // Then
-        verify {
-            albumsQueries.insert(
-                id = "test-album-id",
-                spotify_id = any(),
-                name = "Test Album",
-                primary_artist = "Test Artist",
-                artists = any(),
-                release_date = "2023-01-01",
-                total_tracks = 10L,
-                spotify_uri = "spotify:album:test-album-id",
-                added_at = any(),
-                album_type = any(),
-                images = any(),
-                updated_at = any(),
-                external_ids = any(),
-                in_library = 1,
-                release_group_id = null
-            )
-        }
+        coVerify { albumDocRef.set(any<Any>()) }
+        coVerify { eventDispatcher.dispatch(any<AlbumEvent.AlbumAdded>()) }
     }
 
+    @Test
+    fun `albumExists returns false when document does not exist`() = runTest {
+        every { albumDocSnapshot.exists } returns false
 
-//    // SPOTIFY OPERATIONS TESTS
-//
+        val result = repository.albumExists("test-album-id")
+
+        assertEquals(false, result)
+    }
+
+    @Test
+    fun `albumExists returns true when document exists`() = runTest {
+        every { albumDocSnapshot.exists } returns true
+
+        val result = repository.albumExists("test-album-id")
+
+        assertEquals(true, result)
+    }
+
+    // SPOTIFY OPERATIONS TESTS
+
     @Test
     fun `fetchAlbum returns mapped album on success`() = runTest {
         val mockLibraryApi = mockk<LibraryApi>()
@@ -142,24 +135,20 @@ class AlbumRepositoryTest {
     }
 
     @Test
-    fun `fetchMultipleAlbums processes albums in batches and saves to database`() = runTest {
-        // Given
-        val albumIds = (1..25).map { "album-$it" } // 25 albums to test batching
-        val mockAlbums = albumIds.map { id ->
-            testAlbumDto.copy(id = id, name = "Album $id")
-        }
+    fun `fetchMultipleAlbums processes albums in batches and saves to Firestore`() = runTest {
+        val albumIds = (1..25).map { "album-$it" }
+        val mockAlbums = albumIds.map { id -> testAlbumDto.copy(id = id, name = "Album $id") }
         val mockResponse = mockk<AlbumsResponse>()
         val mockLibraryApi = mockk<LibraryApi>()
 
         every { spotifyApi.library } returns mockLibraryApi
         every { mockResponse.albums } returns mockAlbums.take(20) andThen mockAlbums.drop(20)
         coEvery { mockLibraryApi.getMultipleAlbums(any()) } returns Result.success(mockResponse)
-        every { albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
-        every { eventDispatcher.dispatch(any()) } just Runs
 
         mockkObject(AlbumMapper)
         mockAlbums.forEach { albumDto ->
             every { AlbumMapper.toDomain(albumDto) } returns testAlbum.copy(id = albumDto.id)
+            every { AlbumMapper.toDocument(any()) } returns mockk(relaxed = true)
         }
 
         val result = repository.fetchMultipleAlbums(albumIds, saveToDb = true)
@@ -170,19 +159,12 @@ class AlbumRepositoryTest {
         // Verify batching (should make 2 API calls for 25 albums)
         coVerify(exactly = 2) { mockLibraryApi.getMultipleAlbums(any()) }
 
-        // Verify all albums were saved
-        verify(exactly = 25) {
-            albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
-        }
-
         // Verify events were dispatched
-        verify(exactly = 25) { eventDispatcher.dispatch(any<AlbumEvent.AlbumAdded>()) }
+        coVerify(exactly = 25) { eventDispatcher.dispatch(any<AlbumEvent.AlbumAdded>()) }
     }
 
-
     @Test
-    fun `fetchMultipleAlbums does not save to database when saveToDb is false`() = runTest {
-        // Given
+    fun `fetchMultipleAlbums does not save to Firestore when saveToDb is false`() = runTest {
         val albumIds = listOf("album-1")
         val mockResponse = mockk<AlbumsResponse>()
         val mockLibraryApi = mockk<LibraryApi>()
@@ -190,22 +172,17 @@ class AlbumRepositoryTest {
         every { spotifyApi.library } returns mockLibraryApi
         every { mockResponse.albums } returns listOf(testAlbumDto)
         coEvery { mockLibraryApi.getMultipleAlbums(any()) } returns Result.success(mockResponse)
-        every { eventDispatcher.dispatch(any()) } just Runs
 
         mockkObject(AlbumMapper)
         every { AlbumMapper.toDomain(testAlbumDto) } returns testAlbum
 
-        // When
         repository.fetchMultipleAlbums(albumIds, saveToDb = false)
 
-        // Then
-        verify(exactly = 0) {
-            albumsQueries.insert(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
-        }
+        // document.set should not be called when saveToDb = false
+        coVerify(exactly = 0) { albumDocRef.set(any<Any>()) }
     }
 
     // MISC API OPERATIONS TESTS
-
 
     @Test
     fun `fetchReleaseGroupId throws exception when UPC is not present`() = runTest {
@@ -215,7 +192,5 @@ class AlbumRepositoryTest {
             repository.fetchReleaseGroupId(albumWithoutUpc)
         }
     }
-
-    // CHAINED OPERATIONS TESTS
 
 }

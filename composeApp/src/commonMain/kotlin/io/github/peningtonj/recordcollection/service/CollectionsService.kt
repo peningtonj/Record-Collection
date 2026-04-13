@@ -13,7 +13,7 @@ class CollectionsService(
     private val albumRepository: AlbumRepository,
     ) {
 
-    fun createCollectionFromAlbums(albums: List<Album>, name: String) {
+    suspend fun createCollectionFromAlbums(albums: List<Album>, name: String) {
         albumCollectionRepository.createCollection(name)
         albums.forEach { album ->
             collectionAlbumRepository.addAlbumToCollection(

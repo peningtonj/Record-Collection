@@ -1,8 +1,8 @@
 package io.github.peningtonj.recordcollection.di.container
 
 import PlaybackQueueService
-import io.github.peningtonj.recordcollection.di.module.DatabaseModule
 import io.github.peningtonj.recordcollection.di.module.EventModule
+import io.github.peningtonj.recordcollection.di.module.FirebaseModule
 import io.github.peningtonj.recordcollection.di.module.NetworkModule
 import io.github.peningtonj.recordcollection.di.module.RepositoryModule
 import io.github.peningtonj.recordcollection.di.module.SettingsModule
@@ -20,23 +20,23 @@ import kotlinx.coroutines.SupervisorJob
 
 class ModularDependencyContainer(
     private val networkModule: NetworkModule,
-    private val databaseModule: DatabaseModule,
     private val repositoryModule: RepositoryModule,
     override val authHandler: AuthHandler,
     private val useCaseModule: UseCaseModule,
     private val eventModule: EventModule,
-    private val settingsModule: SettingsModule, // Add this
+    private val settingsModule: SettingsModule,
+    private val firebaseModule: FirebaseModule,
 ) : DependencyContainer {
 
-    private val database by lazy { databaseModule.provideDatabase() }
-    
+    private val firestore by lazy { firebaseModule.provideFirebaseFirestore() }
+
     // Create event scope
     private val eventScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     
     override val authRepository by lazy {
         repositoryModule.provideAuthRepository(
             authHandler = authHandler,
-            database = database
+            settings = settingsModule.provideSettings()
         )
     }
 
@@ -62,7 +62,7 @@ class ModularDependencyContainer(
             tagRepository,
             albumTagRepository
         )
-        val albumTagRepository = repositoryModule.provideAlbumTagRepository(database)
+        val albumTagRepository = repositoryModule.provideAlbumTagRepository(firestore)
         val eventHandlers = eventModule.provideAlbumEventHandlers(
             tagService,
             albumTagRepository,
@@ -75,7 +75,7 @@ class ModularDependencyContainer(
     
     override val albumRepository by lazy {
         repositoryModule.provideAlbumRepository(
-            database = database,
+            firestore = firestore,
             miscApi = miscApi,
             spotifyApi = spotifyApi,
             eventDispatcher = albumEventDispatcher
@@ -84,7 +84,7 @@ class ModularDependencyContainer(
     
     override val artistRepository by lazy {
         repositoryModule.provideArtistRepository(
-            database = database,
+            firestore = firestore,
             spotifyApi = spotifyApi,
             miscApi = miscApi
         )
@@ -95,7 +95,7 @@ class ModularDependencyContainer(
     }
     
     override val profileRepository by lazy {
-        repositoryModule.provideProfileRepository(database, spotifyApi)
+        repositoryModule.provideProfileRepository(spotifyApi)
     }
     
     override val libraryService by lazy {
@@ -121,23 +121,23 @@ class ModularDependencyContainer(
     }
 
     override val ratingRepository by lazy {
-        repositoryModule.provideRatingRepository(database)
+        repositoryModule.provideRatingRepository(firestore)
     }
     
     override val albumCollectionRepository by lazy {
-        repositoryModule.provideAlbumCollectionRepository(database, openAiApi)
+        repositoryModule.provideAlbumCollectionRepository(firestore, openAiApi)
     }
-    
+
     override val collectionAlbumRepository by lazy {
-        repositoryModule.provideCollectionAlbumRepository(database)
+        repositoryModule.provideCollectionAlbumRepository(firestore, albumRepository)
     }
 
     override val albumTagRepository by lazy {
-        repositoryModule.provideAlbumTagRepository(database)
+        repositoryModule.provideAlbumTagRepository(firestore)
     }
 
     override val tagRepository by lazy {
-        repositoryModule.provideTagRepository(database)
+        repositoryModule.provideTagRepository(firestore)
     }
 
     override val albumDetailUseCase by lazy {
@@ -161,7 +161,6 @@ class ModularDependencyContainer(
 
     override fun close() {
         networkModule.close()
-        databaseModule.close()
     }
 
     override val releaseGroupUseCase by lazy {
@@ -172,7 +171,7 @@ class ModularDependencyContainer(
     }
 
     override val trackRepository: TrackRepository by lazy {
-        repositoryModule.provideTrackRepository(database, spotifyApi)
+        repositoryModule.provideTrackRepository(firestore, spotifyApi)
     }
 
     override val settingsRepository by lazy {

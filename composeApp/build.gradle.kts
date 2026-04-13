@@ -1,3 +1,4 @@
+import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -9,15 +10,6 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.sqlDelight)
-}
-
-sqldelight {
-    databases {
-        create("RecordCollectionDatabase") {
-            packageName.set("io.github.peningtonj.recordcollection.db")
-        }
-    }
 }
 
 kotlin {
@@ -36,8 +28,6 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
-            implementation(libs.sqlDelight.driver.android)
-
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -56,8 +46,6 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.kotlinx.datetime)
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.sqlDelight.runtime)
-            implementation(libs.sqlDelight.coroutines)
             implementation(libs.napier)
             implementation("io.coil-kt.coil3:coil-compose:3.2.0")
             implementation(compose.materialIconsExtended)
@@ -65,7 +53,7 @@ kotlin {
             implementation("net.dankito.readability4j:readability4j:1.0.8")
             implementation("com.russhwolf:multiplatform-settings:1.3.0")
             implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.0-alpha07")
-
+            implementation("dev.gitlive:firebase-firestore:2.3.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -80,9 +68,8 @@ kotlin {
             implementation(libs.ktor.server.core)
             implementation(libs.ktor.client.java)
             implementation("org.apache.httpcomponents:httpclient:4.5.14")
-            implementation(libs.sqlDelight.driver.sqlite)
             implementation("com.russhwolf:multiplatform-settings-jvm:1.3.0")
-
+            implementation("dev.gitlive:firebase-auth:1.12.0")
         }
     }
 }
@@ -128,13 +115,11 @@ compose.desktop {
     application {
         mainClass = "io.github.peningtonj.recordcollection.MainKt"
 
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Record Collection"
-            packageVersion = "1.0.0"
-            modules("java.sql")
-            jvmArgs("--add-modules", "java.sql")
-            macOS {
+            nativeDistributions {
+                targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+                packageName = "Record Collection"
+                packageVersion = "1.0.0"
+                macOS {
                 bundleID = "io.github.peningtonj.recordcollection"
             }
             windows {

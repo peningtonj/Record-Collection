@@ -1,8 +1,10 @@
 package io.github.peningtonj.recordcollection.db.mapper
 
-import io.github.peningtonj.recordcollection.db.Albums
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.AlbumDocument
 import io.github.peningtonj.recordcollection.db.domain.AlbumType
+import io.github.peningtonj.recordcollection.db.domain.Image
+import io.github.peningtonj.recordcollection.db.domain.SimplifiedArtist
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.ImageDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
@@ -19,34 +21,7 @@ object AlbumMapper {
      * This ensures that albums with the same name and artist always get the same ID,
      * even if Spotify changes their internal IDs.
      */
-    private fun generateAlbumId(name: String, artist: String): String {
-        return "${name.lowercase().trim()}|${artist.lowercase().trim()}"
-            .hashCode()
-            .toString(36)
-            .replace("-", "0") // Ensure positive IDs
-    }
 
-    fun toDomain(entity: Albums): Album {
-        return Album(
-            id = entity.id,
-            spotifyId = entity.spotify_id ?: "",
-            name = entity.name,
-            primaryArtist = entity.primary_artist,
-            artists = Json.decodeFromString<List<SimplifiedArtistDto>>(entity.artists)
-                .map { ArtistMapper.toDomain(it) },
-            releaseDate = parseReleaseDate(entity.release_date.toString()),
-            totalTracks = entity.total_tracks.toInt(),
-            spotifyUri = entity.spotify_uri,
-            addedAt = Instant.parse(entity.added_at),
-            albumType = AlbumType.fromString(entity.album_type),
-            images = Json.decodeFromString<List<ImageDto>>(entity.images)
-                .map { ImageMapper.toDomain(it) },
-            updatedAt = entity.updated_at,
-            externalIds = entity.external_ids?.let { Json.decodeFromString(it) },
-            inLibrary = entity.in_library == 1L,
-            releaseGroupId = entity.release_group_id
-        )
-    }
 
     fun toDomain(entity: AlbumDto): Album {
         val primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist"
@@ -83,6 +58,46 @@ object AlbumMapper {
     }
 
 
+    fun toDomain(entity: AlbumDocument): Album {
+        return Album(
+            id = entity.id,
+            spotifyId = entity.spotifyId,
+            name = entity.name,
+            primaryArtist = entity.primaryArtist,
+            artists = runCatching { Json.decodeFromString<List<SimplifiedArtist>>(entity.artists) }.getOrElse { emptyList() },
+            releaseDate = parseReleaseDate(entity.releaseDate),
+            totalTracks = entity.totalTracks.toInt(),
+            spotifyUri = entity.spotifyUri,
+            addedAt = entity.addedAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
+            albumType = AlbumType.fromString(entity.albumType),
+            images = runCatching { Json.decodeFromString<List<Image>>(entity.images) }.getOrElse { emptyList() },
+            updatedAt = entity.updatedAt,
+            externalIds = entity.externalIds?.let { runCatching { Json.decodeFromString<Map<String, String>>(it) }.getOrNull() },
+            inLibrary = entity.inLibrary,
+            releaseGroupId = entity.releaseGroupId
+        )
+    }
+
+    fun toDocument(album: Album): AlbumDocument {
+        return AlbumDocument(
+            id = album.id,
+            spotifyId = album.spotifyId,
+            name = album.name,
+            primaryArtist = album.primaryArtist,
+            artists = Json.encodeToString(album.artists),
+            releaseDate = album.releaseDate.toString(),
+            totalTracks = album.totalTracks.toLong(),
+            spotifyUri = album.spotifyUri,
+            addedAt = album.addedAt?.toString(),
+            albumType = album.albumType.name,
+            images = Json.encodeToString(album.images),
+            updatedAt = album.updatedAt,
+            externalIds = album.externalIds?.let { Json.encodeToString(it) },
+            inLibrary = album.inLibrary,
+            releaseGroupId = album.releaseGroupId
+        )
+    }
+
     fun parseReleaseDate(releaseDate: String): LocalDate {
         return when (releaseDate.count { it == '-' }) {
             1 -> {
@@ -105,3 +120,15 @@ object AlbumMapper {
         }
     }
 }
+
+fun generateAlbumId(name: String, artist: String?): String {
+    return "${name.lowercase().trim()}|${artist ?: "Unknown Artist".lowercase().trim()}"
+        .hashCode()
+        .toString(36)
+        .replace("-", "0") // Ensure positive IDs
+}
+
+fun generateAlbumId(album: Album): String {
+    return generateAlbumId(album.name, album.primaryArtist)
+}
+

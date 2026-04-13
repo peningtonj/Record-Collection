@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.LocalLibrary
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -81,6 +82,13 @@ fun NavigationPanel(
             icon = Icons.Default.Settings,
             isSelected = currentScreen is Screen.Settings,
             onClick = { navigator.navigateTo(Screen.Settings) }
+        )
+
+        NavigationItem(
+            title = "Tag Debug",
+            icon = Icons.Default.BugReport,
+            isSelected = currentScreen is Screen.TagDebug,
+            onClick = { navigator.navigateTo(Screen.TagDebug) }
         )
 
         // Collections section

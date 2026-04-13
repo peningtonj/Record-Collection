@@ -1,15 +1,14 @@
 package io.github.peningtonj.recordcollection.di
 
 import com.russhwolf.settings.PreferencesSettings
-import com.russhwolf.settings.Settings
-import io.github.peningtonj.recordcollection.db.DatabaseDriver
+import io.github.peningtonj.recordcollection.db.FirebaseDriver
 import io.github.peningtonj.recordcollection.di.container.DependencyContainer
-import io.github.peningtonj.recordcollection.di.module.impl.ProductionDatabaseModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionNetworkModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionRepositoryModule
 import io.github.peningtonj.recordcollection.di.container.ModularDependencyContainer
 import io.github.peningtonj.recordcollection.di.module.ProductionSettingsModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionEventModule
+import io.github.peningtonj.recordcollection.di.module.impl.ProductionFirebaseModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionUseCaseModule
 import io.github.peningtonj.recordcollection.network.oauth.spotify.DesktopAuthHandler
 import io.ktor.client.HttpClient
@@ -20,6 +19,8 @@ import java.util.prefs.Preferences
 
 object DependencyContainerFactory {
     fun create(): DependencyContainer {
+        FirebaseDriver().initializeFirebase()
+
         // Create a basic HTTP client for auth operations
         val authClient = HttpClient(OkHttp) {
             install(ContentNegotiation) {
@@ -35,27 +36,18 @@ object DependencyContainerFactory {
 
         val settings = createPreferencesSettings()
 
-        val databaseModule = ProductionDatabaseModule(DatabaseDriver())
         val networkModule = ProductionNetworkModule()
         val repositoryModule = ProductionRepositoryModule()
-        val useCaseModule = ProductionUseCaseModule()
-        val eventModule = ProductionEventModule()
-        val settingsModule = ProductionSettingsModule(settings) // Add this
+        val settingsModule = ProductionSettingsModule(settings)
 
-        // Create the container first
-        val container = ModularDependencyContainer(
+        return ModularDependencyContainer(
             networkModule = networkModule,
-            databaseModule = databaseModule,
             repositoryModule = repositoryModule,
-            useCaseModule = useCaseModule,
             authHandler = DesktopAuthHandler(authClient),
-            eventModule = eventModule,
-            settingsModule = settingsModule
+            useCaseModule = ProductionUseCaseModule(),
+            eventModule = ProductionEventModule(),
+            settingsModule = settingsModule,
+            firebaseModule = ProductionFirebaseModule()
         )
-        
-        // Now initialize the auth handler with the repository
-
-        return container
     }
 }
-

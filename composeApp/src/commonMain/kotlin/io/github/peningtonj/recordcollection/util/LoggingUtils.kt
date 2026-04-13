@@ -20,7 +20,8 @@ object LoggingUtils {
         REPOSITORY("Repository"),
         VIEWMODEL("ViewModel"),
         MIGRATION("Migration"),
-        SYNC("Sync")
+        SYNC("Sync"),
+        FIREBASE("Firebase")
     }
     
     /**
@@ -124,6 +125,32 @@ object LoggingUtils {
         d(Category.DATABASE, "Query: $query [params: $paramsStr]")
     }
     
+    /**
+     * Log a Firestore query or mutation at debug level.
+     * @param collection The Firestore collection being accessed
+     * @param operation  Human-readable operation name (e.g. "query where collection_name ==")
+     * @param params     Optional key/value pairs describing filter/write parameters
+     */
+    fun logFirebaseQuery(collection: String, operation: String, params: Map<String, Any>? = null) {
+        val paramsStr = params?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
+        d(Category.FIREBASE, "[$collection] $operation${if (paramsStr.isNotEmpty()) " {$paramsStr}" else ""}")
+    }
+
+    /**
+     * Log the result of a Firestore query at debug level.
+     */
+    fun logFirebaseResult(collection: String, operation: String, resultCount: Int) {
+        d(Category.FIREBASE, "[$collection] $operation -> $resultCount document(s) returned")
+    }
+
+    /**
+     * Log a Firestore write/delete at debug level.
+     */
+    fun logFirebaseWrite(collection: String, operation: String, docId: String, params: Map<String, Any>? = null) {
+        val paramsStr = params?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
+        d(Category.FIREBASE, "[$collection] $operation doc=$docId${if (paramsStr.isNotEmpty()) " {$paramsStr}" else ""}")
+    }
+
     /**
      * Log authentication events
      */

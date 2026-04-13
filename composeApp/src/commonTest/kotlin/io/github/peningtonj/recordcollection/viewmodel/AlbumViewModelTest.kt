@@ -6,6 +6,7 @@ import io.github.peningtonj.recordcollection.network.miscApi.model.ReleaseGroup
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
+import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.service.TagService
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
 import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
@@ -24,6 +25,7 @@ class AlbumViewModelTest {
     private val collectionAlbumRepository = mockk<CollectionAlbumRepository>()
     private val tagService = mockk<TagService>()
     private val releaseGroupUseCase = mockk<ReleaseGroupUseCase>()
+    private val settingsRepository = mockk<SettingsRepository>(relaxed = true)
 
     private lateinit var viewModel: AlbumViewModel
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -37,7 +39,8 @@ class AlbumViewModelTest {
             ratingRepository = ratingRepository,
             collectionAlbumRepository = collectionAlbumRepository,
             tagService = tagService,
-            releaseGroupUseCase = releaseGroupUseCase
+            releaseGroupUseCase = releaseGroupUseCase,
+            settingsRepository = settingsRepository
         )
     }
 
@@ -48,14 +51,15 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun `setRating calls ratingRepository with correct parameters`() {
+    fun `setRating calls ratingRepository with correct parameters`() = runTest {
         val albumId = "test-album-id"
         val rating = 5
-        every { ratingRepository.addRating(any(), any()) } just Runs
+        coEvery { ratingRepository.addRating(any(), any()) } just Runs
 
         viewModel.setRating(albumId, rating)
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        verify { ratingRepository.addRating(albumId, 5L) }
+        coVerify { ratingRepository.addRating(albumId, 5) }
     }
 
     @Test

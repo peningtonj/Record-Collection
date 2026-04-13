@@ -1,6 +1,5 @@
 package io.github.peningtonj.recordcollection.ui.models
 
-import io.github.peningtonj.recordcollection.db.Tracks
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.AlbumRating

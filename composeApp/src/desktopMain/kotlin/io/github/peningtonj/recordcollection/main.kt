@@ -5,25 +5,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
-import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.di.DependencyContainerFactory
 import io.github.peningtonj.recordcollection.navigation.DesktopNavigator
+import io.github.peningtonj.recordcollection.util.FilteredConsoleAntilog
+import io.github.peningtonj.recordcollection.util.FirebaseFileAntilog
 
-fun main() = application {
-    val dependencies = DependencyContainerFactory.create()
-    val navigator = remember { DesktopNavigator() }
-    Napier.base(DebugAntilog())
+fun main() {
+    // Initialise logging before anything else so every message — including
+    // Firebase boot-time logs — is captured and routed correctly.
+    Napier.base(FilteredConsoleAntilog()) // console: all categories except Firebase debug
+    Napier.base(FirebaseFileAntilog())    // file:    Firebase-tagged messages only
 
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "Record Collection",
-        state = WindowState(
-            width = 1200.dp,
-            height = 800.dp
-        )
-    ) {
+    application {
+        val dependencies = remember { DependencyContainerFactory.create() }
+        val navigator = remember { DesktopNavigator() }
 
-        App(dependencies, navigator)
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "Record Collection",
+            state = WindowState(
+                width = 1200.dp,
+                height = 800.dp
+            )
+        ) {
+            App(dependencies, navigator)
+        }
     }
 }

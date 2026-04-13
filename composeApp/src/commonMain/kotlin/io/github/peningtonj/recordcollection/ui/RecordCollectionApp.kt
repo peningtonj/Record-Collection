@@ -30,6 +30,7 @@ import io.github.peningtonj.recordcollection.ui.screens.LoginScreen
 import io.github.peningtonj.recordcollection.ui.screens.ProfileScreen
 import io.github.peningtonj.recordcollection.ui.screens.SearchScreen
 import io.github.peningtonj.recordcollection.ui.screens.SettingsScreen
+import io.github.peningtonj.recordcollection.ui.screens.TagDebugScreen
 import io.github.peningtonj.recordcollection.viewmodel.rememberPlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberSearchViewModel
 import io.github.peningtonj.recordcollection.viewmodel.rememberSettingsViewModel
@@ -71,6 +72,7 @@ fun RecordCollectionApp(
                                         Screen.Search -> "Search"
                                         Screen.Profile -> "Profile"
                                         Screen.Settings -> "Settings"
+                                        Screen.TagDebug -> "Tag Debug"
                                         is Screen.Album -> "Album Details"
                                         is Screen.Artist -> "Artist Details"
                                         is Screen.Collection -> "Collection"
@@ -130,6 +132,7 @@ fun RecordCollectionApp(
                                     Screen.Login -> LoginScreen()
                                     Screen.Profile -> ProfileScreen()
                                     Screen.Settings -> SettingsScreen()
+                                    Screen.TagDebug -> TagDebugScreen()
                                     Screen.Library -> LibraryScreen(
                                         playbackViewModel = playbackViewModel
                                     )

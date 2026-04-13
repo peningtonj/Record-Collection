@@ -1,14 +1,15 @@
 package io.github.peningtonj.recordcollection.db.mapper
 
-import io.github.peningtonj.recordcollection.db.Tracks
-import io.github.peningtonj.recordcollection.db.Albums
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Track
+import io.github.peningtonj.recordcollection.db.domain.TrackDocument
 import io.github.peningtonj.recordcollection.network.spotify.model.PlaybackTrack
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedArtistDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedTrackDto
 import io.github.peningtonj.recordcollection.network.spotify.model.TrackDto
 import kotlinx.serialization.json.Json
+
+/** Represents a Firestore track document. Used for both saving and reading from Firestore. */
 
 object TrackMapper {
     fun toDomain(entity: PlaybackTrack) : Track {
@@ -38,7 +39,7 @@ object TrackMapper {
             isExplicit = false,
             trackNumber = 0,
             discNumber = 0,
-            albumId = entity.album.id,
+            albumId = generateAlbumId(entity.album.name, entity.album.artists.firstOrNull()?.name),
             spotifyUri = entity.uri,
         )
     }
@@ -54,25 +55,43 @@ object TrackMapper {
             isExplicit = entity.explicit,
             trackNumber = entity.trackNumber.toLong(),
             discNumber = entity.discNumber.toLong(),
-            albumId = album.id,
+            albumId = generateAlbumId(album),
             spotifyUri = entity.uri,
         )
     }
 
-    fun toDomain(entity: Tracks, albumEntity: Albums?) : Track {
+
+    fun toDocument(entity: SimplifiedTrackDto, albumId: String): TrackDocument = TrackDocument(
+        name = entity.name,
+        albumId = albumId,
+        trackNumber = entity.trackNumber.toLong(),
+        durationMs = entity.durationMs.toLong(),
+        spotifyUri = entity.uri,
+        artists = Json.encodeToString(entity.artists),
+        previewUrl = entity.previewUrl,
+        primaryArtist = entity.artists.firstOrNull()?.name ?: "Unknown Artist",
+        isExplicit = entity.explicit,
+        discNumber = entity.discNumber.toLong(),
+        isSaved = false
+    )
+
+    fun toDomain(id: String, doc: TrackDocument): Track {
+        val artists = try {
+            Json.decodeFromString<List<SimplifiedArtistDto>>(doc.artists)
+                .map { ArtistMapper.toDomain(it) }
+        } catch (e: Exception) { emptyList() }
         return Track(
-            id = entity.id,
-            name = entity.name,
-            artists = Json.decodeFromString<List<SimplifiedArtistDto>>(entity.artists)
-                .map { ArtistMapper.toDomain(it) },
-            album = albumEntity?.let { AlbumMapper.toDomain(it) },
-            durationMs = entity.duration_ms,
-            trackNumber = entity.track_number,
-            discNumber = entity.disc_number,
-            isExplicit = entity.is_explicit == 1L,
-            albumId = entity.album_id,
-            spotifyUri = entity.spotify_uri,
-            isSaved = entity.is_saved == 1L,
+            id = id,
+            name = doc.name,
+            albumId = doc.albumId,
+            artists = artists,
+            durationMs = doc.durationMs,
+            trackNumber = doc.trackNumber,
+            discNumber = doc.discNumber,
+            spotifyUri = doc.spotifyUri,
+            isExplicit = doc.isExplicit,
+            isSaved = doc.isSaved,
+            imageUrl = null
         )
     }
 

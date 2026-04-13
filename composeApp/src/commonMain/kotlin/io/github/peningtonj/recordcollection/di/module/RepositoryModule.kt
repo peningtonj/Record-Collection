@@ -1,7 +1,7 @@
-
 package io.github.peningtonj.recordcollection.di.module
 
-import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
+import com.russhwolf.settings.Settings
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
@@ -13,50 +13,50 @@ import io.github.peningtonj.recordcollection.repository.*
 interface RepositoryModule {
     fun provideAuthRepository(
         authHandler: AuthHandler,
-        database: RecordCollectionDatabase
+        settings: Settings
     ): SpotifyAuthRepository
-    
+
     fun provideAlbumRepository(
-        database: RecordCollectionDatabase,
+        firestore: FirebaseFirestore,
         spotifyApi: SpotifyApi,
         miscApi: MiscApi,
         eventDispatcher: AlbumEventDispatcher
     ): AlbumRepository
-    
+
     fun provideArtistRepository(
-        database: RecordCollectionDatabase,
+        firestore: FirebaseFirestore,
         spotifyApi: SpotifyApi,
         miscApi: MiscApi
     ): ArtistRepository
-    
+
     fun providePlaybackRepository(
         spotifyApi: SpotifyApi
     ): PlaybackRepository
-    
+
     fun provideProfileRepository(
-        database: RecordCollectionDatabase,
         spotifyApi: SpotifyApi
     ): ProfileRepository
 
     fun provideRatingRepository(
-        database: RecordCollectionDatabase
+        firestore: FirebaseFirestore
     ): RatingRepository
 
     fun provideAlbumCollectionRepository(
-        database: RecordCollectionDatabase,
+        firestore: FirebaseFirestore,
         openAiApi: OpenAiApi
     ): AlbumCollectionRepository
 
     fun provideCollectionAlbumRepository(
-        database: RecordCollectionDatabase
+        firestore: FirebaseFirestore,
+        albumRepository: AlbumRepository
     ): CollectionAlbumRepository
 
     fun provideAlbumTagRepository(
-        database: RecordCollectionDatabase
+        firestore: FirebaseFirestore
     ): AlbumTagRepository
 
     fun provideTagRepository(
-        database: RecordCollectionDatabase
+        firestore: FirebaseFirestore
     ): TagRepository
 
     fun provideSearchRepository(
@@ -68,7 +68,7 @@ interface RepositoryModule {
     ): PlaylistRepository
 
     fun provideTrackRepository(
-        database: RecordCollectionDatabase,
+        firestore: FirebaseFirestore,
         spotifyApi: SpotifyApi
     ): TrackRepository
 

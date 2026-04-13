@@ -242,8 +242,8 @@ class ProductionNetworkModule : NetworkModule {
                         val storedToken = authRepository.getStoredToken()
                         storedToken?.let { token ->
                             BearerTokens(
-                                accessToken = token.access_token,
-                                refreshToken = token.refresh_token
+                                accessToken = token.accessToken,
+                                refreshToken = token.refreshToken ?: ""
                             )
                         }
                     }
@@ -269,7 +269,7 @@ class ProductionNetworkModule : NetworkModule {
                         // Only send to Spotify if we have a valid token
                         if (request.url.host.contains("spotify.com", ignoreCase = true)) {
                             val storedToken = authRepository.getStoredToken()
-                            val hasValidToken = storedToken?.access_token?.isNotEmpty() == true
+                            val hasValidToken = storedToken?.accessToken?.isNotEmpty() == true
 
                             if (!hasValidToken) {
                                 println("⚠️ Blocking Spotify request - no valid token available")

@@ -34,6 +34,8 @@ class LibraryService(
         artistRepository.getAllArtists(),
         ratingRepository.getAllRatings()
     ) { albums, artists, ratings ->
+        println("Enriching ${albums.size} albums with genres and ratings")
+        println("${albums.first().name}, ${albums.first().id}, ${albums.first().spotifyId}")
         val artistGenreMap = artists.associate { it.id to it.genres }
         val ratingsMap = ratings.associate { it.albumId to it.rating }
         enrichAlbumsWithGenres(albums, artistGenreMap).map {
@@ -247,11 +249,11 @@ class LibraryService(
         }
     }
 
-    fun addAlbumToLibrary(album: Album) {
+    suspend fun addAlbumToLibrary(album: Album) {
         albumRepository.addAlbumToLibrary(album.id)
     }
 
-    fun removeAlbumFromLibrary(album: Album) {
+    suspend fun removeAlbumFromLibrary(album: Album) {
         albumRepository.removeAlbumFromLibrary(album.id)
     }
 

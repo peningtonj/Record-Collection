@@ -1,46 +1,36 @@
 package io.github.peningtonj.recordcollection.repository
 
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
-import app.cash.sqldelight.coroutines.mapToOne
-import app.cash.sqldelight.coroutines.mapToOneOrNull
-import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.domain.AlbumRating
-import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
-import io.github.peningtonj.recordcollection.db.mapper.ArtistMapper
-import io.github.peningtonj.recordcollection.db.mapper.ArtistMapper.toDomain
-import io.github.peningtonj.recordcollection.db.mapper.RatingMapper
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlin.collections.map
+import kotlinx.serialization.Serializable
 
 class RatingRepository(
-    private val database: RecordCollectionDatabase,
-    ) {
+    private val firestore: FirebaseFirestore
+) {
+    private val albumsRef = firestore.collection("albums")
 
-    fun addRating(albumId: String, rating: Long) {
-        // Add rating and update aggregate
-        database.ratingsQueries.insertOrUpdateRating(
-            album_id = albumId,
-            rating = rating,
-        )
+    @Serializable
+    private data class RatingField(val rating: Int? = null)
+
+    suspend fun addRating(albumId: String, rating: Int) {
+        albumsRef.document(albumId).set(mapOf("rating" to rating), merge = true)
     }
 
-    fun getAlbumRating(albumId: String): Flow<AlbumRating?> {
-        return database.ratingsQueries
-            .getRatingByAlbumId(albumId)
-            .asFlow()
-            .mapToOneOrNull(Dispatchers.IO)
-            .map { it?.let { RatingMapper.toDomain(it) } }
-    }
+    fun getAlbumRating(albumId: String): Flow<AlbumRating?> =
+        albumsRef.document(albumId).snapshots.map { snapshot ->
+            if (snapshot.exists) {
+                val rating = runCatching { snapshot.data<RatingField>().rating }.getOrNull()
+                AlbumRating(albumId = albumId, rating = rating)
+            } else null
+        }
 
-    fun getAllRatings(): Flow<List<AlbumRating>> {
-        return database.ratingsQueries
-            .getAllRatings()
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { ratings -> ratings.map { RatingMapper.toDomain(it) } }
-    }
-
+    fun getAllRatings(): Flow<List<AlbumRating>> =
+        albumsRef.snapshots.map { snapshot ->
+            snapshot.documents.mapNotNull { doc ->
+                val rating = runCatching { doc.data<RatingField>().rating }.getOrNull()
+                if (rating != null) AlbumRating(albumId = doc.id, rating = rating) else null
+            }
+        }
 }

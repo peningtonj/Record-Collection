@@ -2,199 +2,193 @@ package io.github.peningtonj.recordcollection.repository
 
 import AlbumResult
 import Playlist
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
-import app.cash.sqldelight.coroutines.mapToOne
-import app.cash.sqldelight.coroutines.mapToOneOrNull
+import dev.gitlive.firebase.firestore.DocumentSnapshot
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.aakira.napier.Napier
-import io.github.peningtonj.recordcollection.db.RecordCollectionDatabase
-import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.AlbumDocument
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.events.AlbumEvent
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
+import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 import io.github.peningtonj.recordcollection.util.LoggingUtils
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.json.Json
 
 class AlbumRepository(
-    private val database: RecordCollectionDatabase,
+    private val firestore: FirebaseFirestore,
     private val spotifyApi: SpotifyApi,
     private val miscApi: MiscApi,
     private val eventDispatcher: AlbumEventDispatcher
-
 ) {
+    private val albumsRef = firestore.collection("albums")
+
+    /** Maps a Firestore DocumentSnapshot to an Album, using the document ID as the album ID. */
+    private fun DocumentSnapshot.toAlbum(): Album? =
+        runCatching { data<AlbumDocument>().copy(id = id).let { AlbumMapper.toDomain(it) } }
+            .onFailure { Napier.e("Failed to deserialize album doc '$id': ${it.message}") }
+            .getOrNull()
 
     /**
-     * DATABASE OPERATIONS
+     * FIRESTORE OPERATIONS
      */
-    fun saveAlbum(album: AlbumDto, addToUsersLibrary: Boolean = true) {
+    suspend fun saveAlbum(album: AlbumDto, addToUsersLibrary: Boolean = true) {
+        val domainAlbum = AlbumMapper.toDomain(album)
         LoggingUtils.d(
             LoggingUtils.Category.REPOSITORY,
-            "Saving album: ${album.name} by ${album.artists.firstOrNull()?.name} (ID: ${album.id}, inLibrary: $addToUsersLibrary)"
+            "Saving album: ${album.name} by ${album.artists.firstOrNull()?.name} (ID: ${domainAlbum.id}, inLibrary: $addToUsersLibrary)"
         )
-        database.albumsQueries.insert(
-            id = album.id,
-            spotify_id = album.id,
-            name = album.name,
-            primary_artist = album.artists.firstOrNull()?.name ?: "Unknown Artist",
-            artists = Json.encodeToString(album.artists),
-            release_date = album.releaseDate,
-            total_tracks = album.totalTracks.toLong(),
-            spotify_uri = album.uri,
-            added_at = Clock.System.now().toString(),
-            album_type = album.albumType.toString(),
-            images = Json.encodeToString(album.images ?: emptyList()),
-            updated_at = System.currentTimeMillis(),
-            external_ids = album.externalIds.let { Json.encodeToString(it) },
-            in_library = if (addToUsersLibrary) 1 else 0,
-            release_group_id = null
+        LoggingUtils.logFirebaseWrite("albums", "set", domainAlbum.id, mapOf("name" to album.name))
+        albumsRef.document(domainAlbum.id).set(
+            AlbumMapper.toDocument(domainAlbum).copy(
+                inLibrary = addToUsersLibrary,
+                addedAt = Clock.System.now().toString(),
+                updatedAt = System.currentTimeMillis()
+            )
         )
-        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(AlbumMapper.toDomain(album)))
+        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(domainAlbum))
     }
 
-    fun saveAlbum(album: Album, overrideInLibrary: Boolean? = null) {
+    suspend fun saveAlbum(album: Album, overrideInLibrary: Boolean? = null) {
         val addToLibrary = overrideInLibrary ?: album.inLibrary
         LoggingUtils.d(
             LoggingUtils.Category.REPOSITORY,
             "Saving album: ${album.name} by ${album.artists.firstOrNull()?.name} (ID: ${album.id}, inLibrary: $addToLibrary)"
         )
-
-        database.albumsQueries.insert(
-            id = album.id,
-            spotify_id = album.spotifyId,
-            name = album.name,
-            primary_artist = album.artists.firstOrNull()?.name ?: "Unknown Artist",
-            artists = Json.encodeToString(album.artists),
-            release_date = album.releaseDate.toString(),
-            total_tracks = album.totalTracks.toLong(),
-            spotify_uri = album.spotifyUri,
-            added_at = Clock.System.now().toString(),
-            album_type = album.albumType.toString(),
-            images = Json.encodeToString(album.images),
-            updated_at = System.currentTimeMillis(),
-            external_ids = album.externalIds.let { Json.encodeToString(it) },
-            in_library = if (addToLibrary) 1 else 0,
-            release_group_id = null
+        LoggingUtils.logFirebaseWrite("albums", "set", album.id, mapOf("name" to album.name))
+        albumsRef.document(album.id).set(
+            AlbumMapper.toDocument(album).copy(
+                inLibrary = addToLibrary,
+                addedAt = Clock.System.now().toString(),
+                updatedAt = System.currentTimeMillis()
+            )
         )
         eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
-
     }
 
-    fun albumExists(albumId: String) =
-        database.albumsQueries
-            .getAlbumById(albumId)
-            .executeAsOneOrNull() != null
+    suspend fun albumExists(albumId: String): Boolean {
+        LoggingUtils.logFirebaseQuery("albums", "get (albumExists)", mapOf("id" to albumId))
+        return albumsRef.document(albumId).get().exists
+    }
 
-    fun getAlbumByNameAndArtistIfPresent(name: String, artistName: String): Flow<Album?> = database.albumsQueries
-        .selectAlbumByNameAndArtist(name, artistName)
-        .asFlow()
-        .mapToOneOrNull(Dispatchers.IO)
-        .map { it?.let { AlbumMapper.toDomain(it) } }
+    fun getAlbumByNameAndArtistIfPresent(name: String, artistName: String): Flow<Album?> {
+        LoggingUtils.logFirebaseQuery("albums", "snapshots by name+artist", mapOf("name" to name, "artist" to artistName))
+        return albumsRef
+            .where { ("name" equalTo name) and ("primary_artist" equalTo artistName) }
+            .snapshots
+            .map { snapshot ->
+                LoggingUtils.logFirebaseResult("albums", "getAlbumByNameAndArtistIfPresent", snapshot.documents.size)
+                snapshot.documents.firstOrNull()?.toAlbum()
+            }
+    }
 
-    fun getAlbumById(id: String): Flow<Album> = database.albumsQueries
-        .getAlbumById(id)
-        .asFlow()
-        .mapToOneOrNull(Dispatchers.IO)
-        .map {
-            it?.let { AlbumMapper.toDomain(it) }
-                ?: throw NoSuchElementException("Album with id '$id' not found")
-        }
+    fun getAlbumById(id: String): Flow<Album> {
+        LoggingUtils.logFirebaseQuery("albums", "snapshot by id", mapOf("id" to id))
+        return albumsRef.document(id).snapshots
+            .map { snapshot ->
+                if (!snapshot.exists) throw NoSuchElementException("Album with id '$id' not found")
+                snapshot.toAlbum() ?: throw NoSuchElementException("Album with id '$id' failed to deserialize")
+            }
+    }
 
-    suspend fun getAlbumBySpotifyId(spotifyId: String): Album? = 
-        database.albumsQueries
-            .getAlbumBySpotifyId(spotifyId)
-            .executeAsOneOrNull()
-            ?.let { AlbumMapper.toDomain(it) }
-
+    suspend fun getAlbumBySpotifyId(spotifyId: String): Album? {
+        LoggingUtils.logFirebaseQuery("albums", "get by spotify_id", mapOf("spotifyId" to spotifyId))
+        return albumsRef
+            .where { "spotify_id" equalTo spotifyId }
+            .get()
+            .documents
+            .firstOrNull()
+            ?.toAlbum()
+    }
 
     fun getEarliestReleaseDate(): Flow<LocalDate?> = getAllAlbums()
-        .map { albums ->
-            albums.minOfOrNull { album ->
-                album.releaseDate
+        .map { albums -> albums.minOfOrNull { it.releaseDate } }
+
+    fun getAllAlbums(): Flow<List<Album>> {
+        LoggingUtils.logFirebaseQuery("albums", "snapshots (all)")
+        return albumsRef.snapshots
+            .map { snapshot ->
+                LoggingUtils.logFirebaseResult("albums", "getAllAlbums", snapshot.documents.size)
+                snapshot.documents.mapNotNull { it.toAlbum() }
             }
-        }
+    }
 
-    fun getAllAlbums(): Flow<List<Album>> = database.albumsQueries
-        .selectAll()
-        .asFlow()
-        .mapToList(Dispatchers.IO)
-        .map { it.map(AlbumMapper::toDomain) }
+    fun getAllAlbumsInLibrary(): Flow<List<Album>> {
+        LoggingUtils.logFirebaseQuery("albums", "snapshots (in_library=true)")
+        return albumsRef
+            .where { "in_library" equalTo true }
+            .snapshots
+            .map { snapshot ->
+                LoggingUtils.logFirebaseResult("albums", "getAllAlbumsInLibrary", snapshot.documents.size)
+                snapshot.documents.mapNotNull { it.toAlbum() }
+            }
+    }
 
-    fun getAllAlbumsInLibrary(): Flow<List<Album>> = database.albumsQueries
-        .selectAllAlbumsInLibrary()
-        .asFlow()
-        .mapToList(Dispatchers.IO)
-        .map { it.map(AlbumMapper::toDomain) }
+    fun getAllArtists(): Flow<List<String>> =
+        getAllAlbums().map { albums -> albums.map { it.primaryArtist }.distinct().sorted() }
 
-    fun getAllArtists(): Flow<List<String>> = database.albumsQueries
-        .getAllArtists()
-        .asFlow()
-        .mapToList(Dispatchers.IO)
-
-    fun getLibraryCount(): Flow<Long> = database.albumsQueries
-        .getLibraryCount()
-        .asFlow()
-        .mapToOne(Dispatchers.IO)
+    fun getLibraryCount(): Flow<Long> =
+        getAllAlbumsInLibrary().map { it.size.toLong() }
 
     fun getAlbumsByArtist(artistName: String): Flow<List<Album>> {
-        return database.albumsQueries.getAlbumsByArtist(artistName)
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { list ->
-                list.map(AlbumMapper::toDomain)
-            }
+        LoggingUtils.logFirebaseQuery("albums", "snapshots by artist", mapOf("artist" to artistName))
+        return albumsRef
+            .where { "primary_artist" equalTo artistName }
+            .snapshots
+            .map { snapshot -> snapshot.documents.mapNotNull { it.toAlbum() } }
     }
 
-    fun addAlbumToLibrary(albumId: String) {
-        database.albumsQueries.updateInLibraryStatus(1, albumId)
+    suspend fun addAlbumToLibrary(albumId: String) {
+        LoggingUtils.logFirebaseWrite("albums", "set merge (addToLibrary)", albumId)
+        albumsRef.document(albumId).set(mapOf("in_library" to true), merge = true)
     }
 
-    fun removeAlbumFromLibrary(albumId: String) {
-        database.albumsQueries.updateInLibraryStatus(0, albumId)
+    suspend fun removeAlbumFromLibrary(albumId: String) {
+        LoggingUtils.logFirebaseWrite("albums", "set merge (removeFromLibrary)", albumId)
+        albumsRef.document(albumId).set(mapOf("in_library" to false), merge = true)
     }
 
-    fun updateReleaseGroupId(albumId: String, releaseGroupId: String) =
-        database.albumsQueries.updateReleaseGroupId(releaseGroupId, albumId)
+    suspend fun updateReleaseGroupId(albumId: String, releaseGroupId: String) {
+        LoggingUtils.logFirebaseWrite("albums", "set merge (updateReleaseGroupId)", albumId)
+        albumsRef.document(albumId).set(mapOf("release_group_id" to releaseGroupId), merge = true)
+    }
 
     fun getAlbumsFromReleaseGroup(releaseGroupId: String?): Flow<List<Album>> {
         return if (releaseGroupId == null) {
             flowOf(emptyList())
         } else {
-            database.albumsQueries
-                .selectAlbumsByReleaseId(releaseGroupId)
-                .asFlow()
-                .mapToList(Dispatchers.IO)
-                .map { it.map(AlbumMapper::toDomain) }
+            LoggingUtils.logFirebaseQuery("albums", "snapshots by release_group_id", mapOf("id" to releaseGroupId))
+            albumsRef
+                .where { "release_group_id" equalTo releaseGroupId }
+                .snapshots
+                .map { snapshot -> snapshot.documents.mapNotNull { it.toAlbum() } }
         }
     }
+
     /**
      * SPOTIFY OPERATIONS
      */
     suspend fun fetchAlbum(albumId: String): Album? {
         // Determine if this is an internal ID (short hash) or Spotify ID (22 chars)
         val isInternalId = albumId.length < 20
-        
+
         val spotifyId = if (isInternalId) {
-            // Internal ID - look up spotify_id from database
-            database.albumsQueries
-                .getAlbumById(albumId)
-                .executeAsOneOrNull()
-                ?.spotify_id
-                ?: albumId // If not found, try using the ID as-is (might be a valid Spotify ID)
+            // Internal ID – look up spotify_id from Firestore
+            albumsRef.document(albumId).get()
+                .takeIf { it.exists }
+                ?.data<AlbumDocument>()
+                ?.spotifyId
+                ?: albumId // If not found, try using the ID as-is
         } else {
-            // Already a Spotify ID
             albumId
         }
-        
+
         spotifyApi.library.getAlbum(spotifyId)
             .onSuccess { response ->
                 return AlbumMapper.toDomain(response)
@@ -212,21 +206,19 @@ class AlbumRepository(
             spotifyApi.user.fetchNextNewReleases(nextUrl)
         }
 
-        return result.getOrNull()?.map { albumDto ->
-            AlbumMapper.toDomain(albumDto)
-        } ?: emptyList()
+        return result.getOrNull()?.map { AlbumMapper.toDomain(it) } ?: emptyList()
     }
 
     suspend fun fetchMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = runCatching {
         if (ids.isEmpty()) return@runCatching emptyList()
 
-        // Convert internal IDs to Spotify IDs by looking up in database
+        // Convert internal IDs to Spotify IDs by looking up in Firestore
         val spotifyIds = ids.map { id ->
-            database.albumsQueries
-                .getAlbumById(id)
-                .executeAsOneOrNull()
-                ?.spotify_id
-                ?: id // If not found in DB, assume it's already a Spotify ID
+            albumsRef.document(id).get()
+                .takeIf { it.exists }
+                ?.data<AlbumDocument>()
+                ?.spotifyId
+                ?: id // If not found in Firestore, assume it's already a Spotify ID
         }
 
         val albums = mutableListOf<Album>()
@@ -244,7 +236,6 @@ class AlbumRepository(
                         val album = AlbumMapper.toDomain(albumDto)
                         eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
                     }
-
                 }
                 .onFailure { error ->
                     throw error
@@ -266,11 +257,11 @@ class AlbumRepository(
 
     suspend fun fetchReleaseGroup(releaseGroupId: String) =
         miscApi.getReleasesForGroup(releaseGroupId)
+
     /**
      * CHAINED OPERATIONS
      */
-
-    fun saveAlbumIfNotPresent(album: Album) {
+    suspend fun saveAlbumIfNotPresent(album: Album) {
         if (!albumExists(album.id)) {
             saveAlbum(album)
         }
@@ -284,5 +275,4 @@ class AlbumRepository(
 
         return playlists.associateWith { playlist -> spotifyApi.temp.extractAlbumsFromPlaylist(playlist) }
     }
-
 }
