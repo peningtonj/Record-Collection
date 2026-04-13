@@ -2,6 +2,7 @@ package io.github.peningtonj.recordcollection.di.container
 
 import PlaybackQueueService
 import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.service.PlaybackSessionManager
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
@@ -44,6 +45,7 @@ interface DependencyContainer : AutoCloseable {
     val albumDetailUseCase : GetAlbumDetailUseCase
     val releaseGroupUseCase : ReleaseGroupUseCase
     val playbackQueueService: PlaybackQueueService
+    val playbackSessionManager: PlaybackSessionManager
     val searchRepository: SearchRepository
     val openAiApi: OpenAiApi
     val collectionImportService: CollectionImportService

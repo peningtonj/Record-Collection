@@ -54,8 +54,7 @@ fun rememberPlaybackViewModel(
     return remember {
         PlaybackViewModel(
             dependencies.playbackRepository,
-            dependencies.playbackQueueService,
-            dependencies.settingsRepository
+            dependencies.playbackSessionManager
         )
     }
 }

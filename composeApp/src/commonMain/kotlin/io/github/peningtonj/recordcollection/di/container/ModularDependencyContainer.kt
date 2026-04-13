@@ -13,6 +13,7 @@ import io.github.peningtonj.recordcollection.repository.*
 import io.github.peningtonj.recordcollection.service.CollectionImportService
 import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
+import io.github.peningtonj.recordcollection.service.PlaybackSessionManager
 import io.github.peningtonj.recordcollection.service.TagService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -110,6 +111,14 @@ class ModularDependencyContainer(
         PlaybackQueueService(
             playbackRepository,
             trackRepository
+        )
+    }
+
+    override val playbackSessionManager by lazy {
+        PlaybackSessionManager(
+            playbackRepository = playbackRepository,
+            queueManager = playbackQueueService,
+            settingsRepository = settingsRepository
         )
     }
 

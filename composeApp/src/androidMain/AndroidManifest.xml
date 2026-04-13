@@ -3,7 +3,17 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Required to run a Foreground Service -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Required for foregroundServiceType="mediaPlayback" on Android 14+ (API 34+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Keeps the CPU awake between polls while the screen is off -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Allows updating the playback notification on Android 13+ (runtime-requested by the app) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
+            android:name=".RecordCollectionApplication"
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
@@ -30,6 +40,18 @@
                     android:host="callback"/>
             </intent-filter>
         </activity>
+
+        <!--
+            Foreground service that keeps the process exempt from Doze mode while
+            an album queue session is active.  foregroundServiceType="mediaPlayback"
+            is required when targeting API 34+ (Android 14).
+        -->
+        <service
+            android:name=".service.PlaybackMonitorService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="false" />
     </application>
 
 </manifest>
+
+
