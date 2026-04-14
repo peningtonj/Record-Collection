@@ -146,8 +146,8 @@ class LibraryService(
         val cleanedLocal = localLibrary - localDuplicates
         val cleanedUserSavedAlbums = userSavedAlbums - spotifyDuplicates
 
-        val spotifyIds = cleanedUserSavedAlbums.mapTo(HashSet()) { it.id }
-        val inBoth = cleanedLocal.count { it.id in spotifyIds }
+        val savedAlbumIds = cleanedUserSavedAlbums.mapTo(HashSet()) { it.id }
+        val inBoth = cleanedLocal.count { it.id in savedAlbumIds }
 
 
         return LibraryDifferences(
@@ -198,10 +198,10 @@ class LibraryService(
 
         // Pre-compute sets for efficient lookups
         val localIds = differences.localLibrary.mapTo(HashSet()) { it.id }
-        val spotifyIds = differences.userSavedAlbums.mapTo(HashSet()) { it.id }
+        val savedAlbumIds = differences.userSavedAlbums.mapTo(HashSet()) { it.id }
 
         // Pre-compute album groups for reuse
-        val localOnlyAlbums = differences.localLibrary.filter { it.id !in spotifyIds }
+        val localOnlyAlbums = differences.localLibrary.filter { it.id !in savedAlbumIds }
         val spotifyOnlyAlbums = differences.userSavedAlbums.filter { it.id !in localIds }
 
         when (action) {
@@ -266,7 +266,7 @@ class LibraryService(
         }
 
         onlyRemote.forEach { track ->
-            trackRepository.addTrackToLibrary(track.id)
+            trackRepository.saveTrackToLibrary(track)
         }
     }
 

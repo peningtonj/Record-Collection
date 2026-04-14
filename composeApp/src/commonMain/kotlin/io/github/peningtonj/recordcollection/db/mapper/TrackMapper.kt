@@ -23,7 +23,7 @@ object TrackMapper {
             isExplicit = false,
             trackNumber = 0,
             discNumber = 0,
-            albumId = entity.album.id,
+            albumId = generateAlbumId(entity.album.name, entity.album.artists.firstOrNull()?.name),
             spotifyUri = entity.uri
         )
     }
@@ -36,13 +36,26 @@ object TrackMapper {
             album = AlbumMapper.toDomain(entity.album),
             durationMs = entity.durationMs.toLong(),
             imageUrl = null,
-            isExplicit = false,
-            trackNumber = 0,
-            discNumber = 0,
+            isExplicit = entity.explicit,
+            trackNumber = entity.trackNumber.toLong(),
+            discNumber = entity.discNumber.toLong(),
             albumId = generateAlbumId(entity.album.name, entity.album.artists.firstOrNull()?.name),
             spotifyUri = entity.uri,
         )
     }
+
+    fun toDocument(track: Track): TrackDocument = TrackDocument(
+        name = track.name,
+        albumId = track.albumId,
+        trackNumber = track.trackNumber,
+        durationMs = track.durationMs,
+        spotifyUri = track.spotifyUri,
+        artists = Json.encodeToString(track.artists),
+        primaryArtist = track.artists.firstOrNull()?.name ?: "Unknown Artist",
+        isExplicit = track.isExplicit,
+        discNumber = track.discNumber,
+        isSaved = track.isSaved
+    )
 
     fun toDomain(entity: SimplifiedTrackDto, album: Album) : Track {
         return Track(

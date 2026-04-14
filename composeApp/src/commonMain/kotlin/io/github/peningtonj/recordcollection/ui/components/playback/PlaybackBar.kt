@@ -141,7 +141,7 @@ fun PlaybackBar(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .clickable(enabled = currentPlayback?.track?.album?.id != null && currentPlayback?.track?.album?.spotifyId != null) {
+                            .clickable(enabled = currentPlayback?.track?.album != null) {
                                 currentPlayback?.track?.album?.let { album ->
                                     navigator.navigateTo(Screen.Album(album.id, album.spotifyId))
                                 }

@@ -19,6 +19,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -54,13 +55,17 @@ actual fun RecordCollectionApp(navigator: Navigator) {
             AuthNavigationWrapper {
                 var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
 
+                val canNavigateBack by navigator.canNavigateBack.collectAsState()
+                BackHandler(enabled = canNavigateBack) {
+                    navigator.navigateBack()
+                }
+
                 Scaffold(
                     topBar = {
                         if (currentScreen != Screen.Login) {
                             TopAppBar(
                                 title = { Text(currentScreen.toTitle()) },
                                 navigationIcon = {
-                                    val canNavigateBack by navigator.canNavigateBack.collectAsState()
                                     if (canNavigateBack) {
                                         IconButton(onClick = { navigator.navigateBack() }) {
                                             Icon(

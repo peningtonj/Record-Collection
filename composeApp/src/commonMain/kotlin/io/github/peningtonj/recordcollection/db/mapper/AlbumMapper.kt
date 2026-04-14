@@ -124,7 +124,8 @@ object AlbumMapper {
 }
 
 fun generateAlbumId(name: String, artist: String?): String {
-    return "${name.lowercase().trim()}|${artist ?: "Unknown Artist".lowercase().trim()}"
+    val normalizedArtist = (artist ?: "Unknown Artist").lowercase().trim()
+    return "${name.lowercase().trim()}|$normalizedArtist"
         .hashCode()
         .toString(36)
         .replace("-", "0") // Ensure positive IDs
