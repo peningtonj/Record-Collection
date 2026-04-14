@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -115,18 +116,20 @@ fun CollectionItem(
             }
 
             // Context menu positioned at mouse location
-            DropdownMenu(
-                expanded = showContextMenu,
-                onDismissRequest = { showContextMenu = false },
-                offset = contextMenuPosition,
-                properties = PopupProperties(
-                    focusable = true,
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = true,
-                    clippingEnabled = false
-                )
-            ) {
-                contextMenuContent { showContextMenu = false }
+            Box(modifier = Modifier.offset(x = contextMenuPosition.x, y = contextMenuPosition.y)) {
+                DropdownMenu(
+                    expanded = showContextMenu,
+                    onDismissRequest = { showContextMenu = false },
+                    offset = DpOffset.Zero,
+                    properties = PopupProperties(
+                        focusable = true,
+                        dismissOnBackPress = true,
+                        dismissOnClickOutside = true,
+                        clippingEnabled = false
+                    )
+                ) {
+                    contextMenuContent { showContextMenu = false }
+                }
             }
         }
     }

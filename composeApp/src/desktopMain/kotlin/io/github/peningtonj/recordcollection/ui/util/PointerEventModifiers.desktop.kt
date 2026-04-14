@@ -8,7 +8,6 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalComposeUiApi::class)
 actual fun Modifier.onRightClick(
@@ -20,9 +19,11 @@ actual fun Modifier.onRightClick(
         val mouseX = pointerEvent.changes.first().position.x
         val mouseY = pointerEvent.changes.first().position.y
         val position = with(density) {
+            // Position is used to offset a zero-size anchor Box within the card,
+            // so just pass the raw cursor coordinates within the component.
             DpOffset(
-                x = mouseX.toDp().coerceIn(0.dp, cardSize.width.toDp()),
-                y = mouseY.toDp().coerceIn(0.dp, cardSize.height.toDp())
+                x = mouseX.toDp(),
+                y = mouseY.toDp()
             )
         }
         onRightClick(position)

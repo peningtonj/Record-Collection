@@ -189,18 +189,24 @@ fun CompactAlbumTile(
                 }
             }
 
-            DropdownMenu(
-                expanded = showContextMenu,
-                onDismissRequest = { showContextMenu = false },
-                offset = contextMenuPosition,
-                properties = PopupProperties(
-                    focusable = true,
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = true,
-                    clippingEnabled = false
-                )
-            ) {
-                contextMenuContent { showContextMenu = false }
+            // Zero-size anchor offset to the cursor position so the DropdownMenu's
+            // PopupPositionProvider receives the exact cursor coordinates as anchor bounds.
+            // This avoids the card-height arithmetic and works correctly even when the
+            // card is partially scrolled off-screen.
+            Box(modifier = Modifier.offset(x = contextMenuPosition.x, y = contextMenuPosition.y)) {
+                DropdownMenu(
+                    expanded = showContextMenu,
+                    onDismissRequest = { showContextMenu = false },
+                    offset = DpOffset.Zero,
+                    properties = PopupProperties(
+                        focusable = true,
+                        dismissOnBackPress = true,
+                        dismissOnClickOutside = true,
+                        clippingEnabled = false
+                    )
+                ) {
+                    contextMenuContent { showContextMenu = false }
+                }
             }
         }
     }
