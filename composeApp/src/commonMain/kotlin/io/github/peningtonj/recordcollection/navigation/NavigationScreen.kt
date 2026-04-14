@@ -7,7 +7,6 @@ sealed class Screen(val route: String) {
     data object Library : Screen("library")
     data object Search : Screen("search")
     data object Settings : Screen("settings")
-    data object TagDebug : Screen("tag-debug")
     data object Collections : Screen("collections")
 
     data class Album(val albumId: String, val spotifyId: String) : Screen("album/$albumId")

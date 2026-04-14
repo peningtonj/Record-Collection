@@ -84,13 +84,6 @@ fun NavigationPanel(
             onClick = { navigator.navigateTo(Screen.Settings) }
         )
 
-        NavigationItem(
-            title = "Tag Debug",
-            icon = Icons.Default.BugReport,
-            isSelected = currentScreen is Screen.TagDebug,
-            onClick = { navigator.navigateTo(Screen.TagDebug) }
-        )
-
         // Collections section
         Spacer(modifier = Modifier.height(24.dp))
 

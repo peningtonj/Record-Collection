@@ -12,7 +12,6 @@ import io.github.peningtonj.recordcollection.ui.screens.LoginScreen
 import io.github.peningtonj.recordcollection.ui.screens.ProfileScreen
 import io.github.peningtonj.recordcollection.ui.screens.SearchScreen
 import io.github.peningtonj.recordcollection.ui.screens.SettingsScreen
-import io.github.peningtonj.recordcollection.ui.screens.TagDebugScreen
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel
 import io.github.peningtonj.recordcollection.viewmodel.SearchViewModel
 
@@ -31,7 +30,6 @@ fun AppScreenContent(
         Screen.Login -> LoginScreen()
         Screen.Profile -> ProfileScreen()
         Screen.Settings -> SettingsScreen()
-        Screen.TagDebug -> TagDebugScreen()
         Screen.Library -> LibraryScreen(playbackViewModel = playbackViewModel)
         Screen.Collections -> CollectionsListScreen()
         Screen.Search -> SearchScreen(
@@ -61,7 +59,6 @@ fun Screen.toTitle(): String = when (this) {
     Screen.Profile -> "Profile"
     Screen.Settings -> "Settings"
     Screen.Collections -> "Collections"
-    Screen.TagDebug -> "Tag Debug"
     is Screen.Album -> "Album Details"
     is Screen.Artist -> "Artist Details"
     is Screen.Collection -> collectionName
