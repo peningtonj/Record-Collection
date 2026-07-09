@@ -6,6 +6,7 @@ import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
 import io.github.peningtonj.recordcollection.repository.TrackRepository
+import io.github.peningtonj.recordcollection.repository.UserLibraryRepository
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
 
@@ -18,6 +19,7 @@ interface UseCaseModule {
         albumRepository: AlbumRepository,
         albumTagRepository: AlbumTagRepository,
         collectionAlbumRepository: CollectionAlbumRepository,
-        trackRepository: TrackRepository
+        trackRepository: TrackRepository,
+        userLibraryRepository: UserLibraryRepository
     ): GetAlbumDetailUseCase
 }

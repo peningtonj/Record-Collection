@@ -16,8 +16,10 @@ import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 import io.github.peningtonj.recordcollection.util.LoggingUtils
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
@@ -27,7 +29,8 @@ class AlbumRepository(
     private val firestore: FirebaseFirestore,
     private val spotifyApi: SpotifyApi,
     private val miscApi: MiscApi,
-    private val eventDispatcher: AlbumEventDispatcher
+    private val eventDispatcher: AlbumEventDispatcher,
+    private val userLibraryRepository: UserLibraryRepository
 ) {
     private val albumsRef = firestore.collection("albums")
 
@@ -49,11 +52,13 @@ class AlbumRepository(
         LoggingUtils.logFirebaseWrite("albums", "set", domainAlbum.id, mapOf("name" to album.name))
         albumsRef.document(domainAlbum.id).set(
             AlbumMapper.toDocument(domainAlbum).copy(
-                inLibrary = addToUsersLibrary,
                 addedAt = Clock.System.now().toString(),
                 updatedAt = System.currentTimeMillis()
             )
         )
+        if (addToUsersLibrary) {
+            userLibraryRepository.setInLibrary(domainAlbum.id, true)
+        }
         eventDispatcher.dispatch(AlbumEvent.AlbumAdded(domainAlbum))
     }
 
@@ -66,11 +71,13 @@ class AlbumRepository(
         LoggingUtils.logFirebaseWrite("albums", "set", album.id, mapOf("name" to album.name))
         albumsRef.document(album.id).set(
             AlbumMapper.toDocument(album).copy(
-                inLibrary = addToLibrary,
                 addedAt = Clock.System.now().toString(),
                 updatedAt = System.currentTimeMillis()
             )
         )
+        if (addToLibrary) {
+            userLibraryRepository.setInLibrary(album.id, true)
+        }
         eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
     }
 
@@ -145,14 +152,29 @@ class AlbumRepository(
             }
     }
 
+    /**
+     * Returns all albums the current user has added to their library.
+     * Reads album IDs from users/{userId}/library_albums where in_library=true,
+     * then joins with album metadata from the shared albums collection,
+     * and merges rating from the user library entry.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun getAllAlbumsInLibrary(): Flow<List<Album>> {
-        LoggingUtils.logFirebaseQuery("albums", "snapshots (in_library=true)")
-        return albumsRef
-            .where { "in_library" equalTo true }
-            .snapshots
-            .map { snapshot ->
-                LoggingUtils.logFirebaseResult("albums", "getAllAlbumsInLibrary", snapshot.documents.size)
-                snapshot.documents.mapNotNull { it.toAlbum() }
+        return userLibraryRepository.getAllLibraryEntries()
+            .flatMapLatest { entries ->
+                val inLibrary = entries.filter { it.inLibrary }
+                val albumIds = inLibrary.map { it.albumId }
+                if (albumIds.isEmpty()) return@flatMapLatest flowOf(emptyList())
+
+                val ratingMap = inLibrary.associate { it.albumId to it.rating }
+                getAlbumsByIds(albumIds).map { albums ->
+                    albums.map { album ->
+                        album.copy(
+                            inLibrary = true,
+                            rating = ratingMap[album.id]
+                        )
+                    }
+                }
             }
     }
 
@@ -171,13 +193,13 @@ class AlbumRepository(
     }
 
     suspend fun addAlbumToLibrary(albumId: String) {
-        LoggingUtils.logFirebaseWrite("albums", "set merge (addToLibrary)", albumId)
-        albumsRef.document(albumId).set(mapOf("in_library" to true), merge = true)
+        LoggingUtils.logFirebaseWrite("library_albums", "setInLibrary(true)", albumId)
+        userLibraryRepository.setInLibrary(albumId, true)
     }
 
     suspend fun removeAlbumFromLibrary(albumId: String) {
-        LoggingUtils.logFirebaseWrite("albums", "set merge (removeFromLibrary)", albumId)
-        albumsRef.document(albumId).set(mapOf("in_library" to false), merge = true)
+        LoggingUtils.logFirebaseWrite("library_albums", "setInLibrary(false)", albumId)
+        userLibraryRepository.setInLibrary(albumId, false)
     }
 
     suspend fun updateReleaseGroupId(albumId: String, releaseGroupId: String) {

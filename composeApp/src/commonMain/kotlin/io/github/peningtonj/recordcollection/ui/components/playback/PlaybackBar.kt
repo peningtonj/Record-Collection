@@ -282,16 +282,16 @@ fun PlaybackBar(
                         )
                     }
 
-                    if (currentSession?.playingFrom != null) {
+                    if (currentSession?.playingFrom != null || currentSession?.queue?.isNotEmpty() == true) {
                         IconButton(
                             onClick = { playbackViewModel.skipToNextAlbumInQueue() },
                             modifier = Modifier.size(40.dp),
-                            enabled = !isLoading && currentPlayback != null
+                            enabled = !isLoading && currentPlayback != null && currentSession?.queue?.isNotEmpty() == true
                         ) {
                             Icon(
                                 imageVector = Icons.Default.QueuePlayNext,
-                                contentDescription = "Next",
-                                tint = if (currentPlayback != null) {
+                                contentDescription = "Skip to next album",
+                                tint = if (currentPlayback != null && currentSession?.queue?.isNotEmpty() == true) {
                                     MaterialTheme.colorScheme.onSurface
                                 } else {
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)

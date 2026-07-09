@@ -44,6 +44,15 @@ enum class AlbumType {
  * Complex fields (artists, images, externalIds) are stored as JSON strings
  * to avoid Firestore Int/Long type issues, consistent with ArtistDocument.
  */
+/**
+ * Firestore document model for the "albums" collection.
+ * Document ID == internal album ID (hash of name + primary artist).
+ *
+ * NOTE: in_library, rating, and tag_ids are now stored in
+ *   users/{userId}/library_albums/{albumId}
+ * and are NOT written to this document. Existing documents may still contain
+ * legacy in_library / rating fields which are ignored by this class.
+ */
 @Serializable
 data class AlbumDocument(
     val id: String = "",
@@ -59,7 +68,5 @@ data class AlbumDocument(
     val images: String = "[]",               // JSON-encoded List<Image>
     @SerialName("updated_at") val updatedAt: Long? = null,
     @SerialName("external_ids") val externalIds: String? = null, // JSON-encoded Map<String, String>
-    @SerialName("in_library") val inLibrary: Boolean = false,
-    @SerialName("release_group_id") val releaseGroupId: String? = null,
-    val rating: Int? = null
+    @SerialName("release_group_id") val releaseGroupId: String? = null
 )

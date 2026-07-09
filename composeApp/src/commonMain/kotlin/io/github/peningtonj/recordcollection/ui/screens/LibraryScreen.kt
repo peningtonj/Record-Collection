@@ -1,6 +1,7 @@
 // commonMain/ui/screens/LibraryScreen.kt
 package io.github.peningtonj.recordcollection.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -53,6 +54,14 @@ fun LibraryScreen(
         collectionsViewModel,
         settings = settingsViewModel,
         navigator,
+    ).copy(
+        // Play the selected album and queue every album that follows it in the current list.
+        play = { album ->
+            val all = viewModel.filteredAlbums.value
+            val startIndex = all.indexOfFirst { it.album.id == album.album.id }
+            val queue = if (startIndex != -1) all.drop(startIndex + 1) else emptyList()
+            playbackViewModel.playAlbum(album, queue = queue)
+        }
     )
 
     val filterOptions by remember(artists, genres) {
@@ -66,6 +75,7 @@ fun LibraryScreen(
 
     val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
     var filtersExpanded by remember { mutableStateOf(false) }
+    var filtersVisible by remember { mutableStateOf(true) }
     val hasActiveFilters = currentFilter.tags.isNotEmpty() ||
         currentFilter.releaseDateRange != null ||
         (currentFilter.minRating ?: 0) > 0
@@ -76,6 +86,15 @@ fun LibraryScreen(
             title = "Library",
             subtitle = "${filteredAlbums.size} ${if (filteredAlbums.size == 1) "album" else "albums"}",
             icon = Icons.Default.LibraryMusic,
+            actions = {
+                IconButton(onClick = { filtersVisible = !filtersVisible }) {
+                    Icon(
+                        imageVector = if (filtersVisible) Icons.Default.ExpandLess
+                                      else Icons.Default.ExpandMore,
+                        contentDescription = if (filtersVisible) "Hide filters" else "Show filters"
+                    )
+                }
+            }
         )
 
         Column(
@@ -84,134 +103,144 @@ fun LibraryScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (isAndroid) {
-                // Compact Android filter: toggle chip + inline active chips
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    FilterChip(
-                        selected = filtersExpanded || hasActiveFilters,
-                        onClick = { filtersExpanded = !filtersExpanded },
-                        label = { Text("Filter") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.FilterList,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    )
-                    if (hasActiveFilters) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            ActiveChips(
-                                currentFilter = currentFilter,
-                                onFilterChange = { viewModel.updateFilter(it) }
-                            )
-                        }
-                    }
-                }
-
-                // Expandable filter controls
-                if (filtersExpanded) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+            // Collapsible section: filters + quick actions
+            AnimatedVisibility(visible = filtersVisible) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (isAndroid) {
+                        // Compact Android filter: toggle chip + inline active chips
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            TextSearchBar(
-                                currentFilter,
-                                options = filterOptions,
-                                onFilterChange = { newFilter -> viewModel.updateFilter(newFilter) },
-                            )
-                            HorizontalFilterBar(
-                                currentFilter = currentFilter,
-                                onRatingChange = { newRating ->
-                                    viewModel.updateFilter(currentFilter.copy(minRating = newRating))
-                                },
-                                onYearFilterChange = { start, end, label ->
-                                    val newYearRange = DateRange(
-                                        LocalDate(start, 1, 1),
-                                        LocalDate(end, 12, 31),
-                                        name = label
+                            FilterChip(
+                                selected = filtersExpanded || hasActiveFilters,
+                                onClick = { filtersExpanded = !filtersExpanded },
+                                label = { Text("Filter") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.FilterList,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
                                     )
-                                    viewModel.updateFilter(currentFilter.copy(releaseDateRange = newYearRange))
-                                },
-                                startYear = earliestReleaseDate?.year ?: 1950
+                                }
                             )
+                            if (hasActiveFilters) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    ActiveChips(
+                                        currentFilter = currentFilter,
+                                        onFilterChange = { viewModel.updateFilter(it) }
+                                    )
+                                }
+                            }
                         }
-                    }
-                }
-            } else {
-                // Desktop: full always-visible filter card
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        TextSearchBar(
-                            currentFilter,
-                            options = filterOptions,
-                            onFilterChange = { newFilter -> viewModel.updateFilter(newFilter) },
-                        )
-                        HorizontalFilterBar(
-                            currentFilter = currentFilter,
-                            onRatingChange = { newRating ->
-                                viewModel.updateFilter(currentFilter.copy(minRating = newRating))
-                            },
-                            onYearFilterChange = { start, end, label ->
-                                val newYearRange = DateRange(
-                                    LocalDate(start, 1, 1),
-                                    LocalDate(end, 12, 31),
-                                    name = label
+
+                        // Expandable filter controls
+                        if (filtersExpanded) {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
-                                viewModel.updateFilter(currentFilter.copy(releaseDateRange = newYearRange))
-                            },
-                            startYear = earliestReleaseDate?.year ?: 1950
-                        )
-                        if (currentFilter.tags.isNotEmpty() || currentFilter.releaseDateRange != null) {
-                            ActiveChips(
-                                currentFilter = currentFilter,
-                                onFilterChange = { newFilter -> viewModel.updateFilter(newFilter) },
-                            )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    TextSearchBar(
+                                        currentFilter,
+                                        options = filterOptions,
+                                        onFilterChange = { newFilter -> viewModel.updateFilter(newFilter) },
+                                    )
+                                    HorizontalFilterBar(
+                                        currentFilter = currentFilter,
+                                        onRatingChange = { newRating ->
+                                            viewModel.updateFilter(currentFilter.copy(minRating = newRating))
+                                        },
+                                        onYearFilterChange = { start, end, label ->
+                                            val newYearRange = DateRange(
+                                                LocalDate(start, 1, 1),
+                                                LocalDate(end, 12, 31),
+                                                name = label
+                                            )
+                                            viewModel.updateFilter(currentFilter.copy(releaseDateRange = newYearRange))
+                                        },
+                                        startYear = earliestReleaseDate?.year ?: 1950
+                                    )
+                                }
+                            }
                         }
+                    } else {
+                        // Desktop: full always-visible filter card
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                TextSearchBar(
+                                    currentFilter,
+                                    options = filterOptions,
+                                    onFilterChange = { newFilter -> viewModel.updateFilter(newFilter) },
+                                )
+                                HorizontalFilterBar(
+                                    currentFilter = currentFilter,
+                                    onRatingChange = { newRating ->
+                                        viewModel.updateFilter(currentFilter.copy(minRating = newRating))
+                                    },
+                                    onYearFilterChange = { start, end, label ->
+                                        val newYearRange = DateRange(
+                                            LocalDate(start, 1, 1),
+                                            LocalDate(end, 12, 31),
+                                            name = label
+                                        )
+                                        viewModel.updateFilter(currentFilter.copy(releaseDateRange = newYearRange))
+                                    },
+                                    startYear = earliestReleaseDate?.year ?: 1950
+                                )
+                                if (currentFilter.tags.isNotEmpty() || currentFilter.releaseDateRange != null) {
+                                    ActiveChips(
+                                        currentFilter = currentFilter,
+                                        onFilterChange = { newFilter -> viewModel.updateFilter(newFilter) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Quick Actions
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        HeaderActionButton(
+                            onClick = {
+                                if (filteredAlbums.isNotEmpty()) {
+                                    val shuffled = filteredAlbums.shuffled()
+                                    playbackViewModel.playAlbum(
+                                        album = shuffled.first(),
+                                        queue = shuffled.drop(1),
+                                        isShuffled = true
+                                    )
+                                }
+                            },
+                            icon = Icons.Default.Shuffle,
+                            label = "Shuffle All",
+                            primary = true
+                        )
+
+                        CreateCollectionButton(
+                            onCreateCollection = { name ->
+                                viewModel.createCollectionFromCurrentFilter(name)
+                            }
+                        )
                     }
                 }
             }
 
-            // Quick Actions
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                HeaderActionButton(
-                    onClick = {
-                        if (filteredAlbums.isNotEmpty()) {
-                            playbackViewModel.playAlbum(filteredAlbums.random())
-                        }
-                    },
-                    icon = Icons.Default.Shuffle,
-                    label = "Random Album",
-                    primary = true
-                )
-
-                CreateCollectionButton(
-                    onCreateCollection = { name ->
-                        viewModel.createCollectionFromCurrentFilter(name)
-                    }
-                )
-            }
-
-            // Albums Grid
+            // Albums Grid — always visible
             AlbumGrid(
                 filteredAlbums,
                 albumActions = albumTileActions

@@ -12,8 +12,10 @@ class LibraryServiceTest {
 
     private val albumRepository = mockk<AlbumRepository>()
     private val artistRepository = mockk<ArtistRepository>()
-    private val ratingRepository = mockk<RatingRepository>()
     private val profileRepository = mockk<ProfileRepository>()
+    private val settingsRepository = mockk<SettingsRepository>()
+    private val trackRepository = mockk<TrackRepository>()
+    private val userSessionRepository = mockk<UserSessionRepository>(relaxed = true)
 
     private lateinit var service: LibraryService
 
@@ -38,7 +40,14 @@ class LibraryServiceTest {
 
     @BeforeTest
     fun setup() {
-        service = LibraryService(albumRepository, artistRepository, ratingRepository, profileRepository)
+        service = LibraryService(
+            albumRepository,
+            artistRepository,
+            profileRepository,
+            settingsRepository,
+            trackRepository,
+            userSessionRepository
+        )
     }
 
     @Test

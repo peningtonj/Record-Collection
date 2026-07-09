@@ -4,6 +4,7 @@ import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.TrackRepository
+import io.github.peningtonj.recordcollection.repository.UserLibraryRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumCollectionUiState
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import io.github.peningtonj.recordcollection.ui.models.TagUiState
@@ -19,6 +20,7 @@ class GetAlbumDetailUseCase(
     private val albumTagRepository: AlbumTagRepository,
     private val collectionAlbumRepository: CollectionAlbumRepository,
     private val trackRepository: TrackRepository,
+    private val userLibraryRepository: UserLibraryRepository,
 ) {
 
     suspend fun execute(albumId: String, spotifyId: String, getTracks: Boolean = true): Flow<AlbumDetailUiState> {
@@ -33,9 +35,8 @@ class GetAlbumDetailUseCase(
     /**
      * Streams a live [AlbumDetailUiState] for an album that exists in Firestore.
      *
-     * [albumRepository.getAlbumById] is the primary source-of-truth snapshot; wrapping
-     * the inner combine in [flatMapLatest] means that any change to the album document
-     * (including a rating update) causes all dependent flows to re-subscribe automatically.
+     * The user library entry provides rating and inLibrary status; all other sources
+     * remain unchanged. Using combine(5) keeps a single reactive stream.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun getDatabaseAlbum(albumId: String): Flow<AlbumDetailUiState> {
@@ -44,10 +45,15 @@ class GetAlbumDetailUseCase(
                 albumTagRepository.getTagsForAlbum(album.id),
                 collectionAlbumRepository.getCollectionsForAlbum(album.id),
                 trackRepository.getTracksForAlbum(album.id),
-                albumRepository.getAlbumsFromReleaseGroup(album.releaseGroupId)
-            ) { tags, collections, tracks, releaseGroup ->
+                albumRepository.getAlbumsFromReleaseGroup(album.releaseGroupId),
+                userLibraryRepository.getLibraryEntry(album.id)
+            ) { tags, collections, tracks, releaseGroup, libraryEntry ->
+                val enrichedAlbum = album.copy(
+                    inLibrary = libraryEntry?.inLibrary ?: false,
+                    rating = libraryEntry?.rating
+                )
                 AlbumDetailUiState(
-                    album = album,
+                    album = enrichedAlbum,
                     tags = tags.map { TagUiState(it) },
                     collections = collections.map {
                         AlbumCollectionUiState(
@@ -58,7 +64,7 @@ class GetAlbumDetailUseCase(
                     },
                     tracks = tracks,
                     totalDuration = tracks.sumOf { it.durationMs },
-                    rating = album.rating,
+                    rating = libraryEntry?.rating,
                     isLoading = false,
                     error = null,
                     releaseGroup = releaseGroup
@@ -86,4 +92,3 @@ class GetAlbumDetailUseCase(
         throw DomainException.AlbumNotFoundException(albumId)
     }
 }
-

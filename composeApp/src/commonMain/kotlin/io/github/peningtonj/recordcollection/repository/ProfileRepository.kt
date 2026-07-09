@@ -4,12 +4,17 @@ import Playlist
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.SavedAlbumDto
+import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfileDto
 import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 import kotlin.collections.chunked
 
 class ProfileRepository(
     private val spotifyApi: SpotifyApi,
 ) {
+    /** Returns the current Spotify user's profile, or null on failure. */
+    suspend fun getCurrentUserProfile(): SpotifyProfileDto? =
+        spotifyApi.user.getCurrentUserProfile().getOrNull()
+
     suspend fun getUserSavedPlaylist() =
         spotifyApi.user.getUserPlaylists().getOrNull()
             ?.getAllItems { nextUrl ->

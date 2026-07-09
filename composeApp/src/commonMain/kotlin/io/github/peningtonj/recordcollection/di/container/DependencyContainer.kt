@@ -17,16 +17,20 @@ import io.github.peningtonj.recordcollection.repository.SearchRepository
 import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
 import io.github.peningtonj.recordcollection.repository.TagRepository
-import io.github.peningtonj.recordcollection.repository.TrackRepository
+import io.github.peningtonj.recordcollection.repository.UserLibraryRepository
+import io.github.peningtonj.recordcollection.repository.UserSessionRepository
 import io.github.peningtonj.recordcollection.service.CollectionImportService
 import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.TagService
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
+import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.viewmodel.SettingsViewModel
 
 interface DependencyContainer : AutoCloseable {
+    val userSessionRepository: UserSessionRepository
+    val userLibraryRepository: UserLibraryRepository
     val profileRepository: ProfileRepository
     val authHandler: AuthHandler
     val authRepository: SpotifyAuthRepository

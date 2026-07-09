@@ -73,12 +73,14 @@ object AlbumMapper {
             images = runCatching { Json.decodeFromString<List<Image>>(entity.images) }.getOrElse { emptyList() },
             updatedAt = entity.updatedAt,
             externalIds = entity.externalIds?.let { runCatching { Json.decodeFromString<Map<String, String>>(it) }.getOrNull() },
-            inLibrary = entity.inLibrary,
+            // inLibrary and rating are now sourced from users/{userId}/library_albums
+            inLibrary = false,
             releaseGroupId = entity.releaseGroupId,
-            rating = entity.rating
+            rating = null
         )
     }
 
+    /** Writes album metadata only — inLibrary and rating are stored in the user library sub-collection. */
     fun toDocument(album: Album): AlbumDocument {
         return AlbumDocument(
             id = album.id,
@@ -94,9 +96,7 @@ object AlbumMapper {
             images = Json.encodeToString(album.images),
             updatedAt = album.updatedAt,
             externalIds = album.externalIds?.let { Json.encodeToString(it) },
-            inLibrary = album.inLibrary,
-            releaseGroupId = album.releaseGroupId,
-            rating = album.rating
+            releaseGroupId = album.releaseGroupId
         )
     }
 

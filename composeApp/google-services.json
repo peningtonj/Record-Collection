@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "543971105284",
+    "project_id": "record-collection-66c1d",
+    "storage_bucket": "record-collection-66c1d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:543971105284:android:498cd233c9a57ceb517351",
+        "android_client_info": {
+          "package_name": "io.github.peningtonj.recordcollection"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "543971105284-4kggojst8266m5b2nbq3mi2gethvca0e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2Y_pz7QDFXgPEsgoBb4jbGov8qyq8JSQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "543971105284-4kggojst8266m5b2nbq3mi2gethvca0e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

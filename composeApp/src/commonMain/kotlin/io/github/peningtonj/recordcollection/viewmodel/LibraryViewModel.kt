@@ -34,6 +34,14 @@ class LibraryViewModel(
     private val _trackSyncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val trackSyncState = _trackSyncState.asStateFlow()
 
+    init {
+        // Fetch the Spotify user profile and cache the user ID so all user-scoped
+        // repositories (collections, ratings, tags) can resolve their Firestore paths.
+        viewModelScope.launch {
+            libraryService.initUserSession()
+        }
+    }
+
     // Load saved filter state on initialization
     private val _currentFilter = MutableStateFlow(loadSavedFilter())
     val currentFilter = _currentFilter.asStateFlow()

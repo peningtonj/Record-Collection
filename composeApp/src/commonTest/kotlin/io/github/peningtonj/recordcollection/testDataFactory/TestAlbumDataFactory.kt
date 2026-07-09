@@ -53,6 +53,7 @@ object TestAlbumDataFactory {
     fun album(
         id: String = "test-album-id",
         name: String = "Test Album",
+        spotifyId: String = "spotify-$id",
         artists: List<SimplifiedArtist> = listOf(TestSimplifiedArtistFactory.simplifiedArtist()),
         releaseDate: LocalDate = LocalDate(2023, 1, 1),
         totalTracks: Int = 10,
@@ -65,6 +66,7 @@ object TestAlbumDataFactory {
         releaseGroupId: String? = null,
     ): Album = Album(
         id = id,
+        spotifyId = spotifyId,
         name = name,
         artists = artists,
         releaseDate = releaseDate,

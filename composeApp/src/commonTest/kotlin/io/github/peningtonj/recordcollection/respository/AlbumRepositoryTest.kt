@@ -12,6 +12,7 @@ import io.github.peningtonj.recordcollection.network.spotify.LibraryApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumsResponse
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
+import io.github.peningtonj.recordcollection.repository.UserLibraryRepository
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
@@ -66,7 +67,8 @@ class AlbumRepositoryTest {
             firestore = firestore,
             spotifyApi = spotifyApi,
             miscApi = miscApi,
-            eventDispatcher = eventDispatcher
+            eventDispatcher = eventDispatcher,
+            userLibraryRepository = mockk(relaxed = true)
         )
     }
 

@@ -3,35 +3,34 @@ package io.github.peningtonj.recordcollection.db.repository
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.domain.Tag
 import io.github.peningtonj.recordcollection.db.domain.TagType
+import io.github.peningtonj.recordcollection.repository.UserLibraryRepository
+import io.github.peningtonj.recordcollection.repository.UserSessionRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 
+/**
+ * Reads and writes tag_ids from users/{userId}/library_albums/{albumId}  (via UserLibraryRepository).
+ * Joins tag IDs against users/{userId}/tags  (via UserSessionRepository for the path).
+ */
 class AlbumTagRepository(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val userLibraryRepository: UserLibraryRepository,
+    private val userSession: UserSessionRepository
 ) {
-    private val albumsRef = firestore.collection("albums")
-    private val tagsRef = firestore.collection("tags")
+    private fun tagsRef() = firestore
+        .collection("users").document(userSession.requireUserId()).collection("tags")
 
-    @Serializable
-    private data class TagIdsField(
-        @SerialName("tag_ids") val tagIds: List<String> = emptyList()
-    )
-
-    // Watches the album's tag_ids array, then reactively joins against the tags collection.
+    /** Watches the album's tag_ids from the user library, then reactively joins against the user tags collection. */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getTagsForAlbum(albumId: String): Flow<List<Tag>> =
-        albumsRef.document(albumId).snapshots
-            .flatMapLatest { snapshot ->
-                if (!snapshot.exists) return@flatMapLatest flowOf(emptyList())
-                val tagIds = runCatching { snapshot.data<TagIdsField>().tagIds }.getOrElse { emptyList() }
+        userLibraryRepository.getTagIds(albumId)
+            .flatMapLatest { tagIds ->
                 if (tagIds.isEmpty()) return@flatMapLatest flowOf(emptyList())
-                tagsRef.snapshots.map { tagsSnapshot ->
+                tagsRef().snapshots.map { tagsSnapshot ->
                     tagsSnapshot.documents
                         .filter { it.id in tagIds }
                         .mapNotNull { doc ->
@@ -43,18 +42,11 @@ class AlbumTagRepository(
                 }
             }
 
-    // Kept non-suspend (runBlocking) so TagService callers need no changes.
     fun addTagToAlbum(albumId: String, tagId: String) = runBlocking {
-        val existing = albumsRef.document(albumId).get()
-        val tagIds = runCatching { existing.data<TagIdsField>().tagIds }.getOrElse { emptyList() }
-        if (tagId !in tagIds) {
-            albumsRef.document(albumId).set(mapOf("tag_ids" to tagIds + tagId), merge = true)
-        }
+        userLibraryRepository.addTagId(albumId, tagId)
     }
 
     fun removeTagFromAlbum(albumId: String, tagId: String) = runBlocking {
-        val existing = albumsRef.document(albumId).get()
-        val tagIds = runCatching { existing.data<TagIdsField>().tagIds }.getOrElse { emptyList() }
-        albumsRef.document(albumId).set(mapOf("tag_ids" to tagIds.filter { it != tagId }), merge = true)
+        userLibraryRepository.removeTagId(albumId, tagId)
     }
 }

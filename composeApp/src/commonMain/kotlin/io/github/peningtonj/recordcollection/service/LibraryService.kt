@@ -11,6 +11,7 @@ import io.github.peningtonj.recordcollection.repository.ArtistRepository
 import io.github.peningtonj.recordcollection.repository.ProfileRepository
 import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.repository.TrackRepository
+import io.github.peningtonj.recordcollection.repository.UserSessionRepository
 import io.github.peningtonj.recordcollection.repository.SortOrder
 import io.github.peningtonj.recordcollection.ui.models.AlbumDisplayData
 import io.github.peningtonj.recordcollection.viewmodel.LibraryDifferences
@@ -24,8 +25,21 @@ class LibraryService(
     private val artistRepository: ArtistRepository,
     private val profileRepository: ProfileRepository,
     private val settingsRepository: SettingsRepository,
-    private val trackRepository: TrackRepository
+    private val trackRepository: TrackRepository,
+    private val userSessionRepository: UserSessionRepository
 ) {
+    /**
+     * Fetches the current Spotify user's profile and caches their ID in UserSessionRepository.
+     * Always re-fetches so that switching accounts is handled correctly — if the same user
+     * logs in again no Settings write is needed, but a different user gets their own ID set.
+     */
+    suspend fun initUserSession() {
+        val profile = profileRepository.getCurrentUserProfile() ?: return
+        if (userSessionRepository.getUserId() != profile.id) {
+            userSessionRepository.setUserId(profile.id)
+        }
+    }
+
     // Core data operations
     fun getAllAlbumsEnriched(): Flow<List<AlbumDisplayData>> = combine(
         albumRepository.getAllAlbumsInLibrary(),
@@ -246,10 +260,12 @@ class LibraryService(
 
     suspend fun addAlbumToLibrary(album: Album) {
         albumRepository.addAlbumToLibrary(album.id)
+        profileRepository.addAlbumsToSpotifyLibrary(listOf(album))
     }
 
     suspend fun removeAlbumFromLibrary(album: Album) {
         albumRepository.removeAlbumFromLibrary(album.id)
+        profileRepository.removeAlbumsFromSpotifyLibrary(listOf(album))
     }
 
     suspend fun updateLibraryTracksFromSpotify() {

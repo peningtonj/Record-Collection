@@ -93,9 +93,10 @@ class SpotifyAuthRepository(
     }
 
     fun logout() {
-        // Clear tokens from database
+        // Clear Spotify tokens
         deleteToken()
-
+        // Clear cached Spotify user ID so the next login always initialises a fresh session
+        settings.remove(UserSessionRepository.KEY_USER_ID)
         // Update state to not authenticated
         _authState.value = AuthState.NotAuthenticated
     }

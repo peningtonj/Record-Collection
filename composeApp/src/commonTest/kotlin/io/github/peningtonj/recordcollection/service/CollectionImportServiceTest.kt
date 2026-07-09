@@ -6,6 +6,7 @@ import io.github.peningtonj.recordcollection.network.spotify.model.SearchType
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.PlaylistRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
+import io.github.peningtonj.recordcollection.repository.SettingsRepository
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
 import io.github.peningtonj.recordcollection.testDataFactory.TestTrackDataFactory
 import io.github.peningtonj.recordcollection.viewmodel.AlbumLookUpResult
@@ -22,6 +23,7 @@ class CollectionImportServiceTest {
     private val albumCollectionRepository = mockk<AlbumCollectionRepository>()
     private val searchRepository = mockk<SearchRepository>()
     private val playlistRepository = mockk<PlaylistRepository>()
+    private val settingsRepository = mockk<SettingsRepository>(relaxed = true)
 
     private lateinit var service: CollectionImportService
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -39,7 +41,8 @@ class CollectionImportServiceTest {
         service = CollectionImportService(
             albumCollectionRepository = albumCollectionRepository,
             searchRepository = searchRepository,
-            playlistRepository = playlistRepository
+            playlistRepository = playlistRepository,
+            settingsRepository = settingsRepository
         )
     }
 
