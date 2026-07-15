@@ -1,38 +1,106 @@
 # Record Collection
 
-This is an app which provides an alternative front end to Spotify, designed for listening to full albums.
+A Kotlin Multiplatform (Android + Desktop/JVM) app providing an album-centric alternative front-end to Spotify. Built with Compose Multiplatform and backed by Firebase Firestore.
 
 ![Record Collection App Screenshot](screenshots/screenshot.png)
 
-## Importing data into the app
+## Features
 
-If you have albums saved to your library in Spotify, you can import your saved albums into the app with the _Sync with Spotify Saved Albums_ button.
+- **Album-centric playback** — browse and play full albums, not just playlists
+- **Library management** — sync with your Spotify saved albums or build your own collection
+- **Collections** — curated playlists of albums, playable in order or shuffled, with optional sound effects between albums
+- **Ratings** — rate albums on a 0–5 star scale
+- **Filtering & sorting** — filter by artist, genre, release date, rating, or free-text search
+- **Genre tagging** — automatic genre enrichment via Every Noise At Once data
+- **Artist detail pages** — browse all albums by an artist
+- **Release group management** — swap between standard releases and special/alternate editions (powered by MusicBrainz)
+- **Album deduplication** — identify and merge duplicate album entries
+- **Search** — search the Spotify catalogue directly from the app
+- **AI-powered collection import** — paste an article URL and let GPT-4.1 extract an album list (requires an OpenAI API key)
+- **Spotify playlist import** — import all albums referenced in any Spotify playlist as a collection
+- **Profile view** — see your connected Spotify account details
 
-You can continue to use both the spotify app and Record Collection to add albums to your library, and the sync button will allow you to combine your libraries, or override one library with the other.
+## Platforms
 
-You can also fill your library by importing collections as detailed below.
+| Platform | Entry point |
+|---|---|
+| Desktop (JVM) | `desktopMain/.../main.kt` |
+| Android | `androidMain/.../MainActivity.kt` |
+
+## Prerequisites
+
+- A **Spotify Premium** account (required for playback control via the Spotify API)
+- A registered **Spotify Developer application** (Client ID & Client Secret) from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+- A **Firebase project** with Firestore enabled and `google-services.json` placed at `composeApp/google-services.json`
+- *(Optional)* An **OpenAI API key** for AI-powered collection imports — configured in Settings inside the app
+
+## Building & Running
+
+```bash
+# Run the desktop app
+./gradlew :composeApp:run
+
+# Build a distributable desktop package
+./gradlew :composeApp:createDistributable
+
+# Build an Android debug APK
+./gradlew :composeApp:assembleDebug
+
+# Run all shared tests (JVM target)
+./gradlew :composeApp:desktopTest
+```
+
+## Importing Your Library
+
+1. Log in with your Spotify account.
+2. Use the **Sync with Spotify Saved Albums** button to import your saved albums.
+3. The sync can be run repeatedly — it merges both libraries without duplicating albums.
 
 ## Collections
 
-Collections are playlists of albums. You can add albums to the collection and play them in order, or shuffled. In between each album, it will add a short sound effect between albums. This can be turned off in the settings.
+Collections are ordered lists of albums.
 
-### Importing Collections
+### Playing a Collection
+Select a collection and choose **Play** (in order) or **Shuffle**. A short sound effect plays between albums by default — this can be disabled in **Settings**.
 
-You can import collections from:
-1. Playlists in Spotify (Every album from which a song in the playlist appears)
-2. An article about a list of songs (Requires an Open AI API key)
+### Importing a Collection
 
-## Playing Music
+| Source | How |
+|---|---|
+| Spotify playlist | Enter a playlist URL — every album with a track in the playlist is added |
+| Web article | Enter an article URL — GPT-4.1 parses the page and extracts albums (requires OpenAI API key) |
 
-You must have an available Spotify device to play music.
+## Architecture
 
-## Other Features
-* Rating albums
-* Filtering on release date
-* Every Noise At Once data for tagging by genre
-* Capacity to swap between releases and special editions
-* Deduplication of Albums 
+Clean architecture with layers: **UI → ViewModel → Service → Repository → Network/Database**
 
-The app is written in Kotlin and is heavily inspired by the [kotify](https://github.com/dzirbel/kotify) project by Dominic Zirbel. 
+- Shared code in `composeApp/src/commonMain/`
+- Platform-specific code via `expect`/`actual` in `androidMain/` and `desktopMain/`
+- Persistence via **Firebase Firestore** (`dev.gitlive:firebase-firestore`)
+- HTTP via **Ktor** (OkHttp engine) with bearer-token auth, exponential-backoff retry, and rate-limit handling
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for full details.
 
+## Technology Stack
+
+| Concern | Library |
+|---|---|
+| UI | Compose Multiplatform 1.8.1 |
+| Language | Kotlin 2.1.21 |
+| Async | Kotlin Coroutines 1.10.2 |
+| Database | Firebase Firestore (`dev.gitlive`) |
+| Networking | Ktor 3.0.3 + OkHttp |
+| Serialization | Kotlinx Serialization |
+| Logging | Napier 2.7.1 |
+| Testing | MockK · Turbine · coroutines-test |
+
+## External APIs
+
+- **Spotify Web API** — library sync, search, playback control, OAuth 2.0 auth
+- **MusicBrainz API** — release group metadata and alternate edition lookup
+- **Every Noise At Once** — genre enrichment for artists
+- **OpenAI API (GPT-4.1)** — article parsing for collection import
+
+## Inspiration
+
+Heavily inspired by the [kotify](https://github.com/dzirbel/kotify) project by Dominic Zirbel.
