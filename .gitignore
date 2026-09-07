@@ -30,3 +30,8 @@ captures
 # Firebase project config — provide your own; see README. TECH_DEBT 2.4
 /composeApp/google-services.json
 /composeApp/firebase.properties
+
+# Python
+__pycache__/
+*.pyc
+serviceAccountKey*.json

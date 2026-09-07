@@ -9,6 +9,7 @@ import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.ImageDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedArtistDto
+import io.github.peningtonj.recordcollection.util.sha256Hex
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
@@ -123,12 +124,20 @@ object AlbumMapper {
     }
 }
 
+/**
+ * Stable Firestore document ID for an album, derived from its normalized
+ * name + primary artist (the album's identity — see docs/MIGRATION_SPOTIFY_ID.md).
+ *
+ * SHA-256 truncated to 96 bits (24 hex chars): collision-safe for any realistic
+ * collection. Existing databases must be migrated with scripts/migrate_album_ids.py —
+ * the old 32-bit String.hashCode() scheme produced different IDs.
+ *
+ * Keep this normalization byte-for-byte in sync with migrate_album_ids.py.
+ */
 fun generateAlbumId(name: String, artist: String?): String {
-    val normalizedArtist = (artist ?: "Unknown Artist").lowercase().trim()
-    return "${name.lowercase().trim()}|$normalizedArtist"
-        .hashCode()
-        .toString(36)
-        .replace("-", "0") // Ensure positive IDs
+    val normalizedArtist = (artist ?: "Unknown Artist").trim().lowercase()
+    val key = "${name.trim().lowercase()}|$normalizedArtist"
+    return sha256Hex(key).take(24)
 }
 
 fun generateAlbumId(album: Album): String {

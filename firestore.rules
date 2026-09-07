@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Record Collection — Firestore security rules
+//
+// CURRENT (TECH_DEBT 2.1, stopgap): require *any* authenticated client. The app signs
+// in anonymously at startup (see db/FirebaseAuth.kt). This stops unauthenticated
+// drive-by reads/writes but does NOT isolate users from each other — any signed-in
+// client can still read/write any users/{uid}/... path.
+//
+// NEXT: custom-token auth so request.auth.uid == the Spotify user ID, then replace the
+// catch-all below with the per-collection rules sketched underneath it.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ── Target shape once request.auth.uid == spotifyUserId ──────────────────
+    // match /users/{uid}/{doc=**} {
+    //   allow read, write: if request.auth != null && request.auth.uid == uid;
+    // }
+    // // Shared catalogue — readable by any signed-in user; writes ideally move
+    // // behind a backend / Cloud Function.
+    // match /albums/{id}   { allow read: if request.auth != null; allow write: if request.auth != null; }
+    // match /artists/{id}  { allow read: if request.auth != null; allow write: if request.auth != null; }
+    // match /tracks/{id}   { allow read: if request.auth != null; allow write: if request.auth != null; }
+  }
+}

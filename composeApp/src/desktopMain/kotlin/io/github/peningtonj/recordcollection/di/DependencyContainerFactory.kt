@@ -2,6 +2,9 @@ package io.github.peningtonj.recordcollection.di
 
 import com.russhwolf.settings.PreferencesSettings
 import io.github.peningtonj.recordcollection.db.FirebaseDriver
+import io.github.peningtonj.recordcollection.db.ensureAnonymousAuth
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionNetworkModule
 import io.github.peningtonj.recordcollection.di.module.impl.ProductionRepositoryModule
@@ -20,6 +23,13 @@ import java.util.prefs.Preferences
 object DependencyContainerFactory {
     fun create(): DependencyContainer {
         FirebaseDriver().initializeFirebase()
+
+        // Firestore rules require request.auth != null. Sign in anonymously before any
+        // repository can touch Firestore. One-time bootstrap blocking call (pre-UI); the
+        // timeout keeps a network failure from hanging startup forever.
+        runBlocking {
+            withTimeoutOrNull(15_000) { ensureAnonymousAuth() }
+        }
 
         // Create a basic HTTP client for auth operations
         val authClient = HttpClient(OkHttp) {

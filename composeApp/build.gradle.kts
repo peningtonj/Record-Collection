@@ -52,6 +52,7 @@ kotlin {
             implementation("com.russhwolf:multiplatform-settings:1.3.0")
             implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.0-alpha07")
             implementation("dev.gitlive:firebase-firestore:2.3.0")
+            implementation("dev.gitlive:firebase-auth:2.3.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -67,7 +68,6 @@ kotlin {
             implementation(libs.ktor.client.java)
             implementation("org.apache.httpcomponents:httpclient:4.5.14")
             implementation("com.russhwolf:multiplatform-settings-jvm:1.3.0")
-            implementation("dev.gitlive:firebase-auth:1.12.0")
         }
     }
 }

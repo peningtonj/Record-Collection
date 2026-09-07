@@ -31,8 +31,19 @@ A Kotlin Multiplatform (Android + Desktop/JVM) app providing an album-centric al
 
 - A **Spotify Premium** account (required for playback control via the Spotify API)
 - A registered **Spotify Developer application** (Client ID & Client Secret) from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-- A **Firebase project** with Firestore enabled and `google-services.json` placed at `composeApp/google-services.json`
+- A **Firebase project** (see [Firebase setup](#firebase-setup) below)
 - *(Optional)* An **OpenAI API key** for AI-powered collection imports — configured in Settings inside the app
+
+### Firebase setup
+
+1. Create a Firebase project with **Firestore** enabled.
+2. Download `google-services.json` and place it at `composeApp/google-services.json`.
+   This file is git-ignored; the desktop app reads its Firebase config from it at
+   runtime (or from the `GOOGLE_SERVICES_JSON` env var).
+3. **Authentication** → Sign-in method → enable **Anonymous**. The app signs in
+   anonymously at startup — Firestore rules reject unauthenticated clients.
+4. Deploy the security rules: `firebase deploy --only firestore:rules`
+   (rules live in `firestore.rules`; `firebase.json` points at them).
 
 ## Building & Running
 

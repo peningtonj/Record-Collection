@@ -67,10 +67,11 @@ class LibraryServiceTest {
 
 Persistence is entirely via **Firebase Firestore** (`dev.gitlive:firebase-firestore`). There is no SQLDelight; there are no `.sq` files.
 
-- `FirebaseDriver` (`db/FirebaseDriver.kt` — `expect`/`actual`) initialises Firebase before the DI container is built
+- `FirebaseDriver` (`db/FirebaseDriver.kt` — `expect`/`actual`) initialises Firebase before the DI container is built. Desktop reads `FirebaseOptions` from `google-services.json` at runtime (git-ignored; see README).
+- The DI factories then call `ensureAnonymousAuth()` (`db/FirebaseAuth.kt`) — Firestore rules (`firestore.rules`) require `request.auth != null`, so every startup signs in anonymously before any repository runs. The anon UID is **not** the Spotify user ID (no per-user isolation yet — see `docs/TECH_DEBT.md` 2.1).
 - `FirebaseModule` / `ProductionFirebaseModule` expose `Firebase.firestore`; every repository that needs persistence receives a `FirebaseFirestore` constructor parameter
 - Collection names match domain entities: `"albums"`, `"artists"`, `"tracks"`, `"ratings"`, etc.
-- Document ID for albums is a **hash of name + primary artist** (not the Spotify ID); `spotifyId` is a separate field
+- Document ID for albums is `generateAlbumId()` = **`sha256Hex("<name>|<primary_artist>".normalized()).take(24)`** (not the Spotify ID); `spotifyId` is a separate field. Changing the normalization or hash **requires** re-running `scripts/migrate_album_ids.py`.
 - Document models are `@Serializable` data classes (e.g. `AlbumDocument`, `ArtistDocument`) stored in `db/domain/`; they are separate from the domain objects (`Album`, `Artist`)
 - Complex fields that would cause Firestore Int/Long type issues (`artists`, `images`, `externalIds`) are stored as **JSON-encoded strings** inside the document — use `AlbumMapper` / `ArtistMapper` to convert, never write raw strings
 - Reads return `Flow` by subscribing to `.snapshots`; writes use `.set(document)` or `.set(map, merge = true)`

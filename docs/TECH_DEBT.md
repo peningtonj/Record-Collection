@@ -203,43 +203,47 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ### 2.1 — Firestore has no authentication ⚠️⚠️
 
-- [ ] **Why**: there is **no Firebase Auth anywhere** in the app (grep: no `signIn`,
-  `FirebaseAuth`, `Firebase.auth`). Data is stored under `users/{spotifyUserId}/…` and
-  the Spotify user ID is not secret. With no `request.auth`, Firestore rules can only be
-  allow-all or deny-all; the app works, so the database is effectively open. Anyone with
-  the Firebase config (committed in `composeApp/google-services.json` and hardcoded in
-  `desktopMain/.../db/FirebaseDriver.desktop.kt`) can read every user's library and
-  overwrite any user's data by supplying their Spotify ID.
-  `PRODUCTION_ROADMAP.md` Phase 4 lists "Security rules in place" — they are **not**.
-- **Fix**:
-  1. Add Firebase Auth. Cleanest path: a small Cloud Function / backend that verifies a
-     Spotify access token and mints a Firebase **custom token**; the client calls
-     `signInWithCustomToken`. Then `request.auth.uid` == Spotify user ID.
-  2. Write and deploy `firestore.rules`:
-     - `users/{uid}/{doc=**}` → `allow read, write: if request.auth.uid == uid`
-     - shared `albums`, `artists`, `tracks` collections → `allow read: if request.auth != null`,
-       `allow write: if request.auth != null` (tighten later; consider moving writes
-       behind the backend).
-  3. Commit `firestore.rules` + `firebase.json` to the repo; deploy via `firebase deploy`
-     in CI.
-  4. Gate every `firestore` access on an authenticated session (the
-     `UserSessionRepository` gate becomes an *auth* gate, not just an ID cache).
+- [x] **DONE — anonymous-auth stopgap** (2026-09-07). Chosen approach: require *any*
+  authenticated client now; full per-user custom-token auth deferred.
+  - `dev.gitlive:firebase-auth:2.3.0` added to `commonMain` (replaces the stale
+    desktop-only `:1.12.0`).
+  - `db/FirebaseAuth.kt` → `ensureAnonymousAuth()`; called (blocking, 15 s timeout) at
+    startup from both `DependencyContainerFactory` (desktop) and
+    `AndroidDependencyContainerFactory` after Firebase init, before any repository runs.
+  - `firestore.rules` + `firebase.json` committed at repo root:
+    `match /{document=**} { allow read, write: if request.auth != null; }`
+  - **Manual steps still required** (see README → Firebase setup):
+    1. Firebase console → Authentication → Sign-in method → **enable Anonymous**.
+    2. `firebase deploy --only firestore:rules` (or paste the rules in the console).
+- [ ] **Follow-up — real per-user auth** (deferred): Cloud Function verifies a Spotify
+  token and mints a Firebase **custom token**; client calls `signInWithCustomToken` so
+  `request.auth.uid == spotifyUserId`. Then replace the catch-all rule with the
+  per-collection rules already sketched (commented) in `firestore.rules`. The anonymous
+  UID gives no user isolation — any signed-in client can still read/write any
+  `users/{uid}/…` path.
+- **Note**: Android still can't exercise this until 1.12 is fixed (Android doesn't
+  compile, and `AndroidDependencyContainerFactory` also never called `initializeFirebase()`
+  — now it does).
 
 ### 2.2 — Album document IDs are a 32-bit `String.hashCode()` ⚠️⚠️
 
-- [ ] **Why**: `db/mapper/AlbumMapper.kt` → `generateAlbumId()` does
-  `"$name|$artist".hashCode().toString(36).replace("-", "0")`.
-  - 32-bit space → collisions become likely in the tens-of-thousands range; a collision
-    silently overwrites a different album in the shared `albums` collection.
-  - `.replace("-", "0")` maps distinct negative hashes onto the same string (e.g. hash
-    `-1abc` and `01abc`), *raising* the collision rate.
-- **Fix**: use a real hash. `SHA-256(normalized("$name|$artist"))` hex, truncated to
-  ~16–24 chars, via `kotlinx-crypto` or a small multiplatform SHA-256. Keep a migration
-  path: `MIGRATION_SPOTIFY_ID.md` already documents an ID migration; add a new step that
-  rewrites doc IDs and updates every reference (`library_albums`, `collection_albums`,
-  `release_group_id` links).
-- **Also**: decide the identity model deliberately — name+artist collapses remasters and
-  deluxe editions. Document it in `ARCHITECTURE.md` § Database.
+- [x] **DONE (code)** (2026-09-07) — `generateAlbumId(name, artist)` now returns
+  `sha256Hex("<name>|<artist>".normalized()).take(24)` (96 bits — collision-safe).
+  - `util/Hashing.kt` `expect fun sha256Hex` + JVM `actual`s (desktop + android) using
+    `java.security.MessageDigest` — no hand-rolled crypto, no `System.*` in commonMain.
+  - `GenerateAlbumIdTest` locks the contract, incl. the exact digest cross-checked
+    against `openssl` / the Python script.
+- [x] **Migration script** — `scripts/migrate_album_ids.py` (firebase-admin, `--dry-run`
+  default, `--execute` to apply). Re-keys `albums/{id}`, `users/{uid}/library_albums/{id}`,
+  `users/{uid}/collections/*.albums[].albumId`, and `tracks.*.album_id`. Idempotent.
+  Normalization is kept byte-for-byte in sync with the Kotlin function.
+- [ ] **Not yet run** — the user runs it once against Firestore
+  (`python3 scripts/migrate_album_ids.py --cred key.json` to preview, then `--execute`).
+  Until then, existing albums keep their old IDs and won't match new writes.
+- **Identity model** (unchanged, deliberate): `id = f(name, primary_artist)` per
+  `MIGRATION_SPOTIFY_ID.md` — `spotifyId` is a separate field. name+artist collapses
+  remasters / deluxe editions on purpose (release-group swapping relies on it). Should be
+  spelled out in `ARCHITECTURE.md` once that file's DB section is rewritten (5.3).
 
 ### 2.3 — Query logs committed to git and growing every commit ⚠️
 
@@ -414,20 +418,17 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 | Date | Section | Item | Commit | Notes |
 |------|---------|------|--------|-------|
-| 2026-09-07 | 1 | 1.1 runBlocking | _uncommitted_ | Tag repos/service/VM/handler → suspend; tests → coEvery |
-| 2026-09-07 | 1 | 1.4 throw in Flow | _uncommitted_ | `getAlbumById` → `Flow<Album?>`; `.filterNotNull()` in use case |
-| 2026-09-07 | 1 | 1.5 System.currentTimeMillis | _uncommitted_ | 6 sites → `Clock.System` |
-| 2026-09-07 | 1 | 1.6 default package | _uncommitted_ | 4 types moved; 2 dead files deleted |
-| 2026-09-07 | 1 | 1.7 package ≠ dir | _uncommitted_ | AlbumTagRepository, CollectionDetailViewModel |
-| 2026-09-07 | 1 | 1.8 ad-hoc scopes | _uncommitted_ | SettingsRepository eager load; eventScope.cancel() |
-| 2026-09-07 | 1 | 1.9 debug noise | _uncommitted_ | ProductionNetworkModule + SearchResultComponents |
-| 2026-09-07 | 1 | 1.11 unused koin | _uncommitted_ | removed from build.gradle.kts |
+| 2026-09-07 | 1 | 1.1, 1.4–1.9, 1.11 | dd5bc34 | See Section 1 checkboxes |
+| 2026-09-07 | 2 | 2.3, 2.4 | efb4bb6 | logs + google-services.json untracked; desktop config from file |
+| 2026-09-07 | 2 | 2.1 anon-auth stopgap | _staged_ | firebase-auth 2.3.0, ensureAnonymousAuth(), firestore.rules |
+| 2026-09-07 | 2 | 2.2 SHA-256 IDs + migration | _staged_ | sha256Hex expect/actual; scripts/migrate_album_ids.py; GenerateAlbumIdTest |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-passes. `desktopTest` = 41 tests / 16 failing — **identical set to the pre-change
-baseline** (all 16 are pre-existing: `AlbumRepositoryTest` firestore-mock serialization,
-`LibraryServiceTest` 5.1 + mock gaps, `AlbumViewModelTest` `addAlbumToCollection` mock
-gaps, `CollectionImportServiceTest` one assertion). No regressions introduced.
+passes. `desktopTest` = 47 tests / 16 failing — the **same 16 pre-existing failures** as
+the baseline (all: `AlbumRepositoryTest` firestore-mock serialization, `LibraryServiceTest`
+5.1 + mock gaps, `AlbumViewModelTest` `addAlbumToCollection` mock gaps,
+`CollectionImportServiceTest` one assertion). No regressions; +6 new passing
+`GenerateAlbumIdTest`.
 
 `compileDebugKotlinAndroid` fails — but it **also fails on a clean `git stash` of all this
 work**, for unrelated reasons (see 1.12). Android was already broken.
