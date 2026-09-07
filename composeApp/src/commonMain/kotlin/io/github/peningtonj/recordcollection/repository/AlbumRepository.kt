@@ -290,13 +290,15 @@ class AlbumRepository(
             spotifyApi.library.getMultipleAlbums(batch)
                 .onSuccess { response ->
                     response.albums.forEach { albumDto ->
-                        albums.add(AlbumMapper.toDomain(albumDto))
+                        val album = AlbumMapper.toDomain(albumDto)
+                        albums.add(album)
 
                         if (saveToDb) {
+                            // saveAlbum already dispatches AlbumEvent.AlbumAdded
                             saveAlbum(albumDto)
+                        } else {
+                            eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
                         }
-                        val album = AlbumMapper.toDomain(albumDto)
-                        eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
                     }
                 }
                 .onFailure { error ->

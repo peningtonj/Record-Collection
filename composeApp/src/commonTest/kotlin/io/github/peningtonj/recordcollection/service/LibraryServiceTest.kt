@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.service
 
+import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.repository.*
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
 import io.github.peningtonj.recordcollection.viewmodel.LibraryDifferences
@@ -20,18 +21,21 @@ class LibraryServiceTest {
     private lateinit var service: LibraryService
 
     val uniqueLocalAlbums = (1..2).map { TestAlbumDataFactory.album("unique-album-test-id-$it", "Local Unique Album $it") }
-    val uniqueRemoteAlbums = (1..2).map { TestAlbumDataFactory.album("remote-album-test-id-$it", "Remote Unique Album $it") }
     val uniqueRemoteAlbumsDto = (1..2).map {
         TestAlbumDataFactory.savedAlbumDto(
         TestAlbumDataFactory.albumDto("remote-album-test-id-$it", "Remote Test Album $it")
         )
     }
-    val sharedAlbums = (1..2).map { TestAlbumDataFactory.album("shared-album-test-id-$it", "Shared Album $it") }
     val sharedAlbumsDto = (1..2).map {
         TestAlbumDataFactory.savedAlbumDto(
         TestAlbumDataFactory.albumDto("shared-album-test-id-$it", "Shared Test Album $it")
         )
     }
+
+    // Domain albums are derived from the same DTOs so their ids match what the service
+    // computes via AlbumMapper.toDomain (SHA-256 of name+artist — see TECH_DEBT 2.2).
+    val uniqueRemoteAlbums = uniqueRemoteAlbumsDto.map { AlbumMapper.toDomain(it.album) }
+    val sharedAlbums = sharedAlbumsDto.map { AlbumMapper.toDomain(it.album) }
 
     val localAlbums = uniqueLocalAlbums + sharedAlbums
     val remoteAlbumsDtos = uniqueRemoteAlbumsDto + sharedAlbumsDto
@@ -40,6 +44,7 @@ class LibraryServiceTest {
 
     @BeforeTest
     fun setup() {
+        coEvery { artistRepository.fetchArtistsWithEnhancedGenres(any(), any()) } returns emptyList()
         service = LibraryService(
             albumRepository,
             artistRepository,
@@ -128,7 +133,7 @@ class LibraryServiceTest {
     }
 
     @Test
-    fun `test apply sync, remote only`() = runTest {
+    fun `test apply sync, use spotify removes local-only albums`() = runTest {
         val differences = LibraryDifferences(
             localCount = 2,
             spotifyCount = 2,
@@ -147,7 +152,7 @@ class LibraryServiceTest {
         coEvery { albumRepository.saveAlbumIfNotPresent(any()) } just Runs
         coEvery { albumRepository.addAlbumToLibrary(any()) } just Runs
 
-        service.applySync(differences, SyncAction.UseLocal)
+        service.applySync(differences, SyncAction.UseSpotify)
 
         coVerify { albumRepository.removeAlbumFromLibrary(uniqueLocalAlbums[0].id) }
         coVerify { albumRepository.removeAlbumFromLibrary(uniqueLocalAlbums[1].id) }

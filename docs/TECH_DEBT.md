@@ -339,11 +339,10 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
   (`compileKotlinDesktop` + `compileTestKotlinDesktop` + `desktopTest`, uploads the
   report) and an `android` job (writes a stub `google-services.json`, runs
   `compileDebugKotlinAndroid`) on every push/PR to `main`.
-- [ ] **Caveat**: the `test` job's `desktopTest` step is **red** until the 16
-  pre-existing failures are fixed (5.1 / 5.2), and the `android` job is red until 1.12.
-  Compile steps are green now. Decide whether to make `test` a required check before or
-  after fixing those. Consider `detekt`/`ktlint` as a follow-up. The 3-OS installer
-  matrix (`build.yml`) should move to tags-only.
+- [x] **`test` job is now green** (2026-09-07) — all 16 pre-existing `desktopTest`
+  failures fixed (see 5.2). `test` can be made a required check.
+- [ ] **Caveat**: the `android` job is still red until 1.12. Consider `detekt`/`ktlint` as
+  a follow-up. The 3-OS installer matrix (`build.yml`) should move to tags-only.
 
 ---
 
@@ -352,9 +351,10 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 - [ ] **4.1 `saveAlbum` overwrites `addedAt` on every write**
   (`AlbumRepository.kt:55,74`) — re-sync resets every album's "date added", breaking
   `SortOrder.DATE_ADDED`. Only set `addedAt` when the doc doesn't already exist.
-- [ ] **4.2 Double event dispatch** — `AlbumRepository.fetchMultipleAlbums` dispatches
-  `AlbumEvent.AlbumAdded` inside `saveAlbum` **and** again explicitly (line ~285), and
-  calls `AlbumMapper.toDomain(albumDto)` twice per album. Dispatch once; map once.
+- [x] **4.2 Double event dispatch** — DONE (2026-09-07). `fetchMultipleAlbums` now maps
+  once and dispatches once: `saveAlbum` owns the dispatch when `saveToDb = true`, else the
+  loop dispatches directly. (Fixed alongside the test repair — the old code dispatched 2×
+  per album, which made `AlbumRepositoryTest` uncheckable.)
 - [ ] **4.3 `parseReleaseDate` unguarded in `toDomain(AlbumDto)`**
   (`AlbumMapper.kt`) — a malformed Spotify `release_date` throws and aborts the whole
   mapping/sync. Wrap it (the `AlbumDocument` path already does) and fall back to a
@@ -381,12 +381,27 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ## Section 5 — Low / hygiene
 
-- [ ] **5.1 Test bug** — `LibraryServiceTest."test apply sync, remote only"` calls
-  `SyncAction.UseLocal`, not a remote-only action. Fix the action or the name.
+- [x] **5.1 Test bug** — DONE (2026-09-07). Renamed to
+  `"test apply sync, use spotify removes local-only albums"` and switched to
+  `SyncAction.UseSpotify` (which is what the assertions describe).
 - [ ] **5.2 Thin test coverage** — ~1,100 lines across 4 real test files for ~21k LOC.
-  Priority additions: `generateAlbumId` (collisions), `AlbumMapper` round-trips,
-  `SpotifyAuthRepository` token refresh/expiry, `PlaybackSessionManager` state machine,
-  `CollectionsService`.
+  - [x] **All 16 pre-existing `desktopTest` failures fixed** (2026-09-07). Root causes:
+    (a) `AlbumRepositoryTest` ×9 — `setup()` stubbed `DocumentReference.set(any<Any>())`;
+    `set` is `inline reified` so recording it runs `serializer<Any>()`. Fixed by making
+    `albumDocRef`/`albumDocSnapshot` relaxed mocks (the inline `set` becomes a no-op) and
+    asserting on observable effects (`document(id)`, `userLibraryRepository.setInLibrary`,
+    event dispatch) instead of on `set()`. (b) `LibraryServiceTest` "get library
+    differences" — TECH_DEBT 2.2 made `AlbumMapper.toDomain(dto)` compute a SHA-256 id, so
+    the fixture's literal-id domain albums no longer matched the DTO-derived ones; fixed by
+    deriving the domain fixtures from the same DTOs. (c) `LibraryServiceTest` "combine and
+    deduplicate" — missing `artistRepository.fetchArtistsWithEnhancedGenres` stub. (d) 5.1.
+    (e) `AlbumViewModelTest` ×3 — `addAlbumToCollection` reads `settingsRepository.settings
+    .first()` and the relaxed mock's flow never emits; stubbed a real `StateFlow`.
+    (f) `CollectionImportServiceTest` "no tracks have albums" — built tracks *with* an
+    album then asserted empty; now builds `track(...).copy(album = null)`.
+  - Still priority additions: `generateAlbumId` (collisions — partly covered),
+    `AlbumMapper` round-trips, `SpotifyAuthRepository` token refresh/expiry,
+    `PlaybackSessionManager` state machine, `CollectionsService`.
 - [ ] **5.3 Duplicated docs** — `PRODUCTION_ROADMAP.md` and `MIGRATION_SPOTIFY_ID.md`
   exist byte-identical at repo root **and** in `docs/`. Keep one copy (in `docs/`),
   leave a stub/README link at root. Consolidate the 5 overlapping migration docs
@@ -422,13 +437,11 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-07 | 2 | 2.1 anon-auth stopgap | 07ab6ab | firebase-auth 2.3.0, ensureAnonymousAuth(), firestore.rules |
 | 2026-09-07 | 2 | 2.2 SHA-256 IDs + migration | 07ab6ab | sha256Hex expect/actual; scripts/migrate_album_ids.py; GenerateAlbumIdTest |
 | 2026-09-07 | 3 | 3.1–3.7 | 76104ca | awaitUserId; arrayUnion; Retry-After; library-scoped queries; client lifecycle; SecureRandom; ci.yml |
+| 2026-09-07 | 4/5 | 4.2, 5.1, 5.2 | _pending_ | Fixed all 16 pre-existing desktopTest failures; `test` CI job now green. Also fixed 4.2 (double dispatch) as a prerequisite. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-passes. `desktopTest` = 47 tests / 16 failing — the **same 16 pre-existing failures** as
-the baseline (all: `AlbumRepositoryTest` firestore-mock serialization, `LibraryServiceTest`
-5.1 + mock gaps, `AlbumViewModelTest` `addAlbumToCollection` mock gaps,
-`CollectionImportServiceTest` one assertion). No regressions; +6 new passing
-`GenerateAlbumIdTest`.
+passes. `desktopTest` = **47 tests / 0 failing** (as of 2026-09-07 — the 16 pre-existing
+failures are fixed, see 5.2).
 
 `compileDebugKotlinAndroid` fails — but it **also fails on a clean `git stash` of all this
 work**, for unrelated reasons (see 1.12). Android was already broken.

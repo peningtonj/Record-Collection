@@ -241,7 +241,7 @@ class CollectionImportServiceTest {
         // Given
         val playlistId = "playlist-123"
         val tracks = (1..3).map {
-            TestTrackDataFactory.track(it, testAlbum)
+            TestTrackDataFactory.track(it, testAlbum).copy(album = null)
         }
 
         coEvery { playlistRepository.getPlaylistTracks(playlistId) } returns tracks

@@ -7,12 +7,14 @@ import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.RatingRepository
 import io.github.peningtonj.recordcollection.repository.SettingsRepository
+import io.github.peningtonj.recordcollection.repository.SettingsState
 import io.github.peningtonj.recordcollection.service.TagService
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
 import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
 import kotlin.test.*
@@ -34,6 +36,7 @@ class AlbumViewModelTest {
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        every { settingsRepository.settings } returns MutableStateFlow(SettingsState())
         viewModel = AlbumViewModel(
             albumRepository = albumRepository,
             ratingRepository = ratingRepository,
