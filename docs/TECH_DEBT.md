@@ -173,8 +173,14 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ### 1.12 — The Android target does not compile ⚠️⚠️ (pre-existing, discovered 2026-09-07)
 
-- [ ] **Why**: `./gradlew :composeApp:compileDebugKotlinAndroid` fails on a clean
-  checkout (verified by stashing all Section-1 work — the failure is unrelated to it).
+- [x] **DONE** (2026-09-07) — `./gradlew :composeApp:compileDebugKotlinAndroid` now passes.
+  Both causes fixed: (1) `androidx.browser:browser:1.8.0` added to the version catalog and
+  `androidMain.dependencies`; (2) `androidTarget` + `jvm("desktop")` Kotlin `jvmTarget` and
+  the Android `compileOptions` all raised to `JVM_17` (was 11). The CI `android` job
+  (`compileDebugKotlinAndroid`) should now be green. The `debug`→`release` R8 / `versionCode`
+  work is still 5.5.
+- [ ] **Why** (original): `./gradlew :composeApp:compileDebugKotlinAndroid` failed on a clean
+  checkout (verified by stashing all Section-1 work — the failure was unrelated to it).
   Two independent causes:
   1. **Missing dependency** — `androidMain/.../oauth/spotify/AndroidAuthHandler.kt`
      uses `androidx.browser.customtabs.CustomTabsIntent` but `androidx.browser:browser`
@@ -341,8 +347,9 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
   `compileDebugKotlinAndroid`) on every push/PR to `main`.
 - [x] **`test` job is now green** (2026-09-07) — all 16 pre-existing `desktopTest`
   failures fixed (see 5.2). `test` can be made a required check.
-- [ ] **Caveat**: the `android` job is still red until 1.12. Consider `detekt`/`ktlint` as
-  a follow-up. The 3-OS installer matrix (`build.yml`) should move to tags-only.
+- [x] **`android` job green** (2026-09-07) — 1.12 fixed.
+- [ ] **Follow-up**: consider `detekt`/`ktlint`. The 3-OS installer matrix (`build.yml`)
+  should move to tags-only.
 
 ---
 
@@ -438,13 +445,13 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-07 | 2 | 2.2 SHA-256 IDs + migration | 07ab6ab | sha256Hex expect/actual; scripts/migrate_album_ids.py; GenerateAlbumIdTest |
 | 2026-09-07 | 3 | 3.1–3.7 | 76104ca | awaitUserId; arrayUnion; Retry-After; library-scoped queries; client lifecycle; SecureRandom; ci.yml |
 | 2026-09-07 | 4/5 | 4.2, 5.1, 5.2 | e4c48e7 | Fixed all 16 pre-existing desktopTest failures; `test` CI job now green. Also fixed 4.2 (double dispatch) as a prerequisite. |
+| 2026-09-07 | 1 | 1.12 | _pending_ | Android compiles again: androidx.browser:browser + JVM 17 for android & desktop. `android` CI job now green. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 passes. `desktopTest` = **47 tests / 0 failing** (as of 2026-09-07 — the 16 pre-existing
 failures are fixed, see 5.2).
 
-`compileDebugKotlinAndroid` fails — but it **also fails on a clean `git stash` of all this
-work**, for unrelated reasons (see 1.12). Android was already broken.
+`compileDebugKotlinAndroid` now **passes** (see 1.12 — fixed 2026-09-07).
 
 **Not done in Section 1**: 1.2 (ViewModel factory — needs navigator work), 1.3 (error
 handling — large, incremental), 1.10 (rest of version-catalog consolidation), 1.12
