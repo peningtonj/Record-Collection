@@ -9,7 +9,8 @@ class SpotifyApi(
         const val BASE_URL = "https://api.spotify.com/v1"
     }
 
-    // Use the client directly since auth is handled in HttpClientProvider
+    // The client already has the Ktor Auth (Bearer) plugin installed by
+    // ProductionNetworkModule.provideSpotifyApi, so sub-APIs use it directly.
     val library = LibraryApi(client)
     val user = UserApi(client)
     val playback = PlaybackApi(client)

@@ -3,6 +3,7 @@
 .kotlin
 .gradle
 **/build/
+.vscode/
 xcuserdata
 !src/**/build/
 local.properties
@@ -35,3 +36,14 @@ captures
 __pycache__/
 *.pyc
 serviceAccountKey*.json
+# local Python virtualenvs
+records/
+.venv/
+venv/
+
+# Standalone one-off SQLite->Firestore migration tool — kept on disk for reference,
+# not part of the main build (settings.gradle.kts). See docs/MIGRATIONS.
+/migration-reporter/
+
+# Ad-hoc local backups
+/backups/

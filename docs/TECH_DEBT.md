@@ -148,9 +148,8 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 - [x] **DONE** (2026-09-07) — `ProductionNetworkModule` generic client: all `println` /
   `printStackTrace()` replaced with `LoggingUtils.w/e/i` under `Category.NETWORK`.
   Stray `println(album)` removed from `SearchResultComponents`. `DatabaseMigrationUtil`
-  (8 more `println`) deleted (see 1.6). Remaining `println` in `util/Logger.kt` is
-  inside an unused custom `Antilog` — that whole object is dead code (candidate for
-  deletion; not a production path).
+  (8 more `println`) deleted (see 1.6). `util/Logger.kt` (unused custom `Antilog` with a
+  `println`, never wired up — `Logger.initialize` had zero callers) deleted 2026-09-07.
 
 ### 1.10 — `libs.versions.toml` is not actually the single source of truth
 
@@ -409,14 +408,20 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
   - Still priority additions: `generateAlbumId` (collisions — partly covered),
     `AlbumMapper` round-trips, `SpotifyAuthRepository` token refresh/expiry,
     `PlaybackSessionManager` state machine, `CollectionsService`.
-- [ ] **5.3 Duplicated docs** — `PRODUCTION_ROADMAP.md` and `MIGRATION_SPOTIFY_ID.md`
-  exist byte-identical at repo root **and** in `docs/`. Keep one copy (in `docs/`),
-  leave a stub/README link at root. Consolidate the 5 overlapping migration docs
+- [ ] **5.3 Duplicated docs** — root `PRODUCTION_ROADMAP.md` / `MIGRATION_SPOTIFY_ID.md`
+  are now one-line stubs pointing at the `docs/` copies (2026-09-07); `README.md` link
+  updated. **Still to do**: consolidate the 4 overlapping migration docs
   (`docs/DATABASE_MIGRATION_README.md`, `FIREBASE_MIGRATION.md`, `MIGRATION_GUIDE.md`,
   `MIGRATION_SPOTIFY_ID.md`) into one `docs/MIGRATIONS.md` with a section per migration.
-- [ ] **5.4 Untracked clutter in the working tree** — a `records/` Python venv,
-  `migration-reporter/`, and ~8 root `*.py` / `*.sh` scripts. Move maintenance scripts
-  into `scripts/`, delete the venv, ensure it's `.gitignore`d.
+- [x] **5.4 Untracked clutter in the working tree** — DONE (2026-09-07). Deleted the
+  `records/` Python venv, the `backups/` SQLite ratings dump, and 9 completed one-off
+  root scripts (`backup.sh`, `db.py`, `fix_firestore_tracks.py`, `migrate-to-firebase.sh`,
+  `migrate_to_multiuser.py`, `report-db.sh`, `restore_ratings.sh`,
+  `run_migration_reporter.sh`, `test-firebase-app.sh` — all pre-Firebase/SQLite-era).
+  `migration-reporter/` (the SQLite→Firestore tool) kept on disk but `.gitignore`d — it
+  is not part of `settings.gradle.kts`. `.gitignore` also now covers `records/`, `.venv/`,
+  `venv/`, `/backups/`, `.vscode/`. `add_spotify_id_column.py` (tracked, doc-referenced)
+  left for the 5.3 migration-doc consolidation.
 - [ ] **5.5 Release build** — `composeApp/build.gradle.kts`: `isMinifyEnabled = false`
   for `release`; `versionCode = 1` hardcoded. Enable R8/proguard for Android release;
   derive `versionCode`/`versionName` from the git tag in CI.
@@ -427,11 +432,12 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
   known `dev.gitlive` limitation; document the risk in `ARCHITECTURE.md` and pin the
   `dev.gitlive` versions tightly (currently `firebase-firestore:2.3.0` +
   `firebase-auth:1.12.0` — mismatched major lines).
-- [ ] **5.8 `OpenAiApi.prompt`** logs the full prompt and full raw response at debug
-  (`network/openAi/OpenAiApi.kt:46,60`). Truncate, or gate behind a verbose flag.
-- [ ] **5.9 Stale doc comments** — `OpenAiApi` KDoc says default model `gpt-3.5-turbo`
-  (actual: `gpt-4.1`); `SpotifyApi` comment references a non-existent
-  `HttpClientProvider`.
+- [x] **5.8 `OpenAiApi.prompt`** — DONE (2026-09-07). Prompt + raw response are now logged
+  as `"(<n> chars): <first 500 chars>"` (`LOG_PREVIEW_CHARS`).
+- [x] **5.9 Stale doc comments** — DONE (2026-09-07). `OpenAiApi` KDoc no longer says
+  `gpt-3.5-turbo` / `System.getenv`; `SpotifyApi` comment now points at
+  `ProductionNetworkModule.provideSpotifyApi` (the Ktor `Auth` install) instead of the
+  non-existent `HttpClientProvider`.
 
 ---
 
@@ -446,6 +452,7 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-07 | 3 | 3.1–3.7 | 76104ca | awaitUserId; arrayUnion; Retry-After; library-scoped queries; client lifecycle; SecureRandom; ci.yml |
 | 2026-09-07 | 4/5 | 4.2, 5.1, 5.2 | e4c48e7 | Fixed all 16 pre-existing desktopTest failures; `test` CI job now green. Also fixed 4.2 (double dispatch) as a prerequisite. |
 | 2026-09-07 | 1 | 1.12 | d10d724 | Android compiles again: androidx.browser:browser + JVM 17 for android & desktop. `android` CI job now green. |
+| 2026-09-07 | 5 | 5.3 (partial), 5.4, 5.8, 5.9, 1.9 | _pending_ | Deleted dead util/Logger.kt + 9 one-off scripts + records venv + backups; gitignored migration-reporter. Root doc stubs. OpenAiApi/SpotifyApi comment + log fixes. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 passes. `desktopTest` = **47 tests / 0 failing** (as of 2026-09-07 — the 16 pre-existing

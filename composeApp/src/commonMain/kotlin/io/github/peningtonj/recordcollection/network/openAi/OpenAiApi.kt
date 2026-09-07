@@ -19,13 +19,17 @@ import net.dankito.readability4j.Readability4J
  * Very small OpenAI wrapper for chat‑style prompts.
  *
  * @param client  a Ktor HttpClient with JSON serialization installed
- * @param apiKey  your OpenAI secret key, e.g. System.getenv("OPENAI_API_KEY")
- * @param model   chat model to use (default "gpt-3.5-turbo")
+ * @param model   chat model to use (default "gpt-4.1"). The API key is passed per call.
  */
 class OpenAiApi(
     private val client: HttpClient,
     private val model: String = "gpt-4.1",
 ) {
+
+    private companion object {
+        /** Cap on how much prompt/response text is written to the log. */
+        const val LOG_PREVIEW_CHARS = 500
+    }
 
     private val openAiJson = Json {
         ignoreUnknownKeys = true
@@ -43,7 +47,7 @@ class OpenAiApi(
      * @param prompt      user text to send
      */
     suspend fun prompt(prompt: String, apiKey: String): String {
-        Napier.d { "Sending prompt: $prompt" }
+        Napier.d { "Sending prompt (${prompt.length} chars): ${prompt.take(LOG_PREVIEW_CHARS)}" }
 
         val reqBody = ChatRequest(model, prompt)
 
@@ -57,7 +61,7 @@ class OpenAiApi(
             }
         }.body<String>()
 
-        Napier.d { "Response: $raw" }
+        Napier.d { "Response (${raw.length} chars): ${raw.take(LOG_PREVIEW_CHARS)}" }
 
         val chatResponse = openAiJson.decodeFromString<ChatResponse>(raw)
         return chatResponse.firstAssistantText()

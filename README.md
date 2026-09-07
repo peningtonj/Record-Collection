@@ -96,7 +96,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full details.
 
 This project is pre-production. Known issues and the prioritized fix list live in
 [docs/TECH_DEBT.md](docs/TECH_DEBT.md); the phased plan is in
-[PRODUCTION_ROADMAP.md](PRODUCTION_ROADMAP.md). Notably, the Firestore backend does
+[docs/PRODUCTION_ROADMAP.md](docs/PRODUCTION_ROADMAP.md). Notably, the Firestore backend does
 **not** yet enforce authentication — do not point the app at a database holding real
 user data until TECH_DEBT § 2.1 is done.
 
