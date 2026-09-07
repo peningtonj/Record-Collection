@@ -84,6 +84,24 @@ Persistence is entirely via **Firebase Firestore** (`dev.gitlive:firebase-firest
 - `PlaybackException` sealed class models Spotify playback errors (no active device, premium required, etc.)
 - OpenAI model in use: **GPT-4.1** (`network/openAi/`)
 
+## Active Remediation
+
+See [docs/TECH_DEBT.md](docs/TECH_DEBT.md) for the prioritized, file-level fix list.
+**Work it top-down — Section 1 (Bad Patterns) first.** Do not add code that reintroduces
+a listed anti-pattern.
+
+## Anti-Patterns — do NOT add new code that does these
+
+- **No `runBlocking` in repositories / off the main thread** — make it `suspend`, launch from a ViewModel scope
+- **No `remember { XxxViewModel(...) }`** — use the `viewModel { }` factory so `onCleared()` fires (existing code violates this; see TECH_DEBT 1.2)
+- **No `throw` inside `Flow` operators** — emit `null` / a `Result` / a `LoadState` instead
+- **No `System.currentTimeMillis()` / `System.getenv` in `commonMain`** — use `kotlinx.datetime.Clock`
+- **No top-level declarations without a `package`**
+- **No `println` / `printStackTrace()`** — route through `LoggingUtils` / `Napier` with a `Category`
+- **No hardcoded dependency versions in `build.gradle.kts`** — everything goes through `libs.versions.toml`
+- **No ad-hoc `CoroutineScope(...)`** that isn't owned and cancelled by something
+- **No get-then-set on Firestore** — use `FieldValue.arrayUnion/arrayRemove` / transactions
+
 ## Conventions & Gotchas
 
 - **Error handling is inconsistent** — some methods throw, some return `Result<T>`; prefer `Result<T>` for new code

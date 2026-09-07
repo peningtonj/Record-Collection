@@ -572,12 +572,12 @@ CREATE TABLE collection_filter (
 
 ### Database Migrations
 
-> **STALE — this whole "Database Schema" section predates the Firestore migration.**
-> There is no SQLDelight, no `.sq`/`.sqm` files, and no SQLite database. Persistence is
-> Firebase Firestore only (see `AGENTS.md` § Database). `DatabaseMigrationUtil.kt` was
-> dead SQLite code and has been deleted. Firestore data migrations are tracked in
-> `docs/` (`FIREBASE_MIGRATION.md`, `MIGRATION_SPOTIFY_ID.md`). This section needs a
-> rewrite — see `docs/TECH_DEBT.md` § 5.3.
+Location: `composeApp/src/commonMain/sqldelight/migrations/`
+
+- `1.sqm`: Initial schema
+- `2.sqm`: Schema updates
+
+**Migration Utility**: `DatabaseMigrationUtil.kt` provides manual migration support for backup/restore operations.
 
 ---
 
@@ -870,12 +870,6 @@ object TestAlbumDataFactory {
 ---
 
 ## Areas Requiring Review/Completion
-
-> **Authoritative list:** [docs/TECH_DEBT.md](docs/TECH_DEBT.md) is the current,
-> file-level remediation plan (2026-09-07 review). The notes below predate it and are
-> partly stale — e.g. references to SQLDelight `.sqm` migrations, which **do not exist**
-> (persistence is Firestore-only; see `AGENTS.md`). Treat TECH_DEBT.md as the source of
-> truth and this section as background.
 
 ### 🔴 High Priority
 

@@ -4,7 +4,7 @@
 **Status**: Development → Production-Ready  
 **Timeline**: 12-16 weeks
 
-> **Start here:** [docs/TECH_DEBT.md](docs/TECH_DEBT.md) is the concrete, file-level fix
+> **Start here:** [TECH_DEBT.md](TECH_DEBT.md) is the concrete, file-level fix
 > list from a full code review. It supersedes this roadmap for *what is wrong today*.
 > This document remains the higher-level phased plan.
 
