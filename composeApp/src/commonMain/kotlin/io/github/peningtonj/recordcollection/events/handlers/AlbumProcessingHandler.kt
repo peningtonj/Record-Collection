@@ -2,7 +2,7 @@ package io.github.peningtonj.recordcollection.events.handlers
 
 import io.github.peningtonj.recordcollection.events.AlbumEvent
 import io.github.peningtonj.recordcollection.service.TagService
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.repository.AlbumTagRepository
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Artist
@@ -78,7 +78,7 @@ class AlbumProcessingHandler(
 
         return processedArtists
     }
-    private fun processAlbumTags(album: Album, artists: List<Artist>) {
+    private suspend fun processAlbumTags(album: Album, artists: List<Artist>) {
         try {
             Napier.d("Generating tags for album: ${album.name}")
             val tags = tagService.generateTagsForAlbum(album, artists)

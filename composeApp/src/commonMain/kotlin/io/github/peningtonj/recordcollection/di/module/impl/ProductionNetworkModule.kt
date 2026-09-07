@@ -55,9 +55,11 @@ class ProductionNetworkModule : NetworkModule {
                 maxRetries = 3
                 retryOnServerErrors(maxRetries)
                 retryOnExceptionIf { request, cause ->
-                    println("🔄 HTTP Exception: ${cause::class.simpleName}: ${cause.message}")
-                    cause.printStackTrace()
-                    
+                    LoggingUtils.w(
+                        LoggingUtils.Category.NETWORK,
+                        "HTTP exception ${cause::class.simpleName}: ${cause.message} — ${request.method.value} ${request.url.buildString()}",
+                        cause
+                    )
                     cause is kotlinx.coroutines.TimeoutCancellationException ||
                     cause is java.net.SocketTimeoutException ||
                     cause is java.io.IOException
@@ -72,12 +74,12 @@ class ProductionNetworkModule : NetworkModule {
                         rateLimitCount++
                         val retryAfter = response.headers["Retry-After"]
                         val resetTime = response.headers["X-RateLimit-Reset"]
-                        
-                        println("🚨 RATE LIMITED! ${response.status} for ${request.url.host}")
-                        println("   Retry-After: $retryAfter, Reset: $resetTime")
-                        println("   Total rate limits: $rateLimitCount out of $totalRequests requests")
+                        LoggingUtils.w(
+                            LoggingUtils.Category.NETWORK,
+                            "Rate limited ${response.status} for ${request.url.host} | retry-after=$retryAfter reset=$resetTime | $rateLimitCount/$totalRequests requests"
+                        )
                     }
-                    
+
                     isRateLimit
                 }
                 
@@ -96,27 +98,14 @@ class ProductionNetworkModule : NetworkModule {
             // Add response validation to catch serialization errors
             HttpResponseValidator {
                 handleResponseExceptionWithRequest { exception, request ->
-                    println("❌ HTTP Response Exception for ${request.url}")
-                    println("   Exception: ${exception::class.simpleName}: ${exception.message}")
-                    
-                    when (exception) {
-                        is kotlinx.serialization.SerializationException -> {
-                            println("🔍 SERIALIZATION ERROR:")
-                            println("   Message: ${exception.message}")
-                            exception.printStackTrace()
-                        }
-                        is kotlinx.serialization.MissingFieldException -> {
-                            println("🔍 MISSING FIELD ERROR:")
-                            println("   Field: ${exception.message}")
-                            exception.printStackTrace()
-                        }
-                        else -> {
-                            println("🔍 OTHER ERROR:")
-                            exception.printStackTrace()
-                        }
-                    }
+                    LoggingUtils.e(
+                        LoggingUtils.Category.NETWORK,
+                        "Response exception for ${request.method.value} ${request.url}: " +
+                            "${exception::class.simpleName}: ${exception.message}",
+                        exception
+                    )
                 }
-                
+
                 validateResponse { response ->
                     if (!response.status.isSuccess()) {
                         val responseBody = try {
@@ -124,9 +113,10 @@ class ProductionNetworkModule : NetworkModule {
                         } catch (e: Exception) {
                             "Unable to read response body: ${e.message}"
                         }
-                        
-                        println("❌ HTTP Error ${response.status.value} for ${response.request.url}")
-                        println("   Response body: $responseBody")
+                        LoggingUtils.w(
+                            LoggingUtils.Category.NETWORK,
+                            "HTTP ${response.status.value} for ${response.request.url} — body: $responseBody"
+                        )
                     }
                 }
             }
@@ -287,9 +277,11 @@ class ProductionNetworkModule : NetworkModule {
     }
     
     override fun close() {
-        // Print final stats before closing
         val percentage = if (totalRequests > 0) (rateLimitCount * 100 / totalRequests) else 0
-        println("📊 Network Stats: $rateLimitCount rate limits out of $totalRequests requests ($percentage%)")
+        LoggingUtils.i(
+            LoggingUtils.Category.NETWORK,
+            "Network stats: $rateLimitCount rate limits out of $totalRequests requests ($percentage%)"
+        )
         httpClient?.close()
         httpClient = null
     }

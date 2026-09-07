@@ -1,6 +1,6 @@
 package io.github.peningtonj.recordcollection.usecase
 
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.TrackRepository
@@ -12,6 +12,7 @@ import io.github.peningtonj.recordcollection.util.DomainException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 
@@ -40,7 +41,7 @@ class GetAlbumDetailUseCase(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun getDatabaseAlbum(albumId: String): Flow<AlbumDetailUiState> {
-        return albumRepository.getAlbumById(albumId).flatMapLatest { album ->
+        return albumRepository.getAlbumById(albumId).filterNotNull().flatMapLatest { album ->
             combine(
                 albumTagRepository.getTagsForAlbum(album.id),
                 collectionAlbumRepository.getCollectionsForAlbum(album.id),

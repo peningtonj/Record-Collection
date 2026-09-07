@@ -1,6 +1,6 @@
 package io.github.peningtonj.recordcollection.repository
 
-import Playlist
+import io.github.peningtonj.recordcollection.network.spotify.Playlist
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.SavedAlbumDto

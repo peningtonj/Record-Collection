@@ -1,7 +1,7 @@
 // di/module/UseCaseModule.kt
 package io.github.peningtonj.recordcollection.di.module
 
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository

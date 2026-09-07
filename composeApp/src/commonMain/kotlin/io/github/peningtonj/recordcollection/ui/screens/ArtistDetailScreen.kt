@@ -1,3 +1,5 @@
+package io.github.peningtonj.recordcollection.ui.screens
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +40,7 @@ import io.github.peningtonj.recordcollection.ui.components.album.AlbumActions
 import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumActions
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
+import io.github.peningtonj.recordcollection.viewmodel.ArtistDetailViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel
 import io.github.peningtonj.recordcollection.viewmodel.LibraryViewModel
 import io.github.peningtonj.recordcollection.viewmodel.PlaybackViewModel

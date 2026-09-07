@@ -1,6 +1,6 @@
 package io.github.peningtonj.recordcollection.ui
 
-import ArtistDetailScreen
+import io.github.peningtonj.recordcollection.ui.screens.ArtistDetailScreen
 import androidx.compose.runtime.Composable
 import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen

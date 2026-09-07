@@ -2,7 +2,7 @@ package io.github.peningtonj.recordcollection.di.module
 
 import com.russhwolf.settings.Settings
 import dev.gitlive.firebase.firestore.FirebaseFirestore
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler

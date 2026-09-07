@@ -1,7 +1,7 @@
 package io.github.peningtonj.recordcollection.repository
 
-import AlbumResult
-import Playlist
+import io.github.peningtonj.recordcollection.network.spotify.AlbumResult
+import io.github.peningtonj.recordcollection.network.spotify.Playlist
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.FieldPath
 import dev.gitlive.firebase.firestore.FirebaseFirestore
@@ -53,7 +53,7 @@ class AlbumRepository(
         albumsRef.document(domainAlbum.id).set(
             AlbumMapper.toDocument(domainAlbum).copy(
                 addedAt = Clock.System.now().toString(),
-                updatedAt = System.currentTimeMillis()
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
         )
         if (addToUsersLibrary) {
@@ -72,7 +72,7 @@ class AlbumRepository(
         albumsRef.document(album.id).set(
             AlbumMapper.toDocument(album).copy(
                 addedAt = Clock.System.now().toString(),
-                updatedAt = System.currentTimeMillis()
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
         )
         if (addToLibrary) {
@@ -97,12 +97,20 @@ class AlbumRepository(
             }
     }
 
-    fun getAlbumById(id: String): Flow<Album> {
+    /**
+     * Streams the album with [id], or `null` if it does not exist / fails to deserialize.
+     * Never throws inside the flow — collectors decide how to handle a missing album.
+     */
+    fun getAlbumById(id: String): Flow<Album?> {
         LoggingUtils.logFirebaseQuery("albums", "snapshot by id", mapOf("id" to id))
         return albumsRef.document(id).snapshots
             .map { snapshot ->
-                if (!snapshot.exists) throw NoSuchElementException("Album with id '$id' not found")
-                snapshot.toAlbum() ?: throw NoSuchElementException("Album with id '$id' failed to deserialize")
+                if (!snapshot.exists) {
+                    Napier.w("Album with id '$id' not found")
+                    null
+                } else {
+                    snapshot.toAlbum()
+                }
             }
     }
 

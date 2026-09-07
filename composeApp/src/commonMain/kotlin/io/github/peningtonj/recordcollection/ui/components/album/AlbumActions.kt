@@ -10,7 +10,7 @@ import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.repository.SettingsRepository
-import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
+import io.github.peningtonj.recordcollection.viewmodel.CollectionDetailViewModel
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
 import io.github.peningtonj.recordcollection.viewmodel.CollectionsViewModel

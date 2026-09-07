@@ -48,7 +48,7 @@ import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.repository.OnAddToCollection
 import io.github.peningtonj.recordcollection.ui.AppPlatform
 import io.github.peningtonj.recordcollection.ui.LocalPlatform
-import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
+import io.github.peningtonj.recordcollection.viewmodel.CollectionDetailViewModel
 import io.github.peningtonj.recordcollection.ui.components.album.AlbumGrid
 import io.github.peningtonj.recordcollection.ui.components.album.getCollectionActionAlbums
 import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumActions

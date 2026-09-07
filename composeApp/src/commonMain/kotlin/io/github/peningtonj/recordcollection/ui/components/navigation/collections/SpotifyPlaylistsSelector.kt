@@ -1,6 +1,6 @@
 package io.github.peningtonj.recordcollection.ui.components.navigation.collections
 
-import Playlist
+import io.github.peningtonj.recordcollection.network.spotify.Playlist
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider

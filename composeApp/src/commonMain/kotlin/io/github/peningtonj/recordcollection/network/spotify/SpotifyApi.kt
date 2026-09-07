@@ -1,6 +1,5 @@
 package io.github.peningtonj.recordcollection.network.spotify
 
-import PlaylistAlbumExtractor
 import io.ktor.client.*
 
 class SpotifyApi(

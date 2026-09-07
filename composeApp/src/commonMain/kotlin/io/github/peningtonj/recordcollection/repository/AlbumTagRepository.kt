@@ -1,4 +1,4 @@
-package io.github.peningtonj.recordcollection.db.repository
+package io.github.peningtonj.recordcollection.repository
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.domain.Tag
@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 
 /**
  * Reads and writes tag_ids from users/{userId}/library_albums/{albumId}  (via UserLibraryRepository).
@@ -42,11 +41,11 @@ class AlbumTagRepository(
                 }
             }
 
-    fun addTagToAlbum(albumId: String, tagId: String) = runBlocking {
+    suspend fun addTagToAlbum(albumId: String, tagId: String) {
         userLibraryRepository.addTagId(albumId, tagId)
     }
 
-    fun removeTagFromAlbum(albumId: String, tagId: String) = runBlocking {
+    suspend fun removeTagFromAlbum(albumId: String, tagId: String) {
         userLibraryRepository.removeTagId(albumId, tagId)
     }
 }

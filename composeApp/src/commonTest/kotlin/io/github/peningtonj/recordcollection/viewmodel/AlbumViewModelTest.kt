@@ -63,26 +63,28 @@ class AlbumViewModelTest {
     }
 
     @Test
-    fun `addTagToAlbum calls tagService with correct parameters`() {
+    fun `addTagToAlbum calls tagService with correct parameters`() = runTest {
         val albumId = "test-album-id"
         val tagKey = "genre"
         val tagValue = "rock"
-        every { tagService.addTagToAlbum(any(), any(), any()) } just Runs
+        coEvery { tagService.addTagToAlbum(any(), any(), any()) } just Runs
 
         viewModel.addTagToAlbum(albumId, tagKey, tagValue)
+        advanceUntilIdle()
 
-        verify { tagService.addTagToAlbum(albumId, tagKey, tagValue) }
+        coVerify { tagService.addTagToAlbum(albumId, tagKey, tagValue) }
     }
 
     @Test
-    fun `removeTagFromAlbum calls tagService with correct parameters`() {
+    fun `removeTagFromAlbum calls tagService with correct parameters`() = runTest {
         val albumId = "test-album-id"
         val tagId = "tag-id"
-        every { tagService.removeTagFromAlbum(any(), any()) } just Runs
+        coEvery { tagService.removeTagFromAlbum(any(), any()) } just Runs
 
         viewModel.removeTagFromAlbum(albumId, tagId)
+        advanceUntilIdle()
 
-        verify { tagService.removeTagFromAlbum(albumId, tagId) }
+        coVerify { tagService.removeTagFromAlbum(albumId, tagId) }
     }
 
     @Test

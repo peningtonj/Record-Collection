@@ -30,7 +30,6 @@ fun AlbumSearchItem(
     modifier: Modifier = Modifier
 ) {
     val navigator = LocalNavigator.current
-    println(album);
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = {

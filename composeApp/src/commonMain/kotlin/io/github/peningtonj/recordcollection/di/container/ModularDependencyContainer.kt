@@ -1,6 +1,6 @@
 package io.github.peningtonj.recordcollection.di.container
 
-import PlaybackQueueService
+import io.github.peningtonj.recordcollection.service.PlaybackQueueService
 import io.github.peningtonj.recordcollection.di.module.EventModule
 import io.github.peningtonj.recordcollection.di.module.FirebaseModule
 import io.github.peningtonj.recordcollection.di.module.NetworkModule
@@ -18,6 +18,7 @@ import io.github.peningtonj.recordcollection.service.TagService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 class ModularDependencyContainer(
     private val networkModule: NetworkModule,
@@ -182,5 +183,8 @@ class ModularDependencyContainer(
     }
 
 
-    override fun close() { networkModule.close() }
+    override fun close() {
+        eventScope.cancel()
+        networkModule.close()
+    }
 }

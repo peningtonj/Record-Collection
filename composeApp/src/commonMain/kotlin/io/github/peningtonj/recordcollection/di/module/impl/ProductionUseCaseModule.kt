@@ -1,6 +1,6 @@
 package io.github.peningtonj.recordcollection.di.module.impl
 
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.di.module.UseCaseModule
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository

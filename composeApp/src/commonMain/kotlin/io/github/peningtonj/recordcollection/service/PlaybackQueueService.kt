@@ -1,3 +1,5 @@
+package io.github.peningtonj.recordcollection.service
+
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection

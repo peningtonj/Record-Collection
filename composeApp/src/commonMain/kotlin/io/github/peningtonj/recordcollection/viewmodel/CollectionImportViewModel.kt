@@ -1,6 +1,6 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
-import Playlist
+import io.github.peningtonj.recordcollection.network.spotify.Playlist
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember

@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.runBlocking
 
 class TagRepository(
     private val firestore: FirebaseFirestore,
@@ -40,15 +39,15 @@ class TagRepository(
     fun getTagsByKey(key: String): Flow<List<Tag>> = getAllTags()
         .map { tags -> tags.filter { it.key == key } }
 
-    fun insertTag(tag: Tag) = runBlocking {
+    suspend fun insertTag(tag: Tag) {
         tagsCollection().document(tag.id).set(mapOf("tag_key" to tag.key, "tag_value" to tag.value, "tag_type" to tag.type.value))
     }
 
-    fun deleteTag(id: String) = runBlocking {
+    suspend fun deleteTag(id: String) {
         tagsCollection().document(id).delete()
     }
 
-    fun updateTag(tag: Tag) = runBlocking {
+    suspend fun updateTag(tag: Tag) {
         tagsCollection().document(tag.id).set(mapOf("tag_key" to tag.key, "tag_value" to tag.value, "tag_type" to tag.type.value))
     }
 }

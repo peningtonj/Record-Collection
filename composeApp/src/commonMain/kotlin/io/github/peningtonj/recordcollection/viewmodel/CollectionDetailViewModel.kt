@@ -1,4 +1,4 @@
-package io.github.peningtonj.recordcollection.ui.collection
+package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

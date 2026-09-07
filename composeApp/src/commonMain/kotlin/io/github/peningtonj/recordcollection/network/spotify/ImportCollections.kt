@@ -1,5 +1,6 @@
+package io.github.peningtonj.recordcollection.network.spotify
+
 import io.github.aakira.napier.Napier
-import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get

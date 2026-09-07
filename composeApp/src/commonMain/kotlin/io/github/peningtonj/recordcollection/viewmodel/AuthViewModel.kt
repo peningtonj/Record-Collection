@@ -8,6 +8,7 @@ import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalDependencyContainer
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthState
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
+import io.github.peningtonj.recordcollection.repository.UserSessionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +17,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
-    private val authRepository: SpotifyAuthRepository
+    private val authRepository: SpotifyAuthRepository,
+    private val userSessionRepository: UserSessionRepository
 ) : ViewModel() {
     val authState = authRepository.authState
 
@@ -31,6 +33,7 @@ class AuthViewModel(
 
     fun logout() {
         viewModelScope.launch {
+            userSessionRepository.clearUserId()
             authRepository.logout()
         }
     }

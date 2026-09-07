@@ -1,7 +1,7 @@
 package io.github.peningtonj.recordcollection.di.container
 
-import PlaybackQueueService
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.service.PlaybackQueueService
+import io.github.peningtonj.recordcollection.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.service.PlaybackSessionManager
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthHandler
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi

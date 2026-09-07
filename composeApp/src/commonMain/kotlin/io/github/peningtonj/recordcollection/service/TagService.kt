@@ -1,15 +1,12 @@
 package io.github.peningtonj.recordcollection.service
 
-import androidx.compose.ui.text.capitalize
-import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Artist
 import io.github.peningtonj.recordcollection.db.domain.Tag
 import io.github.peningtonj.recordcollection.db.domain.TagType
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.repository.TagRepository
-import kotlinx.coroutines.launch
 
 class TagService(
     private val tagRepository: TagRepository,
@@ -34,7 +31,7 @@ class TagService(
         return tags
     }
 
-    fun removeTagFromAlbum(albumId: String, tagId: String) {
+    suspend fun removeTagFromAlbum(albumId: String, tagId: String) {
         try {
             albumTagRepository.removeTagFromAlbum(albumId, tagId)
             Napier.d { "Removed tag $tagId from album $albumId" }
@@ -43,7 +40,7 @@ class TagService(
         }
     }
 
-    fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) {
+    suspend fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) {
         try {
             val newTag = Tag(
                 key = tagKey,

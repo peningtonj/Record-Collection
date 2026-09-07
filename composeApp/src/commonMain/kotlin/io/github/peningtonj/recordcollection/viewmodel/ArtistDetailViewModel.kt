@@ -1,3 +1,5 @@
+package io.github.peningtonj.recordcollection.viewmodel
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.db.domain.Artist

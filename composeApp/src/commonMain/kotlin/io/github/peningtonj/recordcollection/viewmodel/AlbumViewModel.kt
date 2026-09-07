@@ -6,7 +6,7 @@ import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Tag
 import io.github.peningtonj.recordcollection.db.domain.TagType
-import io.github.peningtonj.recordcollection.db.repository.AlbumTagRepository
+import io.github.peningtonj.recordcollection.repository.AlbumTagRepository
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
 import io.github.peningtonj.recordcollection.repository.OnAddToCollection
@@ -42,18 +42,22 @@ class AlbumViewModel (
     }
 
     fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) {
-        tagService.addTagToAlbum(
-            albumId,
-            tagKey,
-            tagValue
-        )
+        viewModelScope.launch {
+            tagService.addTagToAlbum(
+                albumId,
+                tagKey,
+                tagValue
+            )
+        }
     }
 
     fun removeTagFromAlbum(albumId: String, tagId: String) {
-        tagService.removeTagFromAlbum(
-            albumId,
-            tagId
-        )
+        viewModelScope.launch {
+            tagService.removeTagFromAlbum(
+                albumId,
+                tagId
+            )
+        }
     }
 
     fun updateReleaseGroup(album: Album) = viewModelScope.launch {

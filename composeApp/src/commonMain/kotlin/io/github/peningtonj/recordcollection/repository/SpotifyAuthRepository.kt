@@ -36,7 +36,7 @@ class SpotifyAuthRepository(
         val refreshToken: String,
         val expiresAt: Long
     ) {
-        fun isExpired(): Boolean = System.currentTimeMillis() >= expiresAt
+        fun isExpired(): Boolean = Clock.System.now().toEpochMilliseconds() >= expiresAt
         fun toAccessToken(): AccessToken = AccessToken(
             accessToken = accessToken,
             tokenType = tokenType,
@@ -95,8 +95,6 @@ class SpotifyAuthRepository(
     fun logout() {
         // Clear Spotify tokens
         deleteToken()
-        // Clear cached Spotify user ID so the next login always initialises a fresh session
-        settings.remove(UserSessionRepository.KEY_USER_ID)
         // Update state to not authenticated
         _authState.value = AuthState.NotAuthenticated
     }
@@ -123,7 +121,7 @@ class SpotifyAuthRepository(
 
     // Settings Operations
     private fun saveToken(token: AccessToken, refreshToken: String = "") {
-        val expiresAt = System.currentTimeMillis() + (token.expiresIn * 1000) - (60 * 1000)
+        val expiresAt = Clock.System.now().toEpochMilliseconds() + (token.expiresIn * 1000) - (60 * 1000)
         Napier.d { "Saving token to settings with refresh token: ${token.refreshToken ?: refreshToken} ($expiresAt)" }
         settings[KEY_ACCESS_TOKEN] = token.accessToken
         settings[KEY_TOKEN_TYPE] = token.tokenType

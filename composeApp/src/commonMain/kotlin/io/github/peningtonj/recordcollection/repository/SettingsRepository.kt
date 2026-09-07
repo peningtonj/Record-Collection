@@ -3,24 +3,17 @@ package io.github.peningtonj.recordcollection.repository
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.set
 import com.russhwolf.settings.get
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 class SettingsRepository(private val settingsStorage: Settings) {
-    private val _settings = MutableStateFlow(SettingsState())
+    // Settings is a synchronous key-value store, so the initial state can be read
+    // eagerly — no coroutine / background scope needed.
+    private val _settings = MutableStateFlow(loadFromStorage())
     val settings: StateFlow<SettingsState> = _settings.asStateFlow()
-
-    init {
-        CoroutineScope(Dispatchers.Default).launch {
-            _settings.value = loadFromStorage()
-        }
-    }
 
     suspend fun updateSettings(newSettings: SettingsState) {
         _settings.value = newSettings

@@ -1,13 +1,11 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
-import ArtistDetailViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import io.github.peningtonj.recordcollection.di.container.DependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalDependencyContainer
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.navigation.Navigator
-import io.github.peningtonj.recordcollection.ui.collection.CollectionDetailViewModel
 
 @Composable
 fun rememberAuthViewModel(
@@ -15,7 +13,8 @@ fun rememberAuthViewModel(
 ): AuthViewModel {
     return remember(dependencies) {
         AuthViewModel(
-            authRepository = dependencies.authRepository
+            authRepository = dependencies.authRepository,
+            userSessionRepository = dependencies.userSessionRepository
         )
     }
 }

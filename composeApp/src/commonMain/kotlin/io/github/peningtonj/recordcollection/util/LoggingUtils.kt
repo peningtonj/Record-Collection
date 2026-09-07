@@ -1,6 +1,7 @@
 package io.github.peningtonj.recordcollection.util
 
 import io.github.aakira.napier.Napier
+import kotlinx.datetime.Clock
 
 /**
  * Centralized logging utilities for the application.
@@ -89,12 +90,12 @@ object LoggingUtils {
      * Measure and log the execution time of a block
      */
     inline fun <T> measureAndLog(category: Category, operation: String, block: () -> T): T {
-        val startTime = System.currentTimeMillis()
+        val startTime = Clock.System.now().toEpochMilliseconds()
         logOperationStart(category, operation)
-        
+
         return try {
             val result = block()
-            val duration = System.currentTimeMillis() - startTime
+            val duration = Clock.System.now().toEpochMilliseconds() - startTime
             logOperationSuccess(category, operation, duration)
             result
         } catch (e: Exception) {
