@@ -420,8 +420,8 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 |------|---------|------|--------|-------|
 | 2026-09-07 | 1 | 1.1, 1.4–1.9, 1.11 | dd5bc34 | See Section 1 checkboxes |
 | 2026-09-07 | 2 | 2.3, 2.4 | efb4bb6 | logs + google-services.json untracked; desktop config from file |
-| 2026-09-07 | 2 | 2.1 anon-auth stopgap | _staged_ | firebase-auth 2.3.0, ensureAnonymousAuth(), firestore.rules |
-| 2026-09-07 | 2 | 2.2 SHA-256 IDs + migration | _staged_ | sha256Hex expect/actual; scripts/migrate_album_ids.py; GenerateAlbumIdTest |
+| 2026-09-07 | 2 | 2.1 anon-auth stopgap | 07ab6ab | firebase-auth 2.3.0, ensureAnonymousAuth(), firestore.rules |
+| 2026-09-07 | 2 | 2.2 SHA-256 IDs + migration | 07ab6ab | sha256Hex expect/actual; scripts/migrate_album_ids.py; GenerateAlbumIdTest |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 passes. `desktopTest` = 47 tests / 16 failing — the **same 16 pre-existing failures** as
