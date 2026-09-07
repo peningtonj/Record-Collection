@@ -445,7 +445,7 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-07 | 2 | 2.2 SHA-256 IDs + migration | 07ab6ab | sha256Hex expect/actual; scripts/migrate_album_ids.py; GenerateAlbumIdTest |
 | 2026-09-07 | 3 | 3.1–3.7 | 76104ca | awaitUserId; arrayUnion; Retry-After; library-scoped queries; client lifecycle; SecureRandom; ci.yml |
 | 2026-09-07 | 4/5 | 4.2, 5.1, 5.2 | e4c48e7 | Fixed all 16 pre-existing desktopTest failures; `test` CI job now green. Also fixed 4.2 (double dispatch) as a prerequisite. |
-| 2026-09-07 | 1 | 1.12 | _pending_ | Android compiles again: androidx.browser:browser + JVM 17 for android & desktop. `android` CI job now green. |
+| 2026-09-07 | 1 | 1.12 | d10d724 | Android compiles again: androidx.browser:browser + JVM 17 for android & desktop. `android` CI job now green. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 passes. `desktopTest` = **47 tests / 0 failing** (as of 2026-09-07 — the 16 pre-existing
