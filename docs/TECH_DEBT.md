@@ -153,17 +153,27 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ### 1.10 — `libs.versions.toml` is not actually the single source of truth
 
-- [ ] **PARTIAL** (2026-09-07) — koin removed (see 1.11). Still to do: move the remaining
-  inline string-literal deps into the catalog and reconcile ktor `3.1.0` vs `3.0.3`,
-  and the test-coroutines version.
-- **Why**: `AGENTS.md` says it is, but `composeApp/build.gradle.kts` hardcodes many
-  versions as string literals that disagree with the catalog:
-  - ktor `3.1.0` inline vs `3.0.3` in the catalog
-  - `kotlinx-serialization-json:1.8.1` inline
-  - koin `3.5.0` / `1.1.0` inline (and **koin is unused** — see 1.11)
-  - test: `coroutines = "1.7.3"` in the catalog vs `kotlinx-coroutines = "1.10.2"` used elsewhere
-- **Fix**: move every dependency + version into `libs.versions.toml`, reference via
-  `libs.*` only. Reconcile ktor to one version. Align the coroutines test version.
+- [x] **DONE** (2026-09-08) — every dependency in `composeApp/build.gradle.kts` now comes
+  from `libs.versions.toml` via `libs.*`; no version string literals remain (except the
+  SDK ints, which are catalog `versions` already). Reconciled:
+  - **ktor** → single `ktor = "3.1.0"`. Previously `client-core`/`client-auth` were inline
+    `3.1.0` while `content-negotiation` / `serialization-kotlinx-json` / `client-okhttp` /
+    `client-java` / `server-core` resolved to `3.0.3` — a real split classpath. Now all 3.1.0.
+  - **coil** → single `coil = "3.2.0"`. `coil-network-okhttp` was pinned at a stale
+    `3.0.0-alpha07` while `coil-core` had already been bumped to `3.2.0` by resolution —
+    a latent core/network mismatch. Now matched at 3.2.0.
+  - **kotlinx-serialization-json** → `1.9.0` (was declared `1.8.1` but already resolving to
+    `1.9.0` transitively — declaration now matches reality).
+  - **coroutines test** → `kotlinx-coroutines-test` uses the `kotlinx-coroutines` version
+    (`1.10.2`); the dead `coroutines = "1.7.3"` catalog version is gone.
+  - Pruned 8 unused KMP-template catalog entries (`junit`, `kotlin-testJunit`,
+    `androidx-appcompat`/`-constraintlayout`/`-espresso`/`-testExt`/`-core-ktx`, `mockk-android`).
+- **Smoke-test note**: the coil `alpha07 → 3.2.0` network bump is the one behaviour-affecting
+  change — verify album art still loads in the running desktop app. `desktopTest` (47/0),
+  `compileKotlinDesktop`, `compileDebugKotlinAndroid` all pass.
+- **Left**: the explicit `skiko-awt-runtime-macos-arm64` desktop dep is arch-locked and
+  probably redundant against `compose.desktop.currentOs` — flagged in the catalog, not
+  removed here.
 
 ### 1.11 — Unused dependencies
 
@@ -453,6 +463,7 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-07 | 4/5 | 4.2, 5.1, 5.2 | e4c48e7 | Fixed all 16 pre-existing desktopTest failures; `test` CI job now green. Also fixed 4.2 (double dispatch) as a prerequisite. |
 | 2026-09-07 | 1 | 1.12 | d10d724 | Android compiles again: androidx.browser:browser + JVM 17 for android & desktop. `android` CI job now green. |
 | 2026-09-07 | 5 | 5.3 (partial), 5.4, 5.8, 5.9, 1.9 | cea7054 | Deleted dead util/Logger.kt + 9 one-off scripts + records venv + backups; gitignored migration-reporter. Root doc stubs. OpenAiApi/SpotifyApi comment + log fixes. |
+| 2026-09-08 | 1 | 1.10 | _pending_ | All deps via version catalog; ktor unified 3.1.0, coil 3.2.0, serialization-json 1.9.0, coroutines-test 1.10.2; pruned 8 dead template entries. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 passes. `desktopTest` = **47 tests / 0 failing** (as of 2026-09-07 — the 16 pre-existing
