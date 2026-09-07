@@ -3,7 +3,7 @@
 **Last Updated**: 2026-09-07
 **Status**: Active — work top-down
 **Scope**: Concrete, file-level fixes derived from a full codebase review. This is the
-practical companion to [PRODUCTION_ROADMAP.md](../PRODUCTION_ROADMAP.md) (which is the
+practical companion to [PRODUCTION_ROADMAP.md](PRODUCTION_ROADMAP.md) (which is the
 higher-level 16-week plan). When the two disagree, this document is the source of truth
 for *what is actually wrong today*.
 
