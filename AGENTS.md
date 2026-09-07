@@ -75,6 +75,8 @@ Persistence is entirely via **Firebase Firestore** (`dev.gitlive:firebase-firest
 - Document models are `@Serializable` data classes (e.g. `AlbumDocument`, `ArtistDocument`) stored in `db/domain/`; they are separate from the domain objects (`Album`, `Artist`)
 - Complex fields that would cause Firestore Int/Long type issues (`artists`, `images`, `externalIds`) are stored as **JSON-encoded strings** inside the document — use `AlbumMapper` / `ArtistMapper` to convert, never write raw strings
 - Reads return `Flow` by subscribing to `.snapshots`; writes use `.set(document)` or `.set(map, merge = true)`
+- **User-scoped paths** (`users/{id}/…`): reads observe `userSession.userIdFlow` (re-emit on account switch); writes call `suspend userSession.awaitUserId()` (via the `suspend` `xxxRef()` helper in each repo). Never block on the ID synchronously.
+- Array fields edited concurrently (`tag_ids`) use `FieldValue.arrayUnion` / `arrayRemove`, never get-then-set
 - `AlbumMapper.toDomain(AlbumDocument)` and `AlbumMapper.toDocument(Album)` are the canonical conversion points
 
 ## Network / API

@@ -26,9 +26,9 @@ class CollectionAlbumRepository(
     private fun collectionsFlow() = userSession.userIdFlow.mapNotNull { it }
         .map { userId -> firestore.collection("users").document(userId).collection("collections") }
 
-    /** Synchronous — writes only (userId must be set). */
-    private fun collectionsRef() = firestore
-        .collection("users").document(userSession.requireUserId()).collection("collections")
+    /** Write-path ref — suspends until the user session is ready (new-user safe). */
+    private suspend fun collectionsRef() = firestore
+        .collection("users").document(userSession.awaitUserId()).collection("collections")
 
     // ── Reads ─────────────────────────────────────────────────────────────────
 

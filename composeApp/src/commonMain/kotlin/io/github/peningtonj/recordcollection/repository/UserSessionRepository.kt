@@ -5,6 +5,8 @@ import com.russhwolf.settings.set
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 
 /**
  * Holds the current Spotify user ID and persists it to local Settings so it survives restarts.
@@ -23,15 +25,15 @@ class UserSessionRepository(private val settings: Settings) {
     fun getUserId(): String? = _userId.value
 
     /**
-     * Returns the current user ID, or throws if not yet initialised.
-     * Always succeeds for any user who has previously authenticated, because the ID
-     * is persisted across restarts.
+     * Suspends until the user ID is available, then returns it.
+     *
+     * Use this on every write path (`users/{id}/…`). Reads that build a `Flow` should
+     * instead observe [userIdFlow] so they re-emit if the account changes. For a user
+     * who has previously authenticated the ID is already loaded from Settings, so this
+     * returns immediately; on a fresh first login it waits for
+     * `LibraryService.initUserSession()`.
      */
-    fun requireUserId(): String = _userId.value
-        ?: throw IllegalStateException(
-            "Spotify user session is not initialised. " +
-                "LibraryService.initUserSession() must complete before accessing user-scoped data."
-        )
+    suspend fun awaitUserId(): String = _userId.filterNotNull().first()
 
     /** Persists the Spotify user ID (called once after a successful profile fetch). */
     suspend fun setUserId(userId: String) {

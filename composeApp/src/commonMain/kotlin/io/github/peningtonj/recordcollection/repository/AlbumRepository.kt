@@ -148,9 +148,14 @@ class AlbumRepository(
             ?.toAlbum()
     }
 
-    fun getEarliestReleaseDate(): Flow<LocalDate?> = getAllAlbums()
+    fun getEarliestReleaseDate(): Flow<LocalDate?> = getAllAlbumsInLibrary()
         .map { albums -> albums.minOfOrNull { it.releaseDate } }
 
+    /**
+     * Every document in the shared `albums` collection. This is the *whole catalogue*
+     * (everything anyone has ever added or searched), not the current user's library —
+     * it grows unbounded, so prefer [getAllAlbumsInLibrary] for anything user-facing.
+     */
     fun getAllAlbums(): Flow<List<Album>> {
         LoggingUtils.logFirebaseQuery("albums", "snapshots (all)")
         return albumsRef.snapshots
@@ -186,8 +191,9 @@ class AlbumRepository(
             }
     }
 
+    /** Distinct primary-artist names across the current user's library, sorted. */
     fun getAllArtists(): Flow<List<String>> =
-        getAllAlbums().map { albums -> albums.map { it.primaryArtist }.distinct().sorted() }
+        getAllAlbumsInLibrary().map { albums -> albums.map { it.primaryArtist }.distinct().sorted() }
 
     fun getLibraryCount(): Flow<Long> =
         getAllAlbumsInLibrary().map { it.size.toLong() }

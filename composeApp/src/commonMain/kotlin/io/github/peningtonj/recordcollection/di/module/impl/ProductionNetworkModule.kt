@@ -20,8 +20,12 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 
 class ProductionNetworkModule : NetworkModule {
-    private var httpClient: HttpClient? = null
-    
+    // Shared client for non-Spotify APIs (MusicBrainz, OpenAI). `lazy` is thread-safe,
+    // so concurrent first calls can't create two clients; `isInitialized()` lets close()
+    // skip a client that was never used.
+    private val genericClient = lazy { buildGenericClient() }
+    private var spotifyClient: HttpClient? = null
+
     // Track rate limiting statistics
     private var rateLimitCount = 0
     private var totalRequests = 0
@@ -38,8 +42,10 @@ class ProductionNetworkModule : NetworkModule {
         encodeDefaults = true
     }
     
-    override fun provideHttpClient(): HttpClient {
-        return httpClient ?: HttpClient(OkHttp) {
+    override fun provideHttpClient(): HttpClient = genericClient.value
+
+    private fun buildGenericClient(): HttpClient =
+        HttpClient(OkHttp) {
             // Configure timeouts
             install(HttpTimeout) {
                 requestTimeoutMillis = 30_000  // 30 seconds for the entire request
@@ -66,29 +72,31 @@ class ProductionNetworkModule : NetworkModule {
                 }
                 
                 retryIf(maxRetries) { request, response ->
+                    // 403 is auth/permission, not throttling — never retry it.
                     val isRateLimit = response.status == HttpStatusCode.TooManyRequests ||
-                                     response.status == HttpStatusCode.ServiceUnavailable ||
-                                    response.status == HttpStatusCode.Forbidden
-                    
+                            response.status == HttpStatusCode.ServiceUnavailable
+
                     if (isRateLimit) {
                         rateLimitCount++
                         val retryAfter = response.headers["Retry-After"]
-                        val resetTime = response.headers["X-RateLimit-Reset"]
                         LoggingUtils.w(
                             LoggingUtils.Category.NETWORK,
-                            "Rate limited ${response.status} for ${request.url.host} | retry-after=$retryAfter reset=$resetTime | $rateLimitCount/$totalRequests requests"
+                            "Rate limited ${response.status} for ${request.url.host} | retry-after=$retryAfter | $rateLimitCount/$totalRequests requests"
                         )
                     }
 
                     isRateLimit
                 }
-                
+
+                // respectRetryAfterHeader: use the server's Retry-After when present,
+                // otherwise fall back to exponential backoff.
                 exponentialDelay(
                     base = 2.0,
                     maxDelayMs = 30_000,
-                    randomizationMs = 1_000
+                    randomizationMs = 1_000,
+                    respectRetryAfterHeader = true,
                 )
-                
+
                 modifyRequest { request ->
                     totalRequests++
                     request.header("User-Agent", "RecordCollection/1.0")
@@ -120,8 +128,7 @@ class ProductionNetworkModule : NetworkModule {
                     }
                 }
             }
-        }.also { httpClient = it }
-    }
+        }
 
     override fun provideMiscApi(): MiscApi {
         return MiscApi(provideHttpClient())
@@ -132,7 +139,8 @@ class ProductionNetworkModule : NetworkModule {
     }
 
     override fun provideSpotifyApi(authRepository: SpotifyAuthRepository): SpotifyApi {
-        val spotifyClient = HttpClient(OkHttp) {
+        spotifyClient?.close()
+        val client = HttpClient(OkHttp) {
             // Configure timeouts for Spotify API
             install(HttpTimeout) {
                 requestTimeoutMillis = 30_000  // 30 seconds for the entire request
@@ -181,7 +189,8 @@ class ProductionNetworkModule : NetworkModule {
                 exponentialDelay(
                     base = 2.0,
                     maxDelayMs = 60_000,
-                    randomizationMs = 2_000
+                    randomizationMs = 2_000,
+                    respectRetryAfterHeader = true,
                 )
 
                 modifyRequest { request ->
@@ -272,17 +281,18 @@ class ProductionNetworkModule : NetworkModule {
                 }
             }
         }
-        
-        return SpotifyApi(spotifyClient)
+        spotifyClient = client
+        return SpotifyApi(client)
     }
-    
+
     override fun close() {
         val percentage = if (totalRequests > 0) (rateLimitCount * 100 / totalRequests) else 0
         LoggingUtils.i(
             LoggingUtils.Category.NETWORK,
             "Network stats: $rateLimitCount rate limits out of $totalRequests requests ($percentage%)"
         )
-        httpClient?.close()
-        httpClient = null
+        spotifyClient?.close()
+        spotifyClient = null
+        if (genericClient.isInitialized()) genericClient.value.close()
     }
 }

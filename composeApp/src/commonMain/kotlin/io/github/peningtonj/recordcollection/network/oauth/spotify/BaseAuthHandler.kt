@@ -5,11 +5,11 @@ import io.ktor.client.call.body
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.github.peningtonj.recordcollection.util.secureRandomHex
 import io.ktor.http.Parameters
 import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.random.Random
 
 @Serializable
 data class AccessToken(
@@ -114,15 +114,10 @@ abstract class BaseAuthHandler(
     protected abstract fun getRedirectUri(): String
 
     /**
-     * Generate a cryptographically random code verifier
-     * Must be 43-128 characters long
+     * Generate a cryptographically random PKCE code verifier (96 hex chars, within the
+     * spec's 43–128 range; hex is a subset of the allowed "unreserved" characters).
      */
-    private fun generateCodeVerifier(): String {
-        val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9') + '-' + '.' + '_' + '~'
-        return (1..128)
-            .map { allowedChars.random() }
-            .joinToString("")
-    }
+    private fun generateCodeVerifier(): String = secureRandomHex(48)
 
     /**
      * Generate code challenge from code verifier using SHA-256

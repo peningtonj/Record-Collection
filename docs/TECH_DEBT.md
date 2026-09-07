@@ -285,66 +285,65 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ### 3.1 — User-scoped **writes** throw before the session is initialised
 
-- [ ] **Where**: `repository/UserLibraryRepository.kt` `libraryRef()`,
-  `repository/TagRepository.kt` `tagsCollection()`,
-  `repository/AlbumTagRepository.kt` `tagsRef()` — all call
-  `userSession.requireUserId()` which `throw`s. Reads already wait on `userIdFlow`.
-  `LibraryService.initUserSession()` runs from `LibraryViewModel.init`, so an early
-  rating/tag/library write on first login throws `IllegalStateException`.
-- **Fix**: give `UserSessionRepository` a `suspend fun awaitUserId(): String` (first
-  non-null from `userIdFlow`) and use it in the write paths. Or make session init a
-  hard gate before the library UI renders.
+- [x] **DONE** (2026-09-07) — `UserSessionRepository.awaitUserId()` (`suspend`, first
+  non-null from the flow, returns immediately for a returning user). The five write-path
+  `xxxRef()` helpers (`UserLibraryRepository`, `TagRepository`, `AlbumTagRepository`,
+  `AlbumCollectionRepository` ×2, `CollectionAlbumRepository`) are now `suspend` and use
+  it. `requireUserId()` deleted.
 
 ### 3.2 — Read-modify-write without transactions (lost updates)
 
-- [ ] **Where**: `UserLibraryRepository.addTagId` / `removeTagId` (get list → set list),
-  and the `added_at` guard in `setInLibrary` (get doc → conditional set).
-- **Fix**: `FieldValue.arrayUnion(tagId)` / `arrayRemove(tagId)` for tags.
-  For `added_at`: write it only on create (`set(merge=false)` on first add) or use a
-  transaction. Same for any other get-then-set.
+- [x] **DONE** (2026-09-07) — `UserLibraryRepository.addTagId` / `removeTagId` now use
+  `set(mapOf("tag_ids" to FieldValue.arrayUnion/arrayRemove(tagId)), merge = true)` —
+  server-side atomic merge, so the `AlbumProcessingHandler` tag loop can't lose tags to
+  a stale `.get()`.
+- [ ] **Left as-is**: the `added_at` guard in `setInLibrary` (get → conditional set). The
+  race is benign (concurrent adds write the same ~timestamp) and fixing it properly needs
+  a transaction. Low priority.
 
-### 3.3 — Rate-limit handling ignores `Retry-After`
+### 3.3 — Rate-limit retry: `Retry-After` + spurious 403 retry
 
-- [ ] **Where**: `di/module/impl/ProductionNetworkModule.kt` — both HTTP clients read
-  `Retry-After` only to log it, then use blind `exponentialDelay`. The generic client
-  also retries **HTTP 403** as if it were rate-limiting (403 is auth/permission —
-  retrying 3× is wrong).
-- **Fix**: in `retryIf`/`delayMillis`, honour `Retry-After` (seconds or HTTP-date) when
-  present. Remove `Forbidden` from the retry predicate on the generic client. Cap total
-  retry wall-time so the UI coroutine can't be parked for minutes.
+- [x] **DONE** (2026-09-07) — both clients pass `respectRetryAfterHeader = true` to
+  `exponentialDelay` explicitly (Ktor honours the server's `Retry-After` when present,
+  else backs off exponentially). Removed `HttpStatusCode.Forbidden` from the generic
+  client's retry predicate — 403 is auth/permission, never throttling.
+- [ ] **Left**: no hard cap on cumulative retry wall-time (worst case ≈ `maxRetries ×
+  maxDelayMs`). Polling requests already opt out via `X-No-Retry`; user-initiated ones
+  are bounded but can still park ~90 s. Minor.
 
 ### 3.4 — `getAllAlbums()` reads the entire global `albums` collection
 
-- [ ] **Where**: `repository/AlbumRepository.kt` `getAllAlbums()`, consumed by
-  `getAllArtists`, `getEarliestReleaseDate`, and `service/LibraryService.getLibraryStats`.
-  Deserializes every document in a shared collection on every subscription.
-- **Fix**: derive artist list / earliest date / stats from the user's
-  `library_albums` join (already available via `getAllAlbumsInLibrary()`), or maintain
-  aggregate documents. Never subscribe to the unfiltered collection from the UI.
+- [x] **DONE** (2026-09-07) — `getAllArtists()` and `getEarliestReleaseDate()` now build
+  on `getAllAlbumsInLibrary()` (the `library_albums` join); `LibraryService.getLibraryStats`
+  too (and drops the now-redundant `getLibraryCount()` combine input). `getAllAlbums()`
+  keeps a doc-comment warning it is the whole catalogue, not a user view. No caller
+  subscribes to it from the UI any more.
 
 ### 3.5 — HTTP client lifecycle
 
-- [ ] **Where**: `ProductionNetworkModule` — `provideHttpClient()` lazy-init is not
-  thread-safe (`httpClient ?: HttpClient(...)`); the **Spotify client is never closed**
-  (`close()` only closes the misc client).
-- **Fix**: build both clients eagerly in the constructor (or guard with a lock), keep
-  references to both, close both in `close()`.
+- [x] **DONE** (2026-09-07) — generic client is a thread-safe `lazy`; the Spotify client
+  is stored and `close()` now closes **both** (and skips the generic one if it was never
+  created, via `lazy.isInitialized()`). Re-calling `provideSpotifyApi` closes the prior
+  client first.
 
 ### 3.6 — Non-cryptographic RNG for PKCE verifier and OAuth `state`
 
-- [ ] **Where**: `network/oauth/spotify/BaseAuthHandler.kt` `generateCodeVerifier()`,
-  `DesktopAuthHandler.kt` `generateState()` — both use `charPool.random()`
-  (→ `kotlin.random.Random.Default`).
-- **Fix**: use a CSPRNG. Desktop: `java.security.SecureRandom`. Provide a
-  `expect fun secureRandomBytes(n: Int): ByteArray` if it needs to stay in `commonMain`.
+- [x] **DONE** (2026-09-07) — `util/SecureRandom.kt` `expect fun secureRandomHex` + JVM
+  `actual`s (`java.security.SecureRandom`). `BaseAuthHandler.generateCodeVerifier` →
+  `secureRandomHex(48)`; `DesktopAuthHandler` / `AndroidAuthHandler` `generateState` →
+  `secureRandomHex(16)`. `kotlin.random.Random` import dropped.
 
 ### 3.7 — CI runs no tests
 
-- [ ] **Where**: `.github/workflows/*.yml` — only builds installers for 3 OSes on every
-  PR. `desktopTest` never runs. No lint/detekt/ktlint. Android APK never built.
-- **Fix**: add a `test` job (fast, `ubuntu-latest`) that runs
-  `./gradlew :composeApp:desktopTest` + a static-analysis step, and make it a required
-  status check. Only run the slow 3-OS installer matrix on tags.
+- [x] **DONE — workflow added** (2026-09-07) — `.github/workflows/ci.yml`: a `test` job
+  (`compileKotlinDesktop` + `compileTestKotlinDesktop` + `desktopTest`, uploads the
+  report) and an `android` job (writes a stub `google-services.json`, runs
+  `compileDebugKotlinAndroid`) on every push/PR to `main`.
+- [ ] **Caveat**: the `test` job's `desktopTest` step is **red** until the 16
+  pre-existing failures are fixed (5.1 / 5.2), and the `android` job is red until 1.12.
+  Compile steps are green now. Decide whether to make `test` a required check before or
+  after fixing those. Consider `detekt`/`ktlint` as a follow-up. The 3-OS installer
+  matrix (`build.yml`) should move to tags-only.
 
 ---
 
@@ -422,6 +421,7 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-07 | 2 | 2.3, 2.4 | efb4bb6 | logs + google-services.json untracked; desktop config from file |
 | 2026-09-07 | 2 | 2.1 anon-auth stopgap | 07ab6ab | firebase-auth 2.3.0, ensureAnonymousAuth(), firestore.rules |
 | 2026-09-07 | 2 | 2.2 SHA-256 IDs + migration | 07ab6ab | sha256Hex expect/actual; scripts/migrate_album_ids.py; GenerateAlbumIdTest |
+| 2026-09-07 | 3 | 3.1–3.7 | _staged_ | awaitUserId; arrayUnion; Retry-After; library-scoped queries; client lifecycle; SecureRandom; ci.yml |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 passes. `desktopTest` = 47 tests / 16 failing — the **same 16 pre-existing failures** as

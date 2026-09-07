@@ -3,8 +3,6 @@ package io.github.peningtonj.recordcollection.repository
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.domain.Tag
 import io.github.peningtonj.recordcollection.db.domain.TagType
-import io.github.peningtonj.recordcollection.repository.UserLibraryRepository
-import io.github.peningtonj.recordcollection.repository.UserSessionRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -20,8 +18,8 @@ class AlbumTagRepository(
     private val userLibraryRepository: UserLibraryRepository,
     private val userSession: UserSessionRepository
 ) {
-    private fun tagsRef() = firestore
-        .collection("users").document(userSession.requireUserId()).collection("tags")
+    private suspend fun tagsRef() = firestore
+        .collection("users").document(userSession.awaitUserId()).collection("tags")
 
     /** Watches the album's tag_ids from the user library, then reactively joins against the user tags collection. */
     @OptIn(ExperimentalCoroutinesApi::class)

@@ -1,5 +1,6 @@
 package io.github.peningtonj.recordcollection.repository
 
+import dev.gitlive.firebase.firestore.FieldValue
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.util.LoggingUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,9 +37,10 @@ class UserLibraryRepository(
         @SerialName("added_at")  val addedAt:   String?      = null
     )
 
-    private fun libraryRef() = firestore
+    /** Write-path collection ref — suspends until the user session is ready (new-user safe). */
+    private suspend fun libraryRef() = firestore
         .collection("users")
-        .document(userSession.requireUserId())
+        .document(userSession.awaitUserId())
         .collection("library_albums")
 
     // ── Reads ─────────────────────────────────────────────────────────────────
@@ -91,17 +93,17 @@ class UserLibraryRepository(
 
     suspend fun setInLibrary(albumId: String, inLibrary: Boolean) {
         LoggingUtils.logFirebaseWrite("library_albums", "set merge (setInLibrary)", albumId, mapOf("inLibrary" to inLibrary))
+        val doc = libraryRef().document(albumId)
         if (inLibrary) {
             // Only set added_at on the initial add – preserve it on subsequent calls
-            val existing = libraryRef().document(albumId).get()
-            val existingAddedAt = runCatching { existing.data<LibraryAlbumDocument>().addedAt }.getOrNull()
+            val existingAddedAt = runCatching { doc.get().data<LibraryAlbumDocument>().addedAt }.getOrNull()
             val map = buildMap<String, Any?> {
                 put("in_library", true)
                 if (existingAddedAt == null) put("added_at", Clock.System.now().toString())
             }
-            libraryRef().document(albumId).set(map, merge = true)
+            doc.set(map, merge = true)
         } else {
-            libraryRef().document(albumId).set(mapOf("in_library" to false), merge = true)
+            doc.set(mapOf("in_library" to false), merge = true)
         }
     }
 
@@ -110,20 +112,16 @@ class UserLibraryRepository(
         libraryRef().document(albumId).set(mapOf("rating" to rating), merge = true)
     }
 
+    /** Atomic — `FieldValue.arrayUnion` merges server-side, so concurrent tag edits can't lose each other. */
     suspend fun addTagId(albumId: String, tagId: String) {
-        val existing = libraryRef().document(albumId).get()
-        val tagIds = runCatching { existing.data<LibraryAlbumDocument>().tagIds }.getOrElse { emptyList() }
-        if (tagId !in tagIds) {
-            LoggingUtils.logFirebaseWrite("library_albums", "set merge (addTagId)", albumId, mapOf("tagId" to tagId))
-            libraryRef().document(albumId).set(mapOf("tag_ids" to tagIds + tagId), merge = true)
-        }
+        LoggingUtils.logFirebaseWrite("library_albums", "set merge arrayUnion (addTagId)", albumId, mapOf("tagId" to tagId))
+        libraryRef().document(albumId).set(mapOf("tag_ids" to FieldValue.arrayUnion(tagId)), merge = true)
     }
 
+    /** Atomic — see [addTagId]. */
     suspend fun removeTagId(albumId: String, tagId: String) {
-        val existing = libraryRef().document(albumId).get()
-        val tagIds = runCatching { existing.data<LibraryAlbumDocument>().tagIds }.getOrElse { emptyList() }
-        LoggingUtils.logFirebaseWrite("library_albums", "set merge (removeTagId)", albumId, mapOf("tagId" to tagId))
-        libraryRef().document(albumId).set(mapOf("tag_ids" to tagIds.filter { it != tagId }), merge = true)
+        LoggingUtils.logFirebaseWrite("library_albums", "set merge arrayRemove (removeTagId)", albumId, mapOf("tagId" to tagId))
+        libraryRef().document(albumId).set(mapOf("tag_ids" to FieldValue.arrayRemove(tagId)), merge = true)
     }
 }
 

@@ -66,14 +66,13 @@ class LibraryService(
             }
         }
 
-    // Library statistics
+    // Library statistics — scoped to the user's library, not the whole `albums` catalogue.
     fun getLibraryStats(): Flow<LibraryStats> = combine(
-        albumRepository.getLibraryCount(),
-        albumRepository.getAllAlbums(),
+        albumRepository.getAllAlbumsInLibrary(),
         artistRepository.getAllGenres()
-    ) { count, albums, genres ->
+    ) { albums, genres ->
         LibraryStats(
-            totalAlbums = count.toInt(),
+            totalAlbums = albums.size,
             uniqueArtists = albums.map { it.primaryArtist }.distinct().size,
             genreDistribution = genres.groupingBy { it }.eachCount(),
             decadeDistribution = calculateDecadeDistribution(albums)

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Base64
 import androidx.browser.customtabs.CustomTabsIntent
+import io.github.peningtonj.recordcollection.util.secureRandomHex
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -46,10 +47,7 @@ class AndroidAuthHandler(
         return Base64.encodeToString(digest, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
     }
 
-    private fun generateState(): String {
-        val chars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
-        return (1..32).map { chars.random() }.joinToString("")
-    }
+    private fun generateState(): String = secureRandomHex(16)
 
     override suspend fun authenticate(): Result<String> {
         currentPKCEParams = generatePKCEParams()

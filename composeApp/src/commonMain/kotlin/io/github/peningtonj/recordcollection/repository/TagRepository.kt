@@ -17,9 +17,9 @@ class TagRepository(
     private fun tagsFlow() = userSession.userIdFlow.mapNotNull { it }
         .map { userId -> firestore.collection("users").document(userId).collection("tags") }
 
-    /** Synchronous ref — writes only (userId must be set). */
-    private fun tagsCollection() = firestore
-        .collection("users").document(userSession.requireUserId()).collection("tags")
+    /** Write-path ref — suspends until the user session is ready (new-user safe). */
+    private suspend fun tagsCollection() = firestore
+        .collection("users").document(userSession.awaitUserId()).collection("tags")
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getAllTags(): Flow<List<Tag>> = tagsFlow().flatMapLatest { ref ->

@@ -1,6 +1,7 @@
 package io.github.peningtonj.recordcollection.network.oauth.spotify
 
 import io.github.aakira.napier.Napier
+import io.github.peningtonj.recordcollection.util.secureRandomHex
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -112,15 +113,8 @@ class DesktopAuthHandler(
         }
     }
 
-    /**
-     * Generate a random state parameter for CSRF protection
-     */
-    private fun generateState(): String {
-        val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
-        return (1..32)
-            .map { allowedChars.random() }
-            .joinToString("")
-    }
+    /** Cryptographically-random state parameter for CSRF protection (32 hex chars). */
+    private fun generateState(): String = secureRandomHex(16)
 
     private fun sendSuccessResponse(outputStream: OutputStream) {
         val writer = PrintWriter(outputStream, true)
