@@ -243,25 +243,28 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ### 2.3 — Query logs committed to git and growing every commit ⚠️
 
-- [ ] **Why**: `composeApp/logs/firebase_queries.log` and `spotify_queries.log` are
-  tracked. The current uncommitted diff is **+250k lines**. `.git` is already ~22 MB.
-  They contain user activity (playlist IDs, timestamps, album operations).
-- **Fix**:
-  1. Add `composeApp/logs/` to `.gitignore`.
-  2. `git rm --cached composeApp/logs/*.log`.
-  3. Rewrite history to purge them (`git filter-repo --path composeApp/logs --invert-paths`)
-     — coordinate if anyone else has a clone.
-  4. Point the file antilogs at a path outside the repo, or cap file size / rotate.
+- [x] **DONE (working tree)** (2026-09-07) — `composeApp/logs/` added to `.gitignore`
+  (plus `*.db` — the old pre-Firebase SQLite files are also in history, see below);
+  `git rm --cached composeApp/logs`. Logs stay on disk, untracked.
+- [ ] **Still to do — history rewrite** (destructive, needs explicit go-ahead):
+  the big blobs are still in history — `composeApp/logs/spotify_queries.log` ≈ **19.7 MB**,
+  `firebase_queries.log` ≈ 1.1 MB, and several `composeApp/record_collection*.db`
+  (1–1.4 MB each, contain real album/rating data from the pre-Firebase era). Purge with
+  `git filter-repo --path composeApp/logs --path-glob 'composeApp/*.db' --invert-paths`
+  then force-push. Solo repo → safe, but it rewrites every later SHA.
+- [ ] **Optional**: point the file antilogs at a path outside the repo, or cap size / rotate.
 
 ### 2.4 — Secrets committed / hardcoded
 
-- [ ] **Why**: `composeApp/google-services.json` is tracked; the same Firebase
-  `apiKey`, `applicationId`, `projectId`, `gcmSenderId` are hardcoded in
-  `FirebaseDriver.desktop.kt`. Firebase config isn't a password, but once 2.1 is fixed
-  the project should still not ship its config in source.
-- **Fix**: `.gitignore` `google-services.json`, load desktop Firebase options from a
-  local untracked properties file or env vars, document setup in `README.md` (it already
-  half-does). `git rm --cached` + history rewrite alongside 2.3.
+- [x] **DONE (working tree)** (2026-09-07) — `composeApp/google-services.json` +
+  `composeApp/firebase.properties` added to `.gitignore`; `git rm --cached
+  composeApp/google-services.json`. `FirebaseDriver.desktop.kt` no longer hard-codes the
+  Firebase `apiKey`/`applicationId`/`projectId`/`gcmSenderId`/`storageBucket` — it reads
+  them at runtime from `google-services.json` (`GOOGLE_SERVICES_JSON` env var →
+  `composeApp/google-services.json` → cwd), with a clear error if the file is missing.
+- [ ] **Still to do — history rewrite**: the old `google-services.json` blob is still in
+  history (bundle it into the 2.3 filter-repo run). Firebase config is not a true secret
+  (security is rules + auth — see 2.1), so this is low urgency.
 
 ### 2.5 — Secrets stored at rest in plaintext
 
