@@ -40,6 +40,49 @@ class AlbumMapperTest {
     // --- toDocument / toDomain round trip ---
 
     @Test
+    fun `library projection round-trips the stable fields`() {
+        val original = TestAlbumDataFactory.album(id = "lib1", name = "In Rainbows")
+        val p = AlbumMapper.toLibraryProjection(original)
+
+        val back = AlbumMapper.libraryProjectionToDomain(
+            albumId = "lib1",
+            name = p["name"] as String,
+            primaryArtist = p["primary_artist"] as String,
+            artistsJson = p["artists"] as String,
+            releaseDate = p["release_date"] as String,
+            albumType = p["album_type"] as String,
+            totalTracks = p["total_tracks"] as Long,
+            spotifyId = p["spotify_id"] as String,
+            spotifyUri = p["spotify_uri"] as String,
+            imageUrl = p["image_url"] as String?,
+            rating = 4,
+            addedAt = null,
+        )
+
+        assertEquals(original.id, back.id)
+        assertEquals(original.name, back.name)
+        assertEquals(original.primaryArtist, back.primaryArtist)
+        assertEquals(original.artists, back.artists)
+        assertEquals(original.releaseDate, back.releaseDate)
+        assertEquals(original.totalTracks, back.totalTracks)
+        assertEquals(original.albumType, back.albumType)
+        assertEquals(original.spotifyId, back.spotifyId)
+        assertEquals(original.images.first().url, back.images.first().url)
+        assertEquals(4, back.rating)
+        assertEquals(true, back.inLibrary)
+    }
+
+    @Test
+    fun `libraryProjectionToDomain tolerates a blank album_type`() {
+        val album = AlbumMapper.libraryProjectionToDomain(
+            albumId = "x", name = "N", primaryArtist = "A", artistsJson = "[]",
+            releaseDate = "2020", albumType = "", totalTracks = 0, spotifyId = "", spotifyUri = "",
+            imageUrl = null, rating = null, addedAt = null,
+        )
+        assertEquals(io.github.peningtonj.recordcollection.db.domain.AlbumType.ALBUM, album.albumType)
+    }
+
+    @Test
     fun `toDocument then toDomain preserves core metadata`() {
         val original = TestAlbumDataFactory.album(id = "abc123", name = "Kid A")
         val roundTripped = AlbumMapper.toDomain(AlbumMapper.toDocument(original).copy(id = original.id))

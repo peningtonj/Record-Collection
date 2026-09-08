@@ -2,6 +2,8 @@ package io.github.peningtonj.recordcollection.repository
 
 import dev.gitlive.firebase.firestore.FieldValue
 import dev.gitlive.firebase.firestore.FirebaseFirestore
+import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.util.LoggingUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -18,11 +20,12 @@ import kotlinx.serialization.Serializable
  * Manages per-user album state stored at:
  *   users/{spotifyUserId}/library_albums/{albumId}
  *
- * Fields stored per entry:
- *   in_library : Boolean         – whether the user has added this album to their library
- *   rating     : Int?            – user rating (null = not rated)
- *   tag_ids    : List<String>    – IDs of tags applied to this album by this user
- *   added_at   : String?         – ISO-8601 timestamp when the album was added
+ * Besides the user's own data (`in_library`, `rating`, `tag_ids`, `added_at`) each entry
+ * carries a **denormalised projection** of the album's stable Spotify metadata (name,
+ * artist, release date, one image URL, …) so the whole library renders from this one
+ * collection — no join against the shared `albums` catalogue. Volatile metadata (genres,
+ * popularity, tracklist) is fetched on demand and cached with a TTL elsewhere.
+ * See `docs/DATA_MODEL.md`.
  */
 class UserLibraryRepository(
     private val firestore: FirebaseFirestore,
@@ -34,7 +37,19 @@ class UserLibraryRepository(
         @SerialName("in_library") val inLibrary: Boolean      = false,
         val rating:   Int?           = null,
         @SerialName("tag_ids")   val tagIds:    List<String> = emptyList(),
-        @SerialName("added_at")  val addedAt:   String?      = null
+        @SerialName("added_at")  val addedAt:   String?      = null,
+
+        // ── denormalised projection (stable fields; written on add + on sync) ──
+        val name:                     String  = "",
+        @SerialName("primary_artist") val primaryArtist: String = "",
+        val artists:                  String  = "[]",   // JSON List<SimplifiedArtist>
+        @SerialName("release_date")   val releaseDate:   String = "",
+        @SerialName("album_type")     val albumType:     String = "",
+        @SerialName("total_tracks")   val totalTracks:   Long   = 0,
+        @SerialName("spotify_id")     val spotifyId:     String = "",
+        @SerialName("spotify_uri")    val spotifyUri:    String = "",
+        @SerialName("image_url")      val imageUrl:      String? = null,
+        @SerialName("projection_fetched_at") val projectionFetchedAt: Long? = null,
     )
 
     /** Write-path collection ref — suspends until the user session is ready (new-user safe). */
@@ -91,20 +106,31 @@ class UserLibraryRepository(
 
     // ── Writes ────────────────────────────────────────────────────────────────
 
-    suspend fun setInLibrary(albumId: String, inLibrary: Boolean) {
-        LoggingUtils.logFirebaseWrite("library_albums", "set merge (setInLibrary)", albumId, mapOf("inLibrary" to inLibrary))
-        val doc = libraryRef().document(albumId)
-        if (inLibrary) {
-            // Only set added_at on the initial add – preserve it on subsequent calls
-            val existingAddedAt = runCatching { doc.get().data<LibraryAlbumDocument>().addedAt }.getOrNull()
-            val map = buildMap<String, Any?> {
-                put("in_library", true)
-                if (existingAddedAt == null) put("added_at", Clock.System.now().toString())
-            }
-            doc.set(map, merge = true)
-        } else {
-            doc.set(mapOf("in_library" to false), merge = true)
+    /**
+     * Marks [album] as in the user's library and (re)writes its denormalised projection.
+     * `added_at` is set only on the first add; `projection_fetched_at` is bumped every time.
+     */
+    suspend fun addToLibrary(album: Album) {
+        LoggingUtils.logFirebaseWrite("library_albums", "set merge (addToLibrary)", album.id)
+        val doc = libraryRef().document(album.id)
+        val existingAddedAt = runCatching { doc.get().data<LibraryAlbumDocument>().addedAt }.getOrNull()
+        val projection = AlbumMapper.toLibraryProjection(album).toMutableMap()
+        projection["in_library"] = true
+        if (existingAddedAt == null) {
+            projection["added_at"] = album.addedAt?.toString() ?: Clock.System.now().toString()
         }
+        doc.set(projection, merge = true)
+    }
+
+    /** Refreshes just the projection for an album already known — used by sync. */
+    suspend fun refreshProjection(album: Album) {
+        LoggingUtils.logFirebaseWrite("library_albums", "set merge (refreshProjection)", album.id)
+        libraryRef().document(album.id).set(AlbumMapper.toLibraryProjection(album), merge = true)
+    }
+
+    suspend fun removeFromLibrary(albumId: String) {
+        LoggingUtils.logFirebaseWrite("library_albums", "set merge in_library=false", albumId)
+        libraryRef().document(albumId).set(mapOf("in_library" to false), merge = true)
     }
 
     suspend fun setRating(albumId: String, rating: Int) {

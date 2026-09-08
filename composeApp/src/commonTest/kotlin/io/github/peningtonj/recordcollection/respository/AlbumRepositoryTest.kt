@@ -92,7 +92,7 @@ class AlbumRepositoryTest {
         // set() is an inline function that cannot be verified directly; assert on the
         // observable effects of the write path instead.
         verify { albumsCollection.document(any()) }
-        coVerify { userLibraryRepository.setInLibrary(any(), true) }
+        coVerify { userLibraryRepository.addToLibrary(any()) }
         coVerify { eventDispatcher.dispatch(any<AlbumEvent.AlbumAdded>()) }
     }
 
@@ -197,7 +197,7 @@ class AlbumRepositoryTest {
 
         // saveAlbum is what performs the Firestore write + library write; when
         // saveToDb = false it must not run.
-        coVerify(exactly = 0) { userLibraryRepository.setInLibrary(any(), any()) }
+        coVerify(exactly = 0) { userLibraryRepository.addToLibrary(any()) }
     }
 
     // MISC API OPERATIONS TESTS

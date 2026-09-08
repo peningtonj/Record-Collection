@@ -128,8 +128,8 @@ class LibraryServiceTest {
 
         coVerify { albumRepository.saveAlbumIfNotPresent(uniqueRemoteAlbums[0]) }
         coVerify { albumRepository.saveAlbumIfNotPresent(uniqueRemoteAlbums[1]) }
-        coVerify { albumRepository.addAlbumToLibrary(uniqueRemoteAlbums[0].id) }
-        coVerify { albumRepository.addAlbumToLibrary(uniqueRemoteAlbums[1].id) }
+        coVerify { albumRepository.addAlbumToLibrary(uniqueRemoteAlbums[0]) }
+        coVerify { albumRepository.addAlbumToLibrary(uniqueRemoteAlbums[1]) }
         coVerify { profileRepository.addAlbumsToSpotifyLibrary(match { it.any { it.id == uniqueLocalAlbums[0].id } }) }
         coVerify { profileRepository.addAlbumsToSpotifyLibrary(match { it.any { it.id == uniqueLocalAlbums[1].id } }) }
     }

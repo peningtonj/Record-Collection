@@ -82,6 +82,54 @@ object AlbumMapper {
         )
     }
 
+    /**
+     * The stable-field projection stored on `users/{uid}/library_albums/{id}` so the
+     * library renders without joining the shared `albums` catalogue. See docs/DATA_MODEL.md.
+     * Returns a Firestore-writable map (merged into the doc); user data is written separately.
+     */
+    fun toLibraryProjection(album: Album): Map<String, Any?> = mapOf(
+        "name" to album.name,
+        "primary_artist" to album.primaryArtist,
+        "artists" to Json.encodeToString(album.artists),
+        "release_date" to album.releaseDate.toString(),
+        "album_type" to album.albumType.name,
+        "total_tracks" to album.totalTracks.toLong(),
+        "spotify_id" to album.spotifyId,
+        "spotify_uri" to album.spotifyUri,
+        "image_url" to album.images.firstOrNull()?.url,
+        "projection_fetched_at" to kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
+    )
+
+    /** Rebuilds an [Album] from a library projection. Volatile fields (genres, updatedAt, …) are left empty. */
+    fun libraryProjectionToDomain(
+        albumId: String,
+        name: String,
+        primaryArtist: String,
+        artistsJson: String,
+        releaseDate: String,
+        albumType: String,
+        totalTracks: Long,
+        spotifyId: String,
+        spotifyUri: String,
+        imageUrl: String?,
+        rating: Int?,
+        addedAt: String?,
+    ): Album = Album(
+        id = albumId,
+        spotifyId = spotifyId,
+        name = name,
+        primaryArtist = primaryArtist,
+        artists = runCatching { Json.decodeFromString<List<SimplifiedArtist>>(artistsJson) }.getOrElse { emptyList() },
+        releaseDate = parseReleaseDate(releaseDate),
+        totalTracks = totalTracks.toInt(),
+        spotifyUri = spotifyUri,
+        addedAt = addedAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
+        albumType = runCatching { AlbumType.fromString(albumType) }.getOrDefault(AlbumType.ALBUM),
+        images = imageUrl?.let { listOf(Image(url = it, height = null, width = null)) } ?: emptyList(),
+        inLibrary = true,
+        rating = rating,
+    )
+
     /** Writes album metadata only — inLibrary and rating are stored in the user library sub-collection. */
     fun toDocument(album: Album): AlbumDocument {
         return AlbumDocument(

@@ -194,7 +194,7 @@ class LibraryService(
         artistRepository.fetchArtistsWithEnhancedGenres(artists.map { it.id }, true)
         albums.forEach { album ->
             albumRepository.saveAlbumIfNotPresent(album)
-            albumRepository.addAlbumToLibrary(album.id)
+            albumRepository.addAlbumToLibrary(album)
         }
     }
 
@@ -259,7 +259,7 @@ class LibraryService(
     }
 
     suspend fun addAlbumToLibrary(album: Album) {
-        albumRepository.addAlbumToLibrary(album.id)
+        albumRepository.addAlbumToLibrary(album)
         profileRepository.addAlbumsToSpotifyLibrary(listOf(album)).getOrThrow()
     }
 

@@ -74,7 +74,7 @@ class AlbumRepository(
         LoggingUtils.logFirebaseWrite("albums", "set", domainAlbum.id, mapOf("name" to album.name))
         writeAlbumDocument(domainAlbum)
         if (addToUsersLibrary) {
-            userLibraryRepository.setInLibrary(domainAlbum.id, true)
+            userLibraryRepository.addToLibrary(domainAlbum)
         }
         eventDispatcher.dispatch(AlbumEvent.AlbumAdded(domainAlbum))
     }
@@ -88,7 +88,7 @@ class AlbumRepository(
         LoggingUtils.logFirebaseWrite("albums", "set", album.id, mapOf("name" to album.name))
         writeAlbumDocument(album)
         if (addToLibrary) {
-            userLibraryRepository.setInLibrary(album.id, true)
+            userLibraryRepository.addToLibrary(album)
         }
         eventDispatcher.dispatch(AlbumEvent.AlbumAdded(album))
     }
@@ -178,30 +178,43 @@ class AlbumRepository(
     }
 
     /**
-     * Returns all albums the current user has added to their library.
-     * Reads album IDs from users/{userId}/library_albums where in_library=true,
-     * then joins with album metadata from the shared albums collection,
-     * and merges rating from the user library entry.
+     * All albums in the current user's library, rendered from the denormalised projection
+     * on `users/{uid}/library_albums` — **one** collection listener, no join against the
+     * shared `albums` catalogue. See docs/DATA_MODEL.md.
+     *
+     * Transition fallback: entries written before the projection existed (blank `name`)
+     * are hydrated from the shared `albums` collection until `backfill_library_projection.py`
+     * runs; after that the fallback branch is dead.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun getAllAlbumsInLibrary(): Flow<List<Album>> {
-        return userLibraryRepository.getAllLibraryEntries()
-            .flatMapLatest { entries ->
-                val inLibrary = entries.filter { it.inLibrary }
-                val albumIds = inLibrary.map { it.albumId }
-                if (albumIds.isEmpty()) return@flatMapLatest flowOf(emptyList())
+    fun getAllAlbumsInLibrary(): Flow<List<Album>> =
+        userLibraryRepository.getAllLibraryEntries().flatMapLatest { entries ->
+            val inLibrary = entries.filter { it.inLibrary }
+            if (inLibrary.isEmpty()) return@flatMapLatest flowOf(emptyList())
 
-                val ratingMap = inLibrary.associate { it.albumId to it.rating }
-                getAlbumsByIds(albumIds).map { albums ->
-                    albums.map { album ->
-                        album.copy(
-                            inLibrary = true,
-                            rating = ratingMap[album.id]
-                        )
+            val staleIds = inLibrary.filter { it.name.isBlank() }.map { it.albumId }
+            if (staleIds.isEmpty()) {
+                flowOf(inLibrary.map { it.toDomainAlbum() })
+            } else {
+                Napier.w("${staleIds.size} library entries lack a projection — hydrating from `albums` (run backfill_library_projection.py)")
+                getAlbumsByIds(staleIds).map { fetched ->
+                    val fetchedById = fetched.associateBy { it.id }
+                    inLibrary.map { entry ->
+                        if (entry.name.isNotBlank()) entry.toDomainAlbum()
+                        else fetchedById[entry.albumId]?.copy(inLibrary = true, rating = entry.rating)
+                            ?: entry.toDomainAlbum()
                     }
                 }
             }
-    }
+        }
+
+    private fun UserLibraryRepository.LibraryAlbumDocument.toDomainAlbum(): Album =
+        AlbumMapper.libraryProjectionToDomain(
+            albumId = albumId, name = name, primaryArtist = primaryArtist, artistsJson = artists,
+            releaseDate = releaseDate, albumType = albumType, totalTracks = totalTracks,
+            spotifyId = spotifyId, spotifyUri = spotifyUri, imageUrl = imageUrl,
+            rating = rating, addedAt = addedAt,
+        )
 
     /** Distinct primary-artist names across the current user's library, sorted. */
     fun getAllArtists(): Flow<List<String>> =
@@ -218,14 +231,12 @@ class AlbumRepository(
             .map { snapshot -> snapshot.documents.mapNotNull { it.toAlbum() } }
     }
 
-    suspend fun addAlbumToLibrary(albumId: String) {
-        LoggingUtils.logFirebaseWrite("library_albums", "setInLibrary(true)", albumId)
-        userLibraryRepository.setInLibrary(albumId, true)
+    suspend fun addAlbumToLibrary(album: Album) {
+        userLibraryRepository.addToLibrary(album)
     }
 
     suspend fun removeAlbumFromLibrary(albumId: String) {
-        LoggingUtils.logFirebaseWrite("library_albums", "setInLibrary(false)", albumId)
-        userLibraryRepository.setInLibrary(albumId, false)
+        userLibraryRepository.removeFromLibrary(albumId)
     }
 
     suspend fun updateReleaseGroupId(albumId: String, releaseGroupId: String) {

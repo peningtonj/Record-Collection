@@ -151,6 +151,18 @@ Combine **D + E + F** (with **C** for tracks): the per-user join table carries a
 projection of stable fields so the library renders from one read, and everything volatile
 is a short-lived cache refreshed per Spotify's terms.
 
+**Status — v1 landed** (`getAllAlbumsInLibrary` reads the projection; one `library_albums`
+listener, no `albums` fan-out):
+- `LibraryAlbumDocument` carries the projection; `AlbumMapper.toLibraryProjection` /
+  `libraryProjectionToDomain` map it. Written on `addToLibrary` and on sync.
+- **Migration**: `scripts/backfill_library_projection.py` copies the projection onto
+  existing `library_albums` entries. Run it right after deploying — until then the app
+  falls back to the old `albums` join for un-backfilled entries (blank `name`), so nothing
+  breaks, but the read-cost win only lands once the backfill runs.
+- **Still v2**: the volatile-metadata TTL cache (genres / popularity / full images /
+  tracklist still come from the shared `albums`/`artists`/`tracks` collections with no
+  TTL); dropping `tracks` as a permanent collection; collections still join `albums`.
+
 ### `users/{uid}/library_albums/{albumId}`
 
 ```

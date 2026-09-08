@@ -86,7 +86,7 @@ class AlbumViewModel (
 
             } else {
                 if (addToLibraryOverrideValue ?: false) {
-                    albumRepository.addAlbumToLibrary(album.id)
+                    albumRepository.addAlbumToLibrary(album)
                 }
 
                 collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum.id)

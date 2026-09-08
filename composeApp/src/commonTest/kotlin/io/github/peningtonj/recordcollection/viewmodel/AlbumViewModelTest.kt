@@ -181,7 +181,7 @@ class AlbumViewModelTest {
 
         // Then
         coVerify { albumRepository.getAlbumByNameAndArtistIfPresent(testAlbum.name, testAlbum.primaryArtist) }
-        coVerify { albumRepository.addAlbumToLibrary(testAlbum.id) }
+        coVerify { albumRepository.addAlbumToLibrary(testAlbum) }
         coVerify { collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum.id) }
         coVerify(exactly = 0) { albumRepository.saveAlbum(any<Album>(), any()) }
     }
