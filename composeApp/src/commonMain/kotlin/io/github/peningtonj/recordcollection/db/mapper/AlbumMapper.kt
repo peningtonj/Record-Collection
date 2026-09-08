@@ -9,6 +9,7 @@ import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.ImageDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedArtistDto
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.util.sha256Hex
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -101,25 +102,30 @@ object AlbumMapper {
         )
     }
 
+    /** Fallback for a Spotify `release_date` we can't parse — see [parseReleaseDate]. */
+    val UNKNOWN_RELEASE_DATE: LocalDate = LocalDate(1900, 1, 1)
+
+    /**
+     * Parses a Spotify `release_date` (`2024`, `2024-12`, or `2024-12-31`).
+     * A malformed value must not abort a whole sync, so anything unparseable
+     * falls back to [UNKNOWN_RELEASE_DATE] with a warning.
+     */
     fun parseReleaseDate(releaseDate: String): LocalDate {
-        return when (releaseDate.count { it == '-' }) {
-            1 -> {
-                // Year-Month: 2024-12
-                val parts = releaseDate.split('-')
-                val year = parts[0].toInt()
-                val month = parts[1].toInt()
-                LocalDate(year, month, 1) // Default to 1st of month
-            }
+        return runCatching {
+            when (releaseDate.count { it == '-' }) {
+                1 -> {
+                    // Year-Month: 2024-12
+                    val parts = releaseDate.split('-')
+                    LocalDate(parts[0].toInt(), parts[1].toInt(), 1) // Default to 1st of month
+                }
 
-            0 -> {
-                // Year only: 2024
-                val year = releaseDate.toInt()
-                LocalDate(year, 1, 1) // Default to January 1st
-            }
+                0 -> LocalDate(releaseDate.toInt(), 1, 1) // Year only: default to January 1st
 
-            else -> {
-                LocalDate.parse(releaseDate) // Uses ISO format
+                else -> LocalDate.parse(releaseDate) // ISO format
             }
+        }.getOrElse {
+            Napier.w("Unparseable release_date '$releaseDate' — using $UNKNOWN_RELEASE_DATE")
+            UNKNOWN_RELEASE_DATE
         }
     }
 }

@@ -64,9 +64,6 @@ class ModularDependencyContainer(
 
     private val albumEventDispatcher by lazy {
         val tagService = eventModule.provideTagService(tagRepository, albumTagRepository)
-        val albumTagRepository = repositoryModule.provideAlbumTagRepository(
-            firestore, userLibraryRepository, userSessionRepository
-        )
         val eventHandlers = eventModule.provideAlbumEventHandlers(
             tagService, albumTagRepository, tagRepository, artistRepository, spotifyApi
         )

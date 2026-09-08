@@ -43,6 +43,26 @@ class AlbumRepository(
     /**
      * FIRESTORE OPERATIONS
      */
+
+    /**
+     * Writes the album's metadata document. `addedAt` is set only on first insert —
+     * a re-sync must not reset it, or `SortOrder.DATE_ADDED` breaks. `updatedAt` is
+     * bumped on every write.
+     */
+    private suspend fun writeAlbumDocument(album: Album) {
+        val docRef = albumsRef.document(album.id)
+        val existingAddedAt = runCatching {
+            docRef.get().takeIf { it.exists }?.data<AlbumDocument>()?.addedAt
+        }.getOrNull()
+        val now = Clock.System.now()
+        docRef.set(
+            AlbumMapper.toDocument(album).copy(
+                addedAt = existingAddedAt ?: now.toString(),
+                updatedAt = now.toEpochMilliseconds()
+            )
+        )
+    }
+
     suspend fun saveAlbum(album: AlbumDto, addToUsersLibrary: Boolean = true) {
         val domainAlbum = AlbumMapper.toDomain(album)
         LoggingUtils.d(
@@ -50,12 +70,7 @@ class AlbumRepository(
             "Saving album: ${album.name} by ${album.artists.firstOrNull()?.name} (ID: ${domainAlbum.id}, inLibrary: $addToUsersLibrary)"
         )
         LoggingUtils.logFirebaseWrite("albums", "set", domainAlbum.id, mapOf("name" to album.name))
-        albumsRef.document(domainAlbum.id).set(
-            AlbumMapper.toDocument(domainAlbum).copy(
-                addedAt = Clock.System.now().toString(),
-                updatedAt = Clock.System.now().toEpochMilliseconds()
-            )
-        )
+        writeAlbumDocument(domainAlbum)
         if (addToUsersLibrary) {
             userLibraryRepository.setInLibrary(domainAlbum.id, true)
         }
@@ -69,12 +84,7 @@ class AlbumRepository(
             "Saving album: ${album.name} by ${album.artists.firstOrNull()?.name} (ID: ${album.id}, inLibrary: $addToLibrary)"
         )
         LoggingUtils.logFirebaseWrite("albums", "set", album.id, mapOf("name" to album.name))
-        albumsRef.document(album.id).set(
-            AlbumMapper.toDocument(album).copy(
-                addedAt = Clock.System.now().toString(),
-                updatedAt = Clock.System.now().toEpochMilliseconds()
-            )
-        )
+        writeAlbumDocument(album)
         if (addToLibrary) {
             userLibraryRepository.setInLibrary(album.id, true)
         }

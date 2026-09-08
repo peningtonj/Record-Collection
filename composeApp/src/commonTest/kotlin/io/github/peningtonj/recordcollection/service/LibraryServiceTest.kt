@@ -1,12 +1,17 @@
 package io.github.peningtonj.recordcollection.service
 
+import io.github.peningtonj.recordcollection.db.domain.filter.AlbumFilter
+import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.repository.*
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
 import io.github.peningtonj.recordcollection.viewmodel.LibraryDifferences
 import io.mockk.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import kotlin.test.*
 
 class LibraryServiceTest {
@@ -53,6 +58,28 @@ class LibraryServiceTest {
             trackRepository,
             userSessionRepository
         )
+    }
+
+    @Test
+    fun `getFilteredAlbums includes albums released on the range boundary`() = runTest {
+        // TECH_DEBT 4.4 — start/end are inclusive (Jan 1 .. Dec 31).
+        val onStart = TestAlbumDataFactory.album("on-start", "On Start")
+            .copy(releaseDate = LocalDate(2000, 1, 1))
+        val onEnd = TestAlbumDataFactory.album("on-end", "On End")
+            .copy(releaseDate = LocalDate(2010, 12, 31))
+        val before = TestAlbumDataFactory.album("before", "Before")
+            .copy(releaseDate = LocalDate(1999, 12, 31))
+
+        coEvery { albumRepository.getAllAlbumsInLibrary() } returns flowOf(listOf(onStart, onEnd, before))
+        coEvery { artistRepository.getAllArtists() } returns flowOf(emptyList())
+        every { settingsRepository.settings } returns MutableStateFlow(SettingsState())
+
+        val filter = AlbumFilter(
+            releaseDateRange = DateRange(LocalDate(2000, 1, 1), LocalDate(2010, 12, 31))
+        )
+        val result = service.getFilteredAlbums(filter).first().map { it.album.id }
+
+        assertEquals(setOf("on-start", "on-end"), result.toSet())
     }
 
     @Test

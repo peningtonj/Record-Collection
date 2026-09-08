@@ -364,28 +364,27 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ## Section 4 — Medium (correctness)
 
-- [ ] **4.1 `saveAlbum` overwrites `addedAt` on every write**
-  (`AlbumRepository.kt:55,74`) — re-sync resets every album's "date added", breaking
-  `SortOrder.DATE_ADDED`. Only set `addedAt` when the doc doesn't already exist.
+- [x] **4.1 `saveAlbum` overwrites `addedAt` on every write** — DONE (2026-09-08). Both
+  `saveAlbum` overloads route through a new `writeAlbumDocument(album)` that reads the
+  existing doc's `addedAt` and preserves it (`existingAddedAt ?: now`); `updatedAt` still
+  bumps every write. Costs one extra `get()` per save — acceptable vs. losing DATE_ADDED.
 - [x] **4.2 Double event dispatch** — DONE (2026-09-07). `fetchMultipleAlbums` now maps
   once and dispatches once: `saveAlbum` owns the dispatch when `saveToDb = true`, else the
   loop dispatches directly. (Fixed alongside the test repair — the old code dispatched 2×
   per album, which made `AlbumRepositoryTest` uncheckable.)
-- [ ] **4.3 `parseReleaseDate` unguarded in `toDomain(AlbumDto)`**
-  (`AlbumMapper.kt`) — a malformed Spotify `release_date` throws and aborts the whole
-  mapping/sync. Wrap it (the `AlbumDocument` path already does) and fall back to a
-  sentinel date + a warning.
-- [ ] **4.4 `LibraryService.matchesDateRange`** uses `<=` / `>=` to *exclude*, so albums
-  released exactly on a range boundary are filtered out. Confirm intent; likely should
-  be `<` / `>` or the boundary comparison is inverted.
-- [ ] **4.5 `getFilteredAlbums` sort doesn't react to settings changes** — it reads
-  `settingsRepository.settings.value.defaultSortOrder` inside `.map`, so changing the
-  sort order doesn't re-emit. `combine` with the settings flow.
-- [ ] **4.6 `ModularDependencyContainer.albumEventDispatcher` lazy block**
-  (lines ~64–73) — references `albumTagRepository` on line 65 before its local
-  declaration on line 66 (resolves to the member and shadows), and builds a **second**
-  `AlbumTagRepository` instance distinct from the member property. Use the member
-  everywhere; remove the local.
+- [x] **4.3 `parseReleaseDate` unguarded** — DONE (2026-09-08). `parseReleaseDate` now
+  wraps its whole body in `runCatching` and returns `AlbumMapper.UNKNOWN_RELEASE_DATE`
+  (`1900-01-01`) with a warning on any unparseable value — fixes every call site at once.
+  Covered by `AlbumMapperTest`.
+- [x] **4.4 `LibraryService.matchesDateRange`** — DONE (2026-09-08). `<=`/`>=` → `<`/`>`;
+  `start`/`end` are inclusive bounds (the UI builds them as Jan 1 .. Dec 31). Boundary
+  test added to `LibraryServiceTest`.
+- [x] **4.5 `getFilteredAlbums` sort doesn't react to settings changes** — DONE
+  (2026-09-08). Now `combine(getAllAlbumsEnriched(), settingsRepository.settings)` so a
+  sort-order change re-emits.
+- [x] **4.6 `ModularDependencyContainer.albumEventDispatcher` lazy block** — DONE
+  (2026-09-08). Removed the shadowing local `albumTagRepository`; the block now uses the
+  `by lazy` member throughout, so there's a single `AlbumTagRepository` instance.
 - [ ] **4.7 `ProfileRepository` fire-and-forget** — `addAlbumsToSpotifyLibrary` /
   `removeAlbumsFromSpotifyLibrary` discard the API `Result`. Aggregate failures and
   return `Result<Unit>` / a partial-failure report.
@@ -415,8 +414,9 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
     .first()` and the relaxed mock's flow never emits; stubbed a real `StateFlow`.
     (f) `CollectionImportServiceTest` "no tracks have albums" — built tracks *with* an
     album then asserted empty; now builds `track(...).copy(album = null)`.
-  - Still priority additions: `generateAlbumId` (collisions — partly covered),
-    `AlbumMapper` round-trips, `SpotifyAuthRepository` token refresh/expiry,
+  - [x] `AlbumMapper` — `AlbumMapperTest` (2026-09-08): `parseReleaseDate` valid + garbage
+    (4.3), `toDocument`↔`toDomain` round trip. `CoilNetworkSmokeTest` (2026-09-07).
+  - Still priority additions: `SpotifyAuthRepository` token refresh/expiry,
     `PlaybackSessionManager` state machine, `CollectionsService`.
 - [ ] **5.3 Duplicated docs** — root `PRODUCTION_ROADMAP.md` / `MIGRATION_SPOTIFY_ID.md`
   are now one-line stubs pointing at the `docs/` copies (2026-09-07); `README.md` link
@@ -464,10 +464,11 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-07 | 1 | 1.12 | d10d724 | Android compiles again: androidx.browser:browser + JVM 17 for android & desktop. `android` CI job now green. |
 | 2026-09-07 | 5 | 5.3 (partial), 5.4, 5.8, 5.9, 1.9 | cea7054 | Deleted dead util/Logger.kt + 9 one-off scripts + records venv + backups; gitignored migration-reporter. Root doc stubs. OpenAiApi/SpotifyApi comment + log fixes. |
 | 2026-09-08 | 1 | 1.10 | 6dd4c89 | All deps via version catalog; ktor unified 3.1.0, coil 3.2.0, serialization-json 1.9.0, coroutines-test 1.10.2; pruned 8 dead template entries. |
+| 2026-09-07 | test | coil smoke | 5f78c90 | CoilNetworkSmokeTest — real fetch+decode through coil pipeline. |
+| 2026-09-08 | 4 | 4.1, 4.3, 4.4, 4.5, 4.6 | _pending_ | addedAt preserved on re-sync; parseReleaseDate defensive; date-range boundary inclusive; sort reacts to settings; DI double-instance fixed. +AlbumMapperTest. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-passes. `desktopTest` = **47 tests / 0 failing** (as of 2026-09-07 — the 16 pre-existing
-failures are fixed, see 5.2).
+passes. `desktopTest` = **55 tests / 0 failing** (as of 2026-09-08).
 
 `compileDebugKotlinAndroid` now **passes** (see 1.12 — fixed 2026-09-07).
 

@@ -54,10 +54,10 @@ class LibraryService(
 
 
     fun getFilteredAlbums(filter: AlbumFilter): Flow<List<AlbumDisplayData>> =
-        getAllAlbumsEnriched().map { albums ->
+        combine(getAllAlbumsEnriched(), settingsRepository.settings) { albums, settings ->
             val filtered = filterAlbums(albums, filter)
 
-            when (settingsRepository.settings.value.defaultSortOrder) {
+            when (settings.defaultSortOrder) {
                 SortOrder.ARTIST_NAME -> filtered.sortedBy { it.album.primaryArtist.lowercase() }
                 SortOrder.ALBUM_NAME -> filtered.sortedBy { it.album.name.lowercase() }
                 SortOrder.RELEASE_DATE -> filtered.sortedByDescending { it.album.releaseDate }
@@ -103,9 +103,10 @@ class LibraryService(
     private fun matchesDateRange(album: Album, dateRange: DateRange?): Boolean {
         if (dateRange == null) return true
 
+        // start/end are inclusive bounds (the UI builds them as Jan 1 .. Dec 31).
         return when {
-            dateRange.start != null && album.releaseDate <= dateRange.start -> false
-            dateRange.end != null && album.releaseDate >= dateRange.end -> false
+            dateRange.start != null && album.releaseDate < dateRange.start -> false
+            dateRange.end != null && album.releaseDate > dateRange.end -> false
             else -> true
         }
     }
