@@ -12,10 +12,12 @@ import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.events.AlbumEvent
 import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
+import io.github.peningtonj.recordcollection.network.miscApi.model.MusicBrainzResponse
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 import io.github.peningtonj.recordcollection.util.LoggingUtils
+import io.github.peningtonj.recordcollection.util.resultOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -246,29 +248,21 @@ class AlbumRepository(
     /**
      * SPOTIFY OPERATIONS
      */
-    suspend fun fetchAlbum(albumId: String): Album? {
-        // Determine if this is an internal ID (short hash) or Spotify ID (22 chars)
-        val isInternalId = albumId.length < 20
 
-        val spotifyId = if (isInternalId) {
-            // Internal ID – look up spotify_id from Firestore
-            albumsRef.document(albumId).get()
-                .takeIf { it.exists }
-                ?.data<AlbumDocument>()
-                ?.spotifyId
-                ?: albumId // If not found, try using the ID as-is
-        } else {
-            albumId
-        }
-
-        spotifyApi.library.getAlbum(spotifyId)
-            .onSuccess { response ->
-                return AlbumMapper.toDomain(response)
-            }.onFailure { error ->
-                throw (error)
-            }
-        return null
+    /** Resolves an internal (short hash) album id to its Spotify id via Firestore; passes a real Spotify id through. */
+    private suspend fun resolveSpotifyId(albumId: String): String {
+        if (albumId.length >= 20) return albumId
+        return albumsRef.document(albumId).get()
+            .takeIf { it.exists }
+            ?.data<AlbumDocument>()
+            ?.spotifyId
+            ?: albumId
     }
+
+    /** Fetches an album from Spotify. `failure` on a network/API error or if it isn't found. */
+    suspend fun fetchAlbum(albumId: String): Result<Album> =
+        spotifyApi.library.getAlbum(resolveSpotifyId(albumId))
+            .map { AlbumMapper.toDomain(it) }
 
     suspend fun fetchAllNewReleases(): List<Album> {
         val response = spotifyApi.user.getNewReleases().getOrNull() ?: return emptyList()
@@ -281,17 +275,10 @@ class AlbumRepository(
         return result.getOrNull()?.map { AlbumMapper.toDomain(it) } ?: emptyList()
     }
 
-    suspend fun fetchMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = runCatching {
-        if (ids.isEmpty()) return@runCatching emptyList()
+    suspend fun fetchMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = resultOf {
+        if (ids.isEmpty()) return@resultOf emptyList()
 
-        // Convert internal IDs to Spotify IDs by looking up in Firestore
-        val spotifyIds = ids.map { id ->
-            albumsRef.document(id).get()
-                .takeIf { it.exists }
-                ?.data<AlbumDocument>()
-                ?.spotifyId
-                ?: id // If not found in Firestore, assume it's already a Spotify ID
-        }
+        val spotifyIds = ids.map { resolveSpotifyId(it) }
 
         val albums = mutableListOf<Album>()
 
@@ -321,13 +308,14 @@ class AlbumRepository(
     /**
      * OTHER APIS
      */
-    suspend fun fetchReleaseGroupId(album: Album) =
-        if (album.externalIds?.containsKey("upc") ?: false) {
-            miscApi.getAlbumReleaseDetailsByUPC(album.externalIds["upc"]!!)
-        } else {
-            Napier.w("Album does not have an UPC, skipping release group fetch")
-            throw IllegalArgumentException("Album does not have an UPC")
+    suspend fun fetchReleaseGroupId(album: Album): Result<MusicBrainzResponse> {
+        val upc = album.externalIds?.get("upc")
+        if (upc.isNullOrEmpty()) {
+            Napier.w("Album '${album.name}' has no UPC, skipping release group fetch")
+            return Result.failure(IllegalArgumentException("Album has no UPC"))
         }
+        return miscApi.getAlbumReleaseDetailsByUPC(upc)
+    }
 
     suspend fun fetchReleaseGroup(releaseGroupId: String) =
         miscApi.getReleasesForGroup(releaseGroupId)

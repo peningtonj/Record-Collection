@@ -14,7 +14,9 @@ class ReleaseGroupUseCase(
 
     suspend fun getReleaseFromAlbum(album: Album): Release? {
         Napier.d { "Fetching release group id for  ${album.name}" }
-        return albumRepository.fetchReleaseGroupId(album).getOrNull()?.releases?.first()
+        return albumRepository.fetchReleaseGroupId(album)
+            .onFailure { Napier.w("No release group for ${album.name}: ${it.message}") }
+            .getOrNull()?.releases?.firstOrNull()
     }
     suspend fun getReleases(releaseGroupId: String): List<Release> {
             Napier.d { "Fetched release group $releaseGroupId" }

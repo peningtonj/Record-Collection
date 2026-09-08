@@ -86,9 +86,20 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
       Login retry button already drove recovery; now the reason is shown too).
     - Tests: `ResultExtTest`, `ProfileRepositoryTest`, `LibraryServiceTest`
       "applySync surfaces a Spotify write failure".
-  - **Still to do**: `AlbumRepository.fetchAlbum` (`Album?` + `throw`), the rest of
-    `LibraryService` / `CollectionsService`, `TrackRepository` writes, and a project-wide
-    convention pass. Item 1.4 (Flow operators) already done.
+  - **Slice 2 — `AlbumRepository` fetch/API operations** (2026-09-08):
+    - `fetchAlbum(id)` → `Result<Album>` (was `Album?` that *threw* on API error). Built
+      on `spotifyApi.library.getAlbum(...).map { toDomain(it) }` — no manual throw.
+      Internal→Spotify id lookup extracted to `resolveSpotifyId()`.
+    - `fetchMultipleAlbums` — `runCatching` → `resultOf` (was swallowing
+      `CancellationException`).
+    - `fetchReleaseGroupId(album)` → `Result.failure(IllegalArgumentException)` instead
+      of `throw` when the album has no UPC — now consistent with its success return type.
+    - `GetAlbumDetailUseCase.getApiAlbumData` uses `.getOrElse { … }`;
+      `ReleaseGroupUseCase.getReleaseFromAlbum` uses `.firstOrNull()` (was `.first()` —
+      `NoSuchElementException` on an empty release list) and logs the failure.
+    - Tests updated in `AlbumRepositoryTest`.
+  - **Still to do**: the rest of `LibraryService` / `CollectionsService`, `TrackRepository`
+    writes, and a project-wide convention pass. Item 1.4 (Flow operators) already done.
 - **Why**: `AGENTS.md` already flags this. The mix means callers can't know whether
   to `try/catch`, check for null, or inspect a `Result`. Sync operations currently
   **swallow failures entirely** — a failed sync looks identical to a successful one.
@@ -486,10 +497,11 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-08 | 4 | 4.1, 4.3, 4.4, 4.5, 4.6 | 41e5494 | addedAt preserved on re-sync; parseReleaseDate defensive; date-range boundary inclusive; sort reacts to settings; DI double-instance fixed. +AlbumMapperTest. |
 | 2026-09-08 | 1 | 1.2 | 09eab02 | ViewModels via `viewModel { }` + per-screen ViewModelStore owned by the navigator; `onCleared()` now fires on pop. +ScreenViewModelStoresTest, +DesktopNavigatorTest. |
 | 2026-09-08 | 1/4 | 1.3 (slice 1), 4.7, 4.8 | 9ab5512 | ResultExt helper; ProfileRepository → Result<Unit> w/ aggregation; sync failures → SyncState.Error; LoginViewModel surfaces AuthState.Error. +ResultExtTest, +ProfileRepositoryTest. |
+| 2026-09-08 | 1 | 1.3 (slice 2) | _pending_ | AlbumRepository.fetchAlbum → Result<Album>; fetchReleaseGroupId → Result.failure not throw; fetchMultipleAlbums resultOf; caller `.first()` → `.firstOrNull()`. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-passes. `desktopTest` = **70 tests / 0 failing** (as of 2026-09-08). Desktop app boots &
-runs.
+passes. `desktopTest` = **70 tests / 0 failing** (as of 2026-09-08, 1.3 slice 2). Desktop
+app boots & runs.
 
 `compileDebugKotlinAndroid` now **passes** (see 1.12 — fixed 2026-09-07).
 

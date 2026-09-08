@@ -23,7 +23,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.assertEquals
 import kotlin.test.Test
-import kotlin.test.assertFailsWith
 
 class AlbumRepositoryTest {
 
@@ -135,20 +134,21 @@ class AlbumRepositoryTest {
         every { AlbumMapper.toDomain(testAlbumDto) } returns testAlbum
 
         val result = repository.fetchAlbum("test-album-id")
-        assertEquals(testAlbum, result)
+        assertEquals(testAlbum, result.getOrNull())
     }
 
     @Test
-    fun `fetchAlbum throws exception on failure`() = runTest {
+    fun `fetchAlbum returns failure when the API call fails`() = runTest {
         val mockLibraryApi = mockk<LibraryApi>()
         val testException = RuntimeException("Network error")
 
         every { spotifyApi.library } returns mockLibraryApi
         coEvery { mockLibraryApi.getAlbum("test-album-id") } returns Result.failure(testException)
 
-        assertFailsWith<RuntimeException> {
-            repository.fetchAlbum("test-album-id")
-        }
+        val result = repository.fetchAlbum("test-album-id")
+
+        assertTrue(result.isFailure)
+        assertEquals(testException, result.exceptionOrNull())
     }
 
     @Test
@@ -203,12 +203,13 @@ class AlbumRepositoryTest {
     // MISC API OPERATIONS TESTS
 
     @Test
-    fun `fetchReleaseGroupId throws exception when UPC is not present`() = runTest {
+    fun `fetchReleaseGroupId returns failure when UPC is not present`() = runTest {
         val albumWithoutUpc = testAlbum.copy(externalIds = emptyMap())
 
-        assertFailsWith<IllegalArgumentException> {
-            repository.fetchReleaseGroupId(albumWithoutUpc)
-        }
+        val result = repository.fetchReleaseGroupId(albumWithoutUpc)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
     }
 
 }

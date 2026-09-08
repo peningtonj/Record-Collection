@@ -9,6 +9,7 @@ import io.github.peningtonj.recordcollection.ui.models.AlbumCollectionUiState
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import io.github.peningtonj.recordcollection.ui.models.TagUiState
 import io.github.peningtonj.recordcollection.util.DomainException
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -75,21 +76,21 @@ class GetAlbumDetailUseCase(
     }
 
     private suspend fun getApiAlbumData(albumId: String, getTracks: Boolean = true): AlbumDetailUiState {
-        val apiAlbum = albumRepository.fetchAlbum(albumId)
-        apiAlbum?.let {
-            val apiTracks = if (getTracks) trackRepository.fetchTracksForAlbum(apiAlbum) else emptyList()
-            return AlbumDetailUiState(
-                album = apiAlbum,
-                tags = emptyList(),
-                collections = emptyList(),
-                tracks = apiTracks,
-                totalDuration = apiTracks.sumOf { it.durationMs },
-                rating = null,
-                isLoading = false,
-                error = null,
-                releaseGroup = emptyList()
-            )
+        val apiAlbum = albumRepository.fetchAlbum(albumId).getOrElse { cause ->
+            Napier.w("fetchAlbum($albumId) failed", cause)
+            throw DomainException.AlbumNotFoundException(albumId)
         }
-        throw DomainException.AlbumNotFoundException(albumId)
+        val apiTracks = if (getTracks) trackRepository.fetchTracksForAlbum(apiAlbum) else emptyList()
+        return AlbumDetailUiState(
+            album = apiAlbum,
+            tags = emptyList(),
+            collections = emptyList(),
+            tracks = apiTracks,
+            totalDuration = apiTracks.sumOf { it.durationMs },
+            rating = null,
+            isLoading = false,
+            error = null,
+            releaseGroup = emptyList()
+        )
     }
 }
