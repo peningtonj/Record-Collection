@@ -515,7 +515,7 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-08 | 1 | 1.2 | 09eab02 | ViewModels via `viewModel { }` + per-screen ViewModelStore owned by the navigator; `onCleared()` now fires on pop. +ScreenViewModelStoresTest, +DesktopNavigatorTest. |
 | 2026-09-08 | 1/4 | 1.3 (slice 1), 4.7, 4.8 | 9ab5512 | ResultExt helper; ProfileRepository → Result<Unit> w/ aggregation; sync failures → SyncState.Error; LoginViewModel surfaces AuthState.Error. +ResultExtTest, +ProfileRepositoryTest. |
 | 2026-09-08 | 1 | 1.3 (slice 2) | 85cfb70 | AlbumRepository.fetchAlbum → Result<Album>; fetchReleaseGroupId → Result.failure not throw; fetchMultipleAlbums resultOf; caller `.first()` → `.firstOrNull()`. |
-| 2026-09-08 | 1 | 1.3 (slice 3) | _pending_ | ViewModelExt.launchSafely; every bare viewModelScope.launch across all 10 VMs converted; PlaybackViewModel catches re-throw CancellationException; AGENTS.md updated. **1.3 done.** |
+| 2026-09-08 | 1 | 1.3 (slice 3) | 28464bd | ViewModelExt.launchSafely; every bare viewModelScope.launch across all 10 VMs converted; PlaybackViewModel catches re-throw CancellationException; AGENTS.md updated. **1.3 done.** |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 passes. `desktopTest` = **70 tests / 0 failing** (as of 2026-09-08). Desktop app boots & runs.
