@@ -464,7 +464,7 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-08 | 1 | 1.10 | 6dd4c89 | All deps via version catalog; ktor unified 3.1.0, coil 3.2.0, serialization-json 1.9.0, coroutines-test 1.10.2; pruned 8 dead template entries. |
 | 2026-09-07 | test | coil smoke | 5f78c90 | CoilNetworkSmokeTest — real fetch+decode through coil pipeline. |
 | 2026-09-08 | 4 | 4.1, 4.3, 4.4, 4.5, 4.6 | 41e5494 | addedAt preserved on re-sync; parseReleaseDate defensive; date-range boundary inclusive; sort reacts to settings; DI double-instance fixed. +AlbumMapperTest. |
-| 2026-09-08 | 1 | 1.2 | _pending_ | ViewModels via `viewModel { }` + per-screen ViewModelStore owned by the navigator; `onCleared()` now fires on pop. +ScreenViewModelStoresTest, +DesktopNavigatorTest. |
+| 2026-09-08 | 1 | 1.2 | 09eab02 | ViewModels via `viewModel { }` + per-screen ViewModelStore owned by the navigator; `onCleared()` now fires on pop. +ScreenViewModelStoresTest, +DesktopNavigatorTest. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 passes. `desktopTest` = **61 tests / 0 failing** (as of 2026-09-08). Desktop app boots &
