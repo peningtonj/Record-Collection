@@ -1,8 +1,6 @@
 # Record Collection - Production Roadmap
 
-**Last Updated**: 2026-09-07  
 **Status**: Development → Production-Ready  
-**Timeline**: 12-16 weeks
 
 > **Start here:** [TECH_DEBT.md](TECH_DEBT.md) is the concrete, file-level fix
 > list from a full code review. It supersedes this roadmap for *what is wrong today*.
@@ -14,20 +12,28 @@
 
 This roadmap outlines the path to transform Record Collection from a functional prototype to a production-ready application. The plan addresses stability, scalability, user experience, and deployment infrastructure needs.
 
-### Current State Assessment (2026-09-07, post-review)
-✅ **Working Features**: Core functionality operational  
-🔴 **Security**: Firestore has **no authentication** — no Firebase Auth, no security rules committed; the multi-user database is effectively open (TECH_DEBT 2.1)  
-🔴 **Data integrity**: Album document IDs are a collision-prone 32-bit `String.hashCode()` (TECH_DEBT 2.2)  
-🔴 **Bad patterns**: `runBlocking` on the UI thread; ViewModels leak (`remember`-constructed, `onCleared()` never fires); inconsistent error handling (TECH_DEBT § 1)  
-🔴 **Android**: `:composeApp:compileDebugKotlinAndroid` does not compile — missing `androidx.browser` dep + JVM-target 11/17 mismatch (TECH_DEBT 1.12). Desktop is fine.  
-⚠️ **Infrastructure**: Local-only, no cloud services, no Firestore rules deployed  
-⚠️ **Testing**: ~1,100 test LOC for ~21k prod LOC; **CI runs no tests** (TECH_DEBT 3.7)  
-⚠️ **Repo hygiene**: query logs committed to git and growing every commit (TECH_DEBT 2.3)  
-⚠️ **Monitoring**: No production observability  
+### Current State Assessment
 
-> Note: the "✅ … in place" bullets in each Phase's *Deliverables* list describe that
-> phase's intended output — they are **not** claims about the current build. As of
-> 2026-09-07, Phase 1 is not complete.
+See [TECH_DEBT.md](TECH_DEBT.md) for the authoritative, item-level status. Summary:
+
+✅ **Bad patterns** — fixed. `runBlocking` off the UI thread; ViewModels via `viewModel { }`
+with per-screen `ViewModelStore` (`onCleared()` fires); error handling standardised on
+`Result` / `launchSafely` (TECH_DEBT § 1).
+✅ **Android** — compiles again; CI builds it (`androidx.browser` + JVM 17) (TECH_DEBT 1.12).
+✅ **Testing / CI** — CI runs `desktopTest` (70/0) + the Android compile on every push
+(TECH_DEBT 3.7).
+✅ **Repo hygiene** — query logs / secrets / SQLite dumps untracked and `.gitignore`d;
+version catalog is the single source of truth (TECH_DEBT 2.3, 2.4, 1.10).
+🟡 **Security** — anonymous-auth stopgap in place (all writes require *some* authenticated
+client); real per-user isolation still deferred (TECH_DEBT 2.1). Secrets are still stored
+at rest unencrypted (TECH_DEBT 2.5).
+🟡 **Data integrity** — SHA-256 album IDs shipped in code; the one-time Firestore
+re-key migration has **not been run** yet (TECH_DEBT 2.2).
+🔴 **Infrastructure** — local-only; no cloud backend, no offline-first sync.
+🔴 **Monitoring** — no production observability.
+
+> The "✅ … in place" bullets in each Phase's *Deliverables* list describe that phase's
+> intended output — they are goals, not claims about the current build.
 
 ### Target State
 🎯 **Stable Application**: Robust error handling and recovery  
@@ -41,11 +47,11 @@ This roadmap outlines the path to transform Record Collection from a functional 
 
 ## Table of Contents
 
-1. [Phase 1: Critical Bugs & Stability (Weeks 1-3)](#phase-1-critical-bugs--stability)
-2. [Phase 2: Architecture Refactoring (Weeks 4-6)](#phase-2-architecture-refactoring)
-3. [Phase 3: Platform Completeness (Weeks 7-9)](#phase-3-platform-completeness)
-4. [Phase 4: Cloud Infrastructure (Weeks 10-12)](#phase-4-cloud-infrastructure)
-5. [Phase 5: Production Readiness (Weeks 13-16)](#phase-5-production-readiness)
+1. [Phase 1: Critical Bugs & Stability](#phase-1-critical-bugs--stability)
+2. [Phase 2: Architecture Refactoring](#phase-2-architecture-refactoring)
+3. [Phase 3: Platform Completeness](#phase-3-platform-completeness)
+4. [Phase 4: Cloud Infrastructure](#phase-4-cloud-infrastructure)
+5. [Phase 5: Production Readiness](#phase-5-production-readiness)
 6. [Cloud Infrastructure Plan](#cloud-infrastructure-plan)
 7. [Architecture Recommendations](#architecture-recommendations)
 8. [Success Metrics](#success-metrics)
@@ -53,10 +59,9 @@ This roadmap outlines the path to transform Record Collection from a functional 
 ---
 
 ## Phase 1: Critical Bugs & Stability
-**Duration**: 3 weeks  
 **Goal**: Fix immediate bugs, standardize error handling
 
-### Week 1: Fix Critical Bugs
+### Fix Critical Bugs
 
 #### 1.1 Fix Import Errors ⚠️ CRITICAL
 **Issue**: Invalid import in `LibraryViewModel.kt` line 18
@@ -147,7 +152,7 @@ sealed class DomainException(message: String) : Exception(message) {
 }
 ```
 
-### Week 2: Standardize Error Handling
+### Standardize Error Handling
 
 #### 2.1 Repository Layer Error Handling
 **Current Issues**:
@@ -304,7 +309,7 @@ class CircuitBreaker(
 }
 ```
 
-### Week 3: Database Stability
+### Database Stability
 
 #### 3.1 Add Database Migrations
 **Current Issue**: Manual migration utility, no versioning
@@ -381,10 +386,9 @@ class DatabaseDriver {
 ---
 
 ## Phase 2: Architecture Refactoring
-**Duration**: 3 weeks  
 **Goal**: Improve code organization, testability, scalability
 
-### Week 4: Repository Pattern Enhancement
+### Repository Pattern Enhancement
 
 #### 4.1 Introduce Domain Layer
 **Current**: Direct mapping from DTO → Domain in repositories  
@@ -493,7 +497,7 @@ class LibraryStatisticsService(
 }
 ```
 
-### Week 5: State Management & Data Flow
+### State Management & Data Flow
 
 #### 5.1 Implement Unidirectional Data Flow (UDF)
 **Goal**: Make state changes predictable and testable
@@ -592,7 +596,7 @@ data class Album(
 ) : Parcelable
 ```
 
-### Week 6: Testing Infrastructure
+### Testing Infrastructure
 
 #### 6.1 Unit Test Coverage
 **Goal**: 80%+ coverage for business logic
@@ -763,10 +767,9 @@ fun `shows error message when loading fails`() {
 ---
 
 ## Phase 3: Platform Completeness
-**Duration**: 3 weeks  
 **Goal**: Feature parity and platform optimization
 
-### Week 7: Android Platform
+### Android Platform
 
 #### 7.1 Android-Specific Features
 **Background sync**:
@@ -875,7 +878,7 @@ CREATE INDEX idx_albums_added_library ON albums(added_at DESC, in_library)
 WHERE in_library = 1;
 ```
 
-### Week 8: Desktop Platform
+### Desktop Platform
 
 #### 8.1 Desktop-Specific Features
 **System tray integration**:
@@ -996,7 +999,7 @@ fun AlbumGrid(albums: List<Album>) {
 }
 ```
 
-### Week 9: Cross-Platform Polish
+### Cross-Platform Polish
 
 #### 9.1 Platform Abstraction
 **Expect/Actual pattern for platform features**:
@@ -1075,10 +1078,9 @@ fun ExpandedLayout() {
 ---
 
 ## Phase 4: Cloud Infrastructure
-**Duration**: 3 weeks  
 **Goal**: Enable cloud sync, backup, and analytics
 
-### Week 10: Backend Infrastructure Setup
+### Backend Infrastructure Setup
 
 #### 10.1 Cloud Provider Selection
 **Recommendation**: **Firebase + Cloud Run hybrid**
@@ -1230,7 +1232,7 @@ service cloud.firestore {
 }
 ```
 
-### Week 11: Sync Implementation
+### Sync Implementation
 
 #### 11.1 Sync Strategy
 **Two-way sync with conflict resolution**:
@@ -1381,7 +1383,7 @@ class OfflineFirstAlbumRepository(
 }
 ```
 
-### Week 12: Cloud Features
+### Cloud Features
 
 #### 12.1 Cloud Backup
 ```kotlin
@@ -1507,10 +1509,9 @@ class PrivacySettings(
 ---
 
 ## Phase 5: Production Readiness
-**Duration**: 4 weeks  
 **Goal**: Polish, monitoring, deployment
 
-### Week 13: Observability
+### Observability
 
 #### 13.1 Logging Strategy
 ```kotlin
@@ -1667,7 +1668,7 @@ class AppMetrics {
 }
 ```
 
-### Week 14: Security Hardening
+### Security Hardening
 
 #### 14.1 Secure Credential Storage
 ```kotlin
@@ -1796,7 +1797,7 @@ sealed interface ValidationResult {
 }
 ```
 
-### Week 15: User Experience Polish
+### User Experience Polish
 
 #### 15.1 Loading States
 ```kotlin
@@ -1935,7 +1936,7 @@ NavHost(
 }
 ```
 
-### Week 16: Deployment & Launch
+### Deployment & Launch
 
 #### 16.1 CI/CD Pipeline
 ```yaml
@@ -2374,48 +2375,40 @@ class SyncStateMachine {
 
 ---
 
-## Timeline Summary
+## Phase Summary
 
-| Phase | Duration | Key Deliverables |
-|-------|----------|------------------|
-| 1. Critical Bugs | 3 weeks | Bug fixes, error handling, Android auth |
-| 2. Architecture | 3 weeks | Domain layer, testing, refactoring |
-| 3. Platforms | 3 weeks | Platform features, optimization |
-| 4. Cloud | 3 weeks | Firebase, sync, backup |
-| 5. Production | 4 weeks | Monitoring, security, deployment |
-| **Total** | **16 weeks** | **Production-ready app** |
+| Phase | Key Deliverables |
+| --- | --- |
+| 1. Critical Bugs & Stability | Bug fixes, error handling, Android auth |
+| 2. Architecture Refactoring | Domain layer, testing, refactoring |
+| 3. Platform Completeness | Platform features, optimization |
+| 4. Cloud Infrastructure | Firebase, sync, backup |
+| 5. Production Readiness | Monitoring, security, deployment |
 
 ---
 
 ## Next Steps
 
-### Immediate Actions (This Week)
-1. ✅ Fix critical import error in LibraryViewModel
-2. ✅ Set up Firebase project
-3. ✅ Create GitHub repository (if not already)
-4. ✅ Set up CI/CD pipeline
-5. ✅ Implement Android authentication
+### Done
+- Critical import errors fixed; Android compiles and is on CI
+- Firebase project set up; CI pipeline running `desktopTest` + Android compile
+- Anonymous Firebase auth
+- Error handling standardised (`Result` / `launchSafely`) across repositories & ViewModels
+- Domain layer with use cases in place
 
-### Short-term (Next 2 Weeks)
-1. Standardize error handling across repositories
-2. Add comprehensive unit tests
-3. Implement domain layer with use cases
-4. Set up crash reporting
+### Now
+1. Run the SHA-256 album-id Firestore migration (TECH_DEBT 2.2)
+2. Deploy `firestore.rules`; finish the Section 2 security follow-ups
+3. Section 5 hygiene: migration-doc consolidation, R8 release build, `enableEdgeToEdge`
 
-### Medium-term (Next Month)
-1. Complete platform-specific features
-2. Implement cloud sync
-3. Add performance monitoring
-4. Conduct security audit
+### Next
+1. Expand test coverage (auth refresh, playback state machine, collections)
+2. Real per-user auth (custom-token Cloud Function) + per-collection Firestore rules
+3. Secure credential storage (encrypted at rest)
+4. Crash reporting + performance monitoring
 
-### Long-term (Next 3 Months)
+### Later
 1. Beta testing program
 2. App store submission
 3. Marketing and launch
-4. User feedback loop
-
----
-
-**Document Owner**: Architecture & Product Team  
-**Review Cycle**: Bi-weekly  
-**Last Updated**: 2026-01-27
+4. User feedback loop  
