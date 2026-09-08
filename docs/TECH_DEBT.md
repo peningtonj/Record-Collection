@@ -294,12 +294,14 @@ disagree, this document is the source of truth for *what is actually wrong today
 
 ### 2.8 — Playback poller runs unconditionally
 
-- [ ] **Why**: `PlaybackPoller` hits `GET /me/player` every 1.5–8 s whenever a session
-  exists — ~30–40 Spotify req/min with the app just sitting open (confirmed via
-  `TrafficMetrics`). No back-off when the window is unfocused / the app is backgrounded on
-  desktop.
-- **Fix**: pause or slow the poll when the window isn't focused; stop it when there's no
-  playback session for N minutes.
+- [~] **Idle back-off landed** — `PlaybackPoller` now ramps its delay
+  (`PLAYBACK_IDLE_BACKOFF_STEPS` = 8 s → 20 s → 45 s → 60 s) on each consecutive poll that
+  sees nothing playing, resetting to the active rate the moment playback resumes. App left
+  open with nothing playing settled to ~3 `/me/player` req/min (was ~30–40), confirmed via
+  `TrafficMetrics`. `+PlaybackPollerTest`.
+- [ ] **Still open**: no window-focus / lifecycle signal — a desktop window in the
+  background or an Android app that's backgrounded still polls (just at the idle rate).
+  Wiring an `isForeground` expect/actual into the poller would let it pause entirely.
 
 ---
 
@@ -468,7 +470,8 @@ Ordered oldest → newest. Docs-only commits (progress-log updates, link fixes) 
 | `a1705c9` | 2.7 (v1) | denormalised stable-field projection on `users/{uid}/library_albums`; `getAllAlbumsInLibrary` renders from one listener, no `albums` fan-out; `scripts/backfill_library_projection.py`; `+AlbumMapperTest` |
 | `c4c2453` | 2.7 (collections) | same projection on `collections/{name}.albums[]`; `getAlbumsInCollection` no longer joins `albums`; `addAlbumToCollection(name, album)`; backfill script extended; `+AlbumMapperTest` |
 | `f2551fe` | 2.7 (tracklists) | `TrackRepository.getAlbumTracks` — in-memory 24 h-TTL cache; removed the permanent `tracks` tracklist mirror (`getTracksForAlbum` / `checkAndUpdateTracksIfNeeded` / `fetchAndSaveTracks`); `combine(5)`→`(4)` in `GetAlbumDetailUseCase` |
+| `_______` | 2.8 | `PlaybackPoller` progressive idle back-off (`PLAYBACK_IDLE_BACKOFF_STEPS` 8→20→45→60 s); ~3 `/me/player` req/min while idle, was ~30–40; `+PlaybackPollerTest` |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **76 tests / 0 failing**.
+and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **77 tests / 0 failing**.
 Desktop app boots & runs.

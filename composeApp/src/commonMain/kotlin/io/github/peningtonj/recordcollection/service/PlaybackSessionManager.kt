@@ -27,6 +27,11 @@ const val PLAYBACK_ACTIVE_POLLING_DELAY = 1500L
 const val PLAYBACK_INACTIVE_POLLING_DELAY = 8000L
 const val TRANSITIONING_POLLING_DELAY_MS = 150L
 
+// Progressive back-off while nothing is playing (TECH_DEBT 2.8): each consecutive
+// idle poll steps the delay up to a cap, so an app left open with no playback settles
+// to ~1 req/min instead of hammering /me/player at the flat inactive rate forever.
+val PLAYBACK_IDLE_BACKOFF_STEPS = longArrayOf(8_000L, 20_000L, 45_000L, 60_000L)
+
 /**
  * Long-lived session manager that lives in the DI container (process scope).
  *
@@ -239,6 +244,9 @@ class PlaybackPoller(
     private var pollingJob: Job? = null
     private val _delayMs = MutableStateFlow(PLAYBACK_ACTIVE_POLLING_DELAY)
 
+    /** Consecutive polls that saw nothing playing — drives the idle back-off. */
+    private var idlePolls = 0
+
     fun start(scope: CoroutineScope) {
         pollingJob?.cancel()
         pollingJob = scope.launch {
@@ -248,9 +256,14 @@ class PlaybackPoller(
                     val playback = playbackRepository.getCurrentPlayback(pollerName = pollerName)
                     onPlaybackUpdate(playback)
                     if (playback == null || !playback.isPlaying) {
-                        _delayMs.value = PLAYBACK_INACTIVE_POLLING_DELAY
-                    } else if (_delayMs.value == PLAYBACK_INACTIVE_POLLING_DELAY) {
-                        _delayMs.value = PLAYBACK_ACTIVE_POLLING_DELAY
+                        val step = minOf(idlePolls, PLAYBACK_IDLE_BACKOFF_STEPS.lastIndex)
+                        _delayMs.value = PLAYBACK_IDLE_BACKOFF_STEPS[step]
+                        idlePolls++
+                    } else {
+                        idlePolls = 0
+                        if (_delayMs.value >= PLAYBACK_INACTIVE_POLLING_DELAY) {
+                            _delayMs.value = PLAYBACK_ACTIVE_POLLING_DELAY
+                        }
                     }
                     onError(null)
                 } catch (e: Exception) {
@@ -264,6 +277,7 @@ class PlaybackPoller(
     }
 
     fun setPollingDelay(delayMs: Long) {
+        if (delayMs <= PLAYBACK_ACTIVE_POLLING_DELAY) idlePolls = 0
         _delayMs.value = delayMs
     }
 
