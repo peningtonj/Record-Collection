@@ -268,6 +268,11 @@ disagree, this document is the source of truth for *what is actually wrong today
   isn't.)
 - **Fix**: move to `users/{uid}/saved_tracks/{trackId}` — a per-user join like
   `library_albums`. Do it with the 2.1 auth pass.
+- **Note**: since the tracklist mirror was removed (2.7), `tracks/{id}` docs written by
+  `addTrackToLibrary` carry only `{is_saved:true}` (no track body), so
+  `getSavedTracks()` can no longer rebuild `Track`s from them and the heart indicator on
+  an album's tracklist no longer reflects liked status. Fixing this properly *is* the
+  per-user move above.
 
 ### 2.7 — Spotify metadata cache: no TTL, ToS exposure
 
@@ -277,11 +282,15 @@ disagree, this document is the source of truth for *what is actually wrong today
   no `albums` fan-out. See `docs/DATA_MODEL.md`. **Run
   `scripts/backfill_library_projection.py`** to populate existing entries (it backfills
   both) — the app falls back to the old join until then.
-- [ ] **v2 remaining**: `albums`/`artists`/`tracks` are still a shared, indefinitely-
-  retained mirror with no `fetched_at`. Add a ~24 h TTL + refresh; stop persisting
-  `tracks` as a permanent collection (fetch per detail view into a memory/on-device
-  cache); and/or move the volatile cache to `users/{uid}/…` or a backend proxy.
-  Traffic before/after is measurable via `util/TrafficMetrics` (`Traffic` log tag).
+- [~] **tracklist cache landed** — `tracks` is no longer a permanent Firestore mirror of
+  album tracklists. `TrackRepository.getAlbumTracks(album)` fetches from Spotify into an
+  in-memory 24 h-TTL `Map` (`TRACKLIST_TTL`), dropped on restart. Album detail, the
+  play-queue builder and "save all album songs" read through it.
+- [ ] **v2 remaining**: `albums`/`artists` are still a shared, indefinitely-retained
+  mirror with no `fetched_at`. Add a ~24 h TTL + refresh; and/or move the volatile cache
+  to `users/{uid}/…` or a backend proxy. `tracks` still exists only as the (broken, 2.6)
+  global liked-songs store. Traffic before/after is measurable via `util/TrafficMetrics`
+  (`Traffic` log tag).
 
 ### 2.8 — Playback poller runs unconditionally
 

@@ -296,7 +296,7 @@ class LibraryService(
     }
 
     suspend fun addAllSongsFromAlbumToSavedSongs(album: Album) {
-        val tracks = trackRepository.getTracksForAlbum(album.id).first()
+        val tracks = trackRepository.getAlbumTracks(album)
         Napier.d { "Adding ${tracks.size} tracks to saved songs" }
         trackRepository.saveTracksRemote(
             tracks.map { it.id }

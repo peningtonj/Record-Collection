@@ -85,7 +85,6 @@ fun rememberAlbumDetailViewModel(
         albumId = albumId,
         spotifyId = spotifyId,
         getAlbumDetailUseCase = dependencies.albumDetailUseCase,
-        trackRepository = dependencies.trackRepository
     )
 }
 

@@ -12,6 +12,10 @@ import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Clock
+import kotlin.time.Duration.Companion.hours
 
 class TrackRepository(
     firestore: FirebaseFirestore,
@@ -19,25 +23,31 @@ class TrackRepository(
 ) {
     private val tracksCollection = firestore.collection("tracks")
 
-    fun getTracksForAlbum(albumId: String): Flow<List<Track>> =
-        tracksCollection
-            .where { "album_id" equalTo albumId }
-            .orderBy("track_number")
-            .snapshots
-            .map { snapshot ->
-                LoggingUtils.logFirebaseResult("tracks", "snapshots by album_id", snapshot.documents.size)
-                snapshot.documents.mapNotNull { it.toTrack() }
-            }
+    // ── Album tracklists ──────────────────────────────────────────────────────
+    // Tracklists are volatile Spotify metadata: fetched on demand into a short-TTL
+    // in-memory cache, never persisted to Firestore (see docs/DATA_MODEL.md, TECH_DEBT 2.7).
+    private data class CachedTracklist(val tracks: List<Track>, val fetchedAtMs: Long)
+    private val tracklistCache = mutableMapOf<String, CachedTracklist>()
+    private val tracklistMutex = Mutex()
 
-    suspend fun checkAndUpdateTracksIfNeeded(albumId: String, spotifyId: String) {
-        Napier.d("Checking if tracks exist for album $albumId")
-        val existing = tracksCollection.where { "album_id" equalTo albumId }.get()
-        LoggingUtils.logFirebaseResult("tracks", "get by album_id (existence check)", existing.documents.size)
-        val tracksExist = existing.documents.isNotEmpty()
-        Napier.d { "Tracks exist: $tracksExist" }
-        if (!tracksExist) {
-            fetchAndSaveTracks(albumId, spotifyId)
+    /**
+     * Album tracklist, cache-first. Hits Spotify on a cold/stale entry; the result lives
+     * in memory for [TRACKLIST_TTL] and is dropped on app restart. Returns `emptyList()`
+     * if the fetch fails (and does not cache the failure).
+     */
+    suspend fun getAlbumTracks(album: Album, forceRefresh: Boolean = false): List<Track> {
+        val now = Clock.System.now().toEpochMilliseconds()
+        if (!forceRefresh) {
+            val cached = tracklistMutex.withLock { tracklistCache[album.id] }
+            if (cached != null && now - cached.fetchedAtMs < TRACKLIST_TTL.inWholeMilliseconds) {
+                return cached.tracks
+            }
         }
+        val fetched = fetchTracksForAlbum(album)
+        if (fetched.isNotEmpty()) {
+            tracklistMutex.withLock { tracklistCache[album.id] = CachedTracklist(fetched, now) }
+        }
+        return fetched
     }
 
     suspend fun fetchLibraryTracks(): List<Track> {
@@ -57,18 +67,6 @@ class TrackRepository(
                 Napier.e("Failed to fetch tracks for album ${album.id}", it)
                 emptyList()
             }
-    }
-
-    suspend fun fetchAndSaveTracks(albumId: String, spotifyId: String) {
-        Napier.d("Fetching tracks for album $albumId (Spotify ID: $spotifyId)")
-        spotifyApi.library.getAlbumTracks(spotifyId)
-            .onSuccess { response ->
-                response.items.forEach { track ->
-                    LoggingUtils.logFirebaseWrite("tracks", "set (fetchAndSaveTracks)", track.id)
-                    tracksCollection.document(track.id).set(TrackMapper.toDocument(track, albumId))
-                }
-            }
-            .onFailure { error -> Napier.e("Failed to fetch tracks for album $albumId", error) }
     }
 
     suspend fun saveTracksLocalAndRemote(trackIds: List<String>) {
@@ -137,5 +135,10 @@ class TrackRepository(
             }
             null
         }
+    }
+
+    companion object {
+        /** How long an in-memory album tracklist stays fresh before a re-fetch. */
+        val TRACKLIST_TTL = 24.hours
     }
 }

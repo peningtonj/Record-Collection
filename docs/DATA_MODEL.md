@@ -214,7 +214,15 @@ from Spotify on demand (album-detail view, artist-detail view) into a cache with
 - The shared `albums` / `artists` collections are **demoted to an optional cache** — only
   the release-group cross-album feature still reads them, and a stale/bad write there
   self-heals on next refresh instead of corrupting the library view.
-- `tracks` as a permanent Firestore collection is **removed** (C).
+- **Landed** — `tracks` is no longer written as a permanent Firestore mirror of album
+  tracklists. `TrackRepository.getAlbumTracks(album)` fetches from Spotify into an
+  in-memory `Map` with a 24 h TTL (`TRACKLIST_TTL`), dropped on restart. Album detail,
+  the play-queue builder and "save all album songs" all read through it.
+  - *Not yet done*: the `tracks` collection is still used as a per-user **liked-tracks**
+    store via a global `is_saved` flag — that's TECH_DEBT 2.6 (it leaks across users) and
+    needs its own move to `users/{uid}/saved_tracks/`. Until then the heart indicator on
+    an album's tracklist no longer reflects liked status (the tracklist now comes straight
+    from Spotify's album endpoint, which doesn't carry it).
 
 ### Collections
 

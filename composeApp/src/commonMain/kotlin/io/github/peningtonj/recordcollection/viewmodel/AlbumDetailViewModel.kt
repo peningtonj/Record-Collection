@@ -2,7 +2,6 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
 import io.github.aakira.napier.Napier
-import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +10,6 @@ class AlbumDetailViewModel(
     private val albumId: String,
     private val spotifyId: String,
     private val getAlbumDetailUseCase: GetAlbumDetailUseCase,
-    private val trackRepository: TrackRepository,
 ): ViewModel() {
     private val _uiState = MutableStateFlow<AlbumScreenUiState>(AlbumScreenUiState.Loading)
     val uiState = _uiState.asStateFlow()
@@ -26,7 +24,6 @@ class AlbumDetailViewModel(
         onError = { _uiState.value = AlbumScreenUiState.Error(it.message ?: "Unknown error") },
     ) {
         _uiState.value = AlbumScreenUiState.Loading
-        trackRepository.checkAndUpdateTracksIfNeeded(albumId, spotifyId)
         getAlbumDetailUseCase.execute(albumId, spotifyId).collect { albumDetail ->
             _uiState.value = AlbumScreenUiState.Success(albumDetail)
         }

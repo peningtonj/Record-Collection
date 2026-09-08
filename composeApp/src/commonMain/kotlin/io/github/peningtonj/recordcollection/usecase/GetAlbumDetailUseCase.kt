@@ -43,13 +43,13 @@ class GetAlbumDetailUseCase(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun getDatabaseAlbum(albumId: String): Flow<AlbumDetailUiState> {
         return albumRepository.getAlbumById(albumId).filterNotNull().flatMapLatest { album ->
+            val tracks = trackRepository.getAlbumTracks(album)
             combine(
                 albumTagRepository.getTagsForAlbum(album.id),
                 collectionAlbumRepository.getCollectionsForAlbum(album.id),
-                trackRepository.getTracksForAlbum(album.id),
                 albumRepository.getAlbumsFromReleaseGroup(album.releaseGroupId),
                 userLibraryRepository.getLibraryEntry(album.id)
-            ) { tags, collections, tracks, releaseGroup, libraryEntry ->
+            ) { tags, collections, releaseGroup, libraryEntry ->
                 val enrichedAlbum = album.copy(
                     inLibrary = libraryEntry?.inLibrary ?: false,
                     rating = libraryEntry?.rating
