@@ -2,8 +2,10 @@ package io.github.peningtonj.recordcollection.ui
 
 import io.github.peningtonj.recordcollection.ui.screens.ArtistDetailScreen
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen
+import io.github.peningtonj.recordcollection.util.TrafficSource
 import io.github.peningtonj.recordcollection.ui.screens.AlbumScreen
 import io.github.peningtonj.recordcollection.ui.screens.CollectionScreen
 import io.github.peningtonj.recordcollection.ui.screens.CollectionsListScreen
@@ -26,6 +28,9 @@ fun AppScreenContent(
     playbackViewModel: PlaybackViewModel,
     searchViewModel: SearchViewModel,
 ) {
+    // Coarse traffic attribution: tag backend calls with the visible screen.
+    LaunchedEffect(screen) { TrafficSource.current = screen.toTrafficName() }
+
     when (screen) {
         Screen.Login -> LoginScreen()
         Screen.Profile -> ProfileScreen()
@@ -50,6 +55,19 @@ fun AppScreenContent(
             playbackViewModel = playbackViewModel
         )
     }
+}
+
+/** Stable, low-cardinality name for traffic attribution (`Screen.Album` → `"AlbumScreen"`). */
+fun Screen.toTrafficName(): String = when (this) {
+    Screen.Login -> "LoginScreen"
+    Screen.Library -> "LibraryScreen"
+    Screen.Search -> "SearchScreen"
+    Screen.Profile -> "ProfileScreen"
+    Screen.Settings -> "SettingsScreen"
+    Screen.Collections -> "CollectionsListScreen"
+    is Screen.Album -> "AlbumScreen"
+    is Screen.Artist -> "ArtistDetailScreen"
+    is Screen.Collection -> "CollectionScreen"
 }
 
 /** Human-readable title for a given screen. */

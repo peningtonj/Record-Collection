@@ -5,6 +5,7 @@ import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Track
+import io.github.peningtonj.recordcollection.util.LoggingUtils
 import io.github.peningtonj.recordcollection.db.domain.TrackDocument
 import io.github.peningtonj.recordcollection.db.mapper.TrackMapper
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
@@ -23,15 +24,16 @@ class TrackRepository(
             .where { "album_id" equalTo albumId }
             .orderBy("track_number")
             .snapshots
-            .map { snapshot -> snapshot.documents.mapNotNull { it.toTrack() } }
+            .map { snapshot ->
+                LoggingUtils.logFirebaseResult("tracks", "snapshots by album_id", snapshot.documents.size)
+                snapshot.documents.mapNotNull { it.toTrack() }
+            }
 
     suspend fun checkAndUpdateTracksIfNeeded(albumId: String, spotifyId: String) {
         Napier.d("Checking if tracks exist for album $albumId")
-        val tracksExist = tracksCollection
-            .where { "album_id" equalTo albumId }
-            .get()
-            .documents
-            .isNotEmpty()
+        val existing = tracksCollection.where { "album_id" equalTo albumId }.get()
+        LoggingUtils.logFirebaseResult("tracks", "get by album_id (existence check)", existing.documents.size)
+        val tracksExist = existing.documents.isNotEmpty()
         Napier.d { "Tracks exist: $tracksExist" }
         if (!tracksExist) {
             fetchAndSaveTracks(albumId, spotifyId)
@@ -62,6 +64,7 @@ class TrackRepository(
         spotifyApi.library.getAlbumTracks(spotifyId)
             .onSuccess { response ->
                 response.items.forEach { track ->
+                    LoggingUtils.logFirebaseWrite("tracks", "set (fetchAndSaveTracks)", track.id)
                     tracksCollection.document(track.id).set(TrackMapper.toDocument(track, albumId))
                 }
             }
@@ -74,10 +77,12 @@ class TrackRepository(
     }
 
     suspend fun addTrackToLibrary(trackId: String) {
+        LoggingUtils.logFirebaseWrite("tracks", "set merge is_saved=true", trackId)
         tracksCollection.document(trackId).set(mapOf("is_saved" to true), merge = true)
     }
 
     suspend fun saveTrackToLibrary(track: Track) {
+        LoggingUtils.logFirebaseWrite("tracks", "set (saveTrackToLibrary)", track.id)
         tracksCollection.document(track.id).set(TrackMapper.toDocument(track.copy(isSaved = true)))
     }
 
@@ -93,9 +98,13 @@ class TrackRepository(
         tracksCollection
             .where { "is_saved" equalTo true }
             .snapshots
-            .map { snapshot -> snapshot.documents.mapNotNull { it.toTrack() } }
+            .map { snapshot ->
+                LoggingUtils.logFirebaseResult("tracks", "snapshots where is_saved", snapshot.documents.size)
+                snapshot.documents.mapNotNull { it.toTrack() }
+            }
 
     suspend fun removeTrackFromLibrary(trackId: String) {
+        LoggingUtils.logFirebaseWrite("tracks", "set merge is_saved=false", trackId)
         tracksCollection.document(trackId).set(mapOf("is_saved" to false), merge = true)
     }
 

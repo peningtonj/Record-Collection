@@ -136,21 +136,31 @@ object LoggingUtils {
     fun logFirebaseQuery(collection: String, operation: String, params: Map<String, Any>? = null) {
         val paramsStr = params?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
         d(Category.FIREBASE, "[$collection] $operation${if (paramsStr.isNotEmpty()) " {$paramsStr}" else ""}")
+        // A `.get()` or a listener attach — the doc count arrives via logFirebaseResult.
+        if (operation.contains("snapshot", ignoreCase = true)) {
+            TrafficMetrics.recordFirestoreListen(collection)
+        }
     }
 
     /**
-     * Log the result of a Firestore query at debug level.
+     * Log the result of a Firestore query at debug level, and count the documents read.
      */
     fun logFirebaseResult(collection: String, operation: String, resultCount: Int) {
         d(Category.FIREBASE, "[$collection] $operation -> $resultCount document(s) returned")
+        TrafficMetrics.recordFirestoreRead(collection, resultCount)
     }
 
     /**
-     * Log a Firestore write/delete at debug level.
+     * Log a Firestore write/delete at debug level, and count it.
      */
     fun logFirebaseWrite(collection: String, operation: String, docId: String, params: Map<String, Any>? = null) {
         val paramsStr = params?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
         d(Category.FIREBASE, "[$collection] $operation doc=$docId${if (paramsStr.isNotEmpty()) " {$paramsStr}" else ""}")
+        if (operation.contains("delete", ignoreCase = true)) {
+            TrafficMetrics.recordFirestoreDelete(collection)
+        } else {
+            TrafficMetrics.recordFirestoreWrite(collection)
+        }
     }
 
     /**
@@ -183,6 +193,19 @@ object LoggingUtils {
         }
         val msg = "← $status ${method} $path (${durationMs}ms)$extras"
         if (status >= 400) w(Category.SPOTIFY, msg) else d(Category.SPOTIFY, msg)
+
+        val endpoint = TrafficMetrics.groupSpotifyPath(path)
+        // The playback poller is the only caller of /me/player* — attribute it explicitly
+        // rather than to whatever screen happens to be visible.
+        val source = if (endpoint == "/me/player") TrafficSource.PLAYBACK_POLLER else TrafficSource.current
+        TrafficMetrics.recordSpotify(
+            endpoint = endpoint,
+            method = method,
+            status = status,
+            retryAfterSeconds = retryAfter?.toLongOrNull(),
+            rateLimitRemaining = rateLimitRemaining?.toIntOrNull(),
+            source = source,
+        )
     }
 
     /**

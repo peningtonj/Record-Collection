@@ -123,4 +123,10 @@ a listed anti-pattern.
 - The `AlbumEvent` system (`AlbumAdded`, `AlbumUpdated`, `AlbumDeleted`) must be dispatched after any album DB write — don't bypass it
 - `FirebaseDriver.initializeFirebase()` must be called **before** `DependencyContainerFactory.create()` — it is called at the top of `DependencyContainerFactory.create()` on desktop; ensure the same on Android
 - `gradle/libs.versions.toml` is the single source of truth for dependency versions
+- **Backend traffic is counted** by `util/TrafficMetrics` (a per-source report logs under
+  the `Traffic` tag). Every Firestore op must go through a `LoggingUtils.logFirebase*`
+  call (query / result-with-count / write); every Spotify call is counted automatically
+  from the Ktor response hook. Attribution comes from `TrafficSource.current` (set from
+  the visible screen); background workers pass an explicit `source =` (see
+  `TrafficSource` constants). See `docs/DATA_MODEL.md` § Observability.
 

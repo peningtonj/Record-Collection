@@ -52,7 +52,7 @@ class UserLibraryRepository(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getAllLibraryEntries(): Flow<List<LibraryAlbumDocument>> =
         userSession.userIdFlow.mapNotNull { it }.flatMapLatest { userId ->
-            LoggingUtils.logFirebaseQuery("users/$userId/library_albums", "snapshots (all)")
+            LoggingUtils.logFirebaseQuery("library_albums", "snapshots (all)")
             firestore.collection("users").document(userId).collection("library_albums")
                 .snapshots.map { snapshot ->
                     LoggingUtils.logFirebaseResult("library_albums", "getAllLibraryEntries", snapshot.documents.size)
@@ -69,7 +69,7 @@ class UserLibraryRepository(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getLibraryEntry(albumId: String): Flow<LibraryAlbumDocument?> =
         userSession.userIdFlow.mapNotNull { it }.flatMapLatest { userId ->
-            LoggingUtils.logFirebaseQuery("users/$userId/library_albums", "snapshot", mapOf("albumId" to albumId))
+            LoggingUtils.logFirebaseQuery("library_albums", "snapshot", mapOf("albumId" to albumId))
             firestore.collection("users").document(userId).collection("library_albums")
                 .document(albumId).snapshots.map { snapshot ->
                     if (snapshot.exists)

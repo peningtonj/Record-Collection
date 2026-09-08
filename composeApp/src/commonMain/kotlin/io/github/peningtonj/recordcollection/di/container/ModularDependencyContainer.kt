@@ -15,6 +15,7 @@ import io.github.peningtonj.recordcollection.service.CollectionsService
 import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.PlaybackSessionManager
 import io.github.peningtonj.recordcollection.service.TagService
+import io.github.peningtonj.recordcollection.util.TrafficMetrics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,6 +34,10 @@ class ModularDependencyContainer(
     private val firestore by lazy { firebaseModule.provideFirebaseFirestore() }
     private val settings by lazy { settingsModule.provideSettings() }
     private val eventScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    init {
+        TrafficMetrics.start(eventScope, reportEverySeconds = 60)
+    }
 
     // ── User session (no Firebase dep; uses Settings only) ────────────────────
     override val userSessionRepository by lazy {

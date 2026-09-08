@@ -3,6 +3,7 @@ package io.github.peningtonj.recordcollection.repository
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.domain.Tag
 import io.github.peningtonj.recordcollection.db.domain.TagType
+import io.github.peningtonj.recordcollection.util.LoggingUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -28,6 +29,7 @@ class AlbumTagRepository(
             .flatMapLatest { tagIds ->
                 if (tagIds.isEmpty()) return@flatMapLatest flowOf(emptyList())
                 tagsRef().snapshots.map { tagsSnapshot ->
+                    LoggingUtils.logFirebaseResult("tags", "snapshots (join for album)", tagsSnapshot.documents.size)
                     tagsSnapshot.documents
                         .filter { it.id in tagIds }
                         .mapNotNull { doc ->

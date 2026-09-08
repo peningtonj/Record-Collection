@@ -143,20 +143,109 @@ thing that makes "isolate the users" hard.
 | **F** | **Per-user cache** — `users/{uid}/album_cache/…` instead of shared collections | unambiguously a "client cache" under ToS; kills the shared-mutation problem | loses dedup + shared release-group data; more storage (still cheap) |
 | **G** | **Backend proxy** — Cloud Function caches Spotify responses with a TTL; one rate-limit budget for all users | ToS (server-side cache with refresh is the intended pattern), coupling, rate limits | real infrastructure — this is roadmap Phase 4 |
 
-## Recommendation
+---
 
-Short term, do **B + C + E** — they're small and address the three fixable problems
-(ToS, storage-of-tracks, read cost) without changing the architecture:
+## Chosen design — denormalised per-user library + short-TTL cache
 
-- **B**: add `fetched_at`; refresh `albums`/`artists` docs older than 24 h on read.
-- **C**: don't write `tracks` to Firestore. Album detail already hits Spotify; keep an
-  in-memory (and later on-device) track cache keyed by album.
-- **E**: the library list reads once (`.get()`), reactivity comes from the local
-  cache + the user's own `library_albums` listener (which is small and genuinely
-  per-user). Don't hold `ceil(N/30)` realtime listeners on `albums`.
+Combine **D + E + F** (with **C** for tracks): the per-user join table carries a small
+projection of stable fields so the library renders from one read, and everything volatile
+is a short-lived cache refreshed per Spotify's terms.
 
-Strategic: the **shared catalogue** (`albums`/`artists`) is a real design choice — it
-gives dedup and shared release-group data. Keep it, but **gate its writes behind a
-backend (G)** when Phase 4 lands, which also solves the multi-user write problem (2.1). If
-Phase 4 is far off, **F** (per-user caches) is the pragmatic interim that makes the ToS
-and isolation stories clean today, trading away dedup.
+### `users/{uid}/library_albums/{albumId}`
+
+```
+// ── user's own data (already here) ──
+in_library, rating, tag_ids[], added_at
+
+// ── denormalised projection: stable fields, written on "add to library" ──
+name                 // Spotify re-titles rarely; refreshed on sync / 404
+primary_artist
+artists              // JSON, for multi-artist display
+release_date
+album_type
+total_tracks
+spotify_id
+spotify_uri
+image_url            // one medium URL; art rots — see refresh triggers
+
+// ── freshness ──
+projection_fetched_at // epoch millis; drives the opportunistic refresh
+```
+
+~15 fields, ~1 KB/doc. The library grid renders entirely from this collection: **one
+listener on `users/{uid}/library_albums`, no join, no fan-out.** Sorting, filtering and
+search-within-library are client-side on loaded data.
+
+**Refresh triggers for the projection** (no dedicated loop — piggyback on work that
+already happens):
+- library sync re-writes the projection for every album it touches;
+- an image load failure → re-fetch that one album's metadata and update `image_url`;
+- (optional) a lazy "older than 30 d" check on scroll-into-view.
+
+### Volatile metadata → short-TTL cache (**not** a permanent Firestore collection)
+
+Genres, popularity, full image set, `external_ids`, and the **full tracklist** are fetched
+from Spotify on demand (album-detail view, artist-detail view) into a cache with a
+`fetched_at` and a **~24 h TTL**, per the Developer Terms.
+
+- **v1**: in-memory cache (a `Map` in a repository), lost on app restart — simplest, and
+  matches the "album detail hits Spotify anyway" reality.
+- **v2**: on-device persistence (SQLDelight / DataStore; IndexedDB on web). Client-side
+  caching is explicitly fine under the terms.
+- The shared `albums` / `artists` collections are **demoted to an optional cache** — only
+  the release-group cross-album feature still reads them, and a stale/bad write there
+  self-heals on next refresh instead of corrupting the library view.
+- `tracks` as a permanent Firestore collection is **removed** (C).
+
+### Collections
+
+`collections/{name}.albums[]` currently joins against shared `albums`. Resolve collection
+entries against the local `library_albums` cache instead; for the "in a collection but not
+in the library" case, denormalise the same minimal projection into the collection entry.
+
+### What this fixes
+
+| Concern | Effect |
+|---|---|
+| Read cost (#2) | library grid = 1 collection read, no `ceil(N/30)` fan-out; big latency + offline-first win too |
+| Spotify ToS (#1) | stored-forever data is now minimal, per-user, and written as a side effect of the user's own action; volatile data is TTL'd |
+| Staleness (#3) | only stable fields are stored; volatile fields refresh |
+| Coupling (#5) | shared catalogue demoted to a self-healing cache; the per-user table is exactly where 2.1's isolation rules apply |
+| Write amplification (#4) | roughly neutral — one richer doc instead of a thin doc + a shared-collection write |
+
+### Open decisions
+
+1. Where the volatile cache lives long-term (in-memory v1 → on-device v2 → backend).
+2. Whether to keep a thin shared `albums` at all, or fold release-group data elsewhere.
+
+### Strategic
+
+When roadmap Phase 4 (backend) lands, move Spotify fetching + caching behind a Cloud
+Function (**G**) — one rate-limit budget for all users, server-side TTL cache (the
+intended pattern under the terms), and it also solves the shared-write isolation problem.
+
+---
+
+## Observability — measure before and after
+
+Before migrating anything, land instrumentation so the change is measurable. Track, and
+**attribute to the screen / background source that caused it**:
+
+**Firestore**
+- reads (documents returned), by collection and by source
+- writes / deletes, by collection and by source
+- realtime listener attaches (each `.snapshots` subscription = an initial full read)
+
+**Spotify Web API**
+- requests, by endpoint group (`/albums`, `/me/player`, `/search`, …) and by source
+- responses by status; **429 count**, cumulative `Retry-After` seconds ("time throttled"),
+  and the running `X-RateLimit-Remaining` low-water mark
+
+**Sources** include screens (`LibraryScreen`, `AlbumScreen`, …) *and* background workers
+(`PlaybackPoller` — polls `/me/player` every 1.5–8 s, `LibrarySync`, `startup`,
+`AlbumProcessingHandler`).
+
+Output: a periodic (and on-demand) formatted report — per-source breakdown for both
+Firestore and Spotify — logged under a `Traffic` category so it lands in the file antilogs
+on desktop. Implemented in `util/TrafficMetrics.kt`; see `AGENTS.md` for how sources are
+tagged.
