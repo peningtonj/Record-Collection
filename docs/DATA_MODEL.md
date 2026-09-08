@@ -218,11 +218,14 @@ from Spotify on demand (album-detail view, artist-detail view) into a cache with
   tracklists. `TrackRepository.getAlbumTracks(album)` fetches from Spotify into an
   in-memory `Map` with a 24 h TTL (`TRACKLIST_TTL`), dropped on restart. Album detail,
   the play-queue builder and "save all album songs" all read through it.
+  - Liked-status for the heart indicator comes from `GET /me/tracks/contains` (one call
+    per album view, `markSavedStatus`), layered with an in-memory `savedOverrides` map so
+    a heart toggle shows immediately (`setTrackSaved`, called from
+    `LibraryService.save/removeTrackLocalAndRemote`).
   - *Not yet done*: the `tracks` collection is still used as a per-user **liked-tracks**
     store via a global `is_saved` flag — that's TECH_DEBT 2.6 (it leaks across users) and
-    needs its own move to `users/{uid}/saved_tracks/`. Until then the heart indicator on
-    an album's tracklist no longer reflects liked status (the tracklist now comes straight
-    from Spotify's album endpoint, which doesn't carry it).
+    needs its own move to `users/{uid}/saved_tracks/`. The `contains` check makes the
+    indicator correct regardless, so this is now purely a cleanup.
 
 ### Collections
 

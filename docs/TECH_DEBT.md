@@ -269,10 +269,10 @@ disagree, this document is the source of truth for *what is actually wrong today
 - **Fix**: move to `users/{uid}/saved_tracks/{trackId}` — a per-user join like
   `library_albums`. Do it with the 2.1 auth pass.
 - **Note**: since the tracklist mirror was removed (2.7), `tracks/{id}` docs written by
-  `addTrackToLibrary` carry only `{is_saved:true}` (no track body), so
-  `getSavedTracks()` can no longer rebuild `Track`s from them and the heart indicator on
-  an album's tracklist no longer reflects liked status. Fixing this properly *is* the
-  per-user move above.
+  `addTrackToLibrary` carry only `{is_saved:true}` (no track body). The album-tracklist
+  heart indicator no longer depends on that — it comes from `GET /me/tracks/contains`
+  (`TrackRepository.markSavedStatus`) — so this item is now purely a data-model cleanup
+  (drop the global `tracks` liked-store, move to `users/{uid}/saved_tracks/`).
 
 ### 2.7 — Spotify metadata cache: no TTL, ToS exposure
 
@@ -471,7 +471,8 @@ Ordered oldest → newest. Docs-only commits (progress-log updates, link fixes) 
 | `c4c2453` | 2.7 (collections) | same projection on `collections/{name}.albums[]`; `getAlbumsInCollection` no longer joins `albums`; `addAlbumToCollection(name, album)`; backfill script extended; `+AlbumMapperTest` |
 | `f2551fe` | 2.7 (tracklists) | `TrackRepository.getAlbumTracks` — in-memory 24 h-TTL cache; removed the permanent `tracks` tracklist mirror (`getTracksForAlbum` / `checkAndUpdateTracksIfNeeded` / `fetchAndSaveTracks`); `combine(5)`→`(4)` in `GetAlbumDetailUseCase` |
 | `be0e015` | 2.8 | `PlaybackPoller` progressive idle back-off (`PLAYBACK_IDLE_BACKOFF_STEPS` 8→20→45→60 s); ~3 `/me/player` req/min while idle, was ~30–40; `+PlaybackPollerTest` |
+| `_______` | 2.7 (tracklists) | album-tracklist heart indicator restored via `GET /me/tracks/contains` (`markSavedStatus`) + `savedOverrides` for optimistic toggle; `+TrackRepositoryTest` |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **77 tests / 0 failing**.
+and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **80 tests / 0 failing**.
 Desktop app boots & runs.

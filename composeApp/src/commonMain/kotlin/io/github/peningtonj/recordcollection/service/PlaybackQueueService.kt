@@ -74,7 +74,7 @@ class PlaybackQueueService(
 
     suspend fun ensureTracksLoaded(album: AlbumDetailUiState): AlbumDetailUiState {
         return if (album.tracks.isEmpty()) {
-            album.copy(tracks = trackRepository.getAlbumTracks(album.album))
+            album.copy(tracks = trackRepository.getAlbumTracks(album.album, checkSaved = false))
         } else {
             album
         }

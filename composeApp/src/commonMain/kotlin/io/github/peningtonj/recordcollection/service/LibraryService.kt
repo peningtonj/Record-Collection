@@ -289,14 +289,16 @@ class LibraryService(
     suspend fun saveTrackLocalAndRemote(trackId: String) {
         trackRepository.saveTracksRemote(listOf(trackId))
         trackRepository.addTrackToLibrary(trackId)
+        trackRepository.setTrackSaved(trackId, true)
     }
     suspend fun removeTrackLocalAndRemote(trackId: String) {
         trackRepository.removeTracksRemote(listOf(trackId))
         trackRepository.removeTrackFromLibrary(trackId)
+        trackRepository.setTrackSaved(trackId, false)
     }
 
     suspend fun addAllSongsFromAlbumToSavedSongs(album: Album) {
-        val tracks = trackRepository.getAlbumTracks(album)
+        val tracks = trackRepository.getAlbumTracks(album, checkSaved = false)
         Napier.d { "Adding ${tracks.size} tracks to saved songs" }
         trackRepository.saveTracksRemote(
             tracks.map { it.id }

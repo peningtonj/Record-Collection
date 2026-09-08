@@ -28,4 +28,16 @@ class AlbumDetailViewModel(
             _uiState.value = AlbumScreenUiState.Success(albumDetail)
         }
     }
+
+    /** Optimistically flip a track's saved heart while the Spotify write is in flight. */
+    fun setTrackSaved(trackId: String, saved: Boolean) {
+        val current = _uiState.value as? AlbumScreenUiState.Success ?: return
+        _uiState.value = AlbumScreenUiState.Success(
+            current.albumDetail.copy(
+                tracks = current.albumDetail.tracks.map {
+                    if (it.id == trackId) it.copy(isSaved = saved) else it
+                }
+            )
+        )
+    }
 }

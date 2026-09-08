@@ -77,6 +77,18 @@ class LibraryApi(
 
         client.get(url).body()
     }
+    /**
+     * `GET /me/tracks/contains` — whether each of [ids] (max 50) is in the user's Liked
+     * Songs. Returns booleans positionally aligned with [ids].
+     */
+    suspend fun checkSavedTracks(ids: List<String>): Result<List<Boolean>> = runCatching {
+        require(ids.size <= 50) { "Spotify API allows maximum 50 track ids per contains check" }
+        val url = URLBuilder("${SpotifyApi.BASE_URL}/me/tracks/contains").apply {
+            parameters.append("ids", ids.joinToString(","))
+        }.buildString()
+        client.get(url).body()
+    }
+
     suspend fun getArtistsAlbums(
         request: AristAlbumsRequest
     ): Result<PaginatedResponse<SimplifiedAlbumDto>> = runCatching {

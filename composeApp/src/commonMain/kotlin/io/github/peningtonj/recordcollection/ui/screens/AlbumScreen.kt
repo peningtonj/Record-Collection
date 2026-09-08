@@ -143,9 +143,11 @@ fun AlbumScreen(
                             playbackState?.track?.id == track.id && playbackState?.isPlaying == true
                     },
                     onAddToLibraryClick = { track ->
+                        viewModel.setTrackSaved(track.id, true)
                         libraryViewModel.saveTrack(track.id)
                     },
                     onRemoveFromLibraryClick = { track ->
+                        viewModel.setTrackSaved(track.id, false)
                         libraryViewModel.removeTrack(track.id)
                     }
                 )

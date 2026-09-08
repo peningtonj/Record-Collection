@@ -31,11 +31,23 @@ class TrackRepository(
     private val tracklistMutex = Mutex()
 
     /**
-     * Album tracklist, cache-first. Hits Spotify on a cold/stale entry; the result lives
-     * in memory for [TRACKLIST_TTL] and is dropped on app restart. Returns `emptyList()`
-     * if the fetch fails (and does not cache the failure).
+     * Local like/unlike actions since the last full fetch (`trackId -> saved`). Layered on
+     * top of Spotify's `contains` check so a heart toggle shows immediately and survives
+     * a tracklist re-emit — see [setTrackSaved].
      */
-    suspend fun getAlbumTracks(album: Album, forceRefresh: Boolean = false): List<Track> {
+    private val savedOverrides = mutableMapOf<String, Boolean>()
+
+    /**
+     * Album tracklist, cache-first. Hits Spotify on a cold/stale entry (and cross-checks
+     * each track against the user's Liked Songs); the result lives in memory for
+     * [TRACKLIST_TTL] and is dropped on app restart. Returns `emptyList()` if the fetch
+     * fails (and does not cache the failure).
+     */
+    suspend fun getAlbumTracks(
+        album: Album,
+        forceRefresh: Boolean = false,
+        checkSaved: Boolean = true,
+    ): List<Track> {
         val now = Clock.System.now().toEpochMilliseconds()
         if (!forceRefresh) {
             val cached = tracklistMutex.withLock { tracklistCache[album.id] }
@@ -44,10 +56,41 @@ class TrackRepository(
             }
         }
         val fetched = fetchTracksForAlbum(album)
-        if (fetched.isNotEmpty()) {
-            tracklistMutex.withLock { tracklistCache[album.id] = CachedTracklist(fetched, now) }
+        if (fetched.isEmpty()) return fetched
+        val withSaved = if (checkSaved) markSavedStatus(fetched) else fetched
+        tracklistMutex.withLock { tracklistCache[album.id] = CachedTracklist(withSaved, now) }
+        return withSaved
+    }
+
+    /** Sets each track's `isSaved` from `GET /me/tracks/contains`, with local overrides winning. */
+    private suspend fun markSavedStatus(tracks: List<Track>): List<Track> {
+        val savedById = mutableMapOf<String, Boolean>()
+        tracks.map { it.id }.chunked(50).forEach { chunk ->
+            spotifyApi.library.checkSavedTracks(chunk)
+                .onSuccess { flags -> chunk.forEachIndexed { i, id -> savedById[id] = flags.getOrElse(i) { false } } }
+                .onFailure { Napier.w("checkSavedTracks failed for ${chunk.size} ids", it) }
         }
-        return fetched
+        return tracks.map { t ->
+            t.copy(isSaved = savedOverrides[t.id] ?: savedById[t.id] ?: t.isSaved)
+        }
+    }
+
+    /**
+     * Record a local like/unlike so cached tracklists and the next fetch reflect it
+     * immediately, without waiting for Spotify's `contains` view to catch up.
+     */
+    suspend fun setTrackSaved(trackId: String, saved: Boolean) {
+        tracklistMutex.withLock {
+            savedOverrides[trackId] = saved
+            for (key in tracklistCache.keys.toList()) {
+                val cached = tracklistCache.getValue(key)
+                if (cached.tracks.any { it.id == trackId }) {
+                    tracklistCache[key] = cached.copy(
+                        tracks = cached.tracks.map { if (it.id == trackId) it.copy(isSaved = saved) else it }
+                    )
+                }
+            }
+        }
     }
 
     suspend fun fetchLibraryTracks(): List<Track> {
