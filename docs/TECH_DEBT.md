@@ -467,6 +467,7 @@ Ordered oldest → newest. Docs-only commits (progress-log updates, link fixes) 
 | `d82a21e` | 2.7 (observability) | `util/TrafficMetrics` + `TrafficSource` — lock-free per-screen Firestore/Spotify call counters, periodic `Traffic` log report; wired through `LoggingUtils` and screen navigation |
 | `a1705c9` | 2.7 (v1) | denormalised stable-field projection on `users/{uid}/library_albums`; `getAllAlbumsInLibrary` renders from one listener, no `albums` fan-out; `scripts/backfill_library_projection.py`; `+AlbumMapperTest` |
 | `c4c2453` | 2.7 (collections) | same projection on `collections/{name}.albums[]`; `getAlbumsInCollection` no longer joins `albums`; `addAlbumToCollection(name, album)`; backfill script extended; `+AlbumMapperTest` |
+| `f2551fe` | 2.7 (tracklists) | `TrackRepository.getAlbumTracks` — in-memory 24 h-TTL cache; removed the permanent `tracks` tracklist mirror (`getTracksForAlbum` / `checkAndUpdateTracksIfNeeded` / `fetchAndSaveTracks`); `combine(5)`→`(4)` in `GetAlbumDetailUseCase` |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **76 tests / 0 failing**.
