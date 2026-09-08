@@ -194,12 +194,21 @@ disagree, this document is the source of truth for *what is actually wrong today
   - **Manual steps**: Anonymous sign-in is enabled in the Firebase console. Still need
     `firebase deploy --only firestore:rules` (or paste the rules in the console) if not
     already done.
-- [ ] **Follow-up — real per-user auth** (deferred): a Cloud Function verifies a Spotify
-  token and mints a Firebase **custom token**; the client calls `signInWithCustomToken`
-  so `request.auth.uid == spotifyUserId`. Then replace the catch-all rule with the
-  per-collection rules already sketched (commented) in `firestore.rules`. The anonymous
-  UID gives **no user isolation** — any signed-in client can read/write any
-  `users/{uid}/…` path.
+- [ ] **NEXT UP — real per-user auth + isolation.** The anonymous UID gives **no user
+  isolation**: rules never check the path's `{uid}` against `request.auth.uid`, so any
+  signed-in client can read/write any `users/{spotifyId}/…` subtree, and the shared
+  `albums`/`artists`/`tracks` collections are world-writable. Web makes this internet-wide
+  (public Firebase config), so this must land before/with the web target. Planned work:
+  1. Cloud Function verifies a Spotify access token and mints a Firebase **custom token**
+     with `uid == spotifyUserId`; client calls `signInWithCustomToken`.
+  2. Replace the catch-all rule with `match /users/{uid}/{doc=**} { allow read, write:
+     if request.auth.uid == uid }` (sketched, commented, in `firestore.rules`).
+  3. Fix **2.6** (`tracks.is_saved` leaks across users) as part of the same pass.
+  4. Decide the shared-catalogue write policy — direct client writes with field-validation
+     rules, or move catalogue writes behind a Cloud Function.
+  5. (Optional) sync `users/{uid}/settings` so sort order / filters / theme follow the
+     user across devices + web.
+  - See `docs/DATA_MODEL.md` for the current Firestore layout this changes.
 
 ### 2.2 — Album document IDs were a 32-bit `String.hashCode()`
 
@@ -250,6 +259,28 @@ disagree, this document is the source of truth for *what is actually wrong today
 - **Fix**: Android → `EncryptedSharedPreferences` (or DataStore + Tink). Desktop → OS
   keychain (JNA to `secret-service`/Keychain/Credential Manager). At minimum, encrypt
   with a key derived from a machine secret.
+
+### 2.6 — "Saved tracks" is not user-scoped
+
+- [ ] **Why**: `is_saved` is written onto the **global** `tracks/{trackId}` document and
+  `getSavedTracks()` does `tracks.where(is_saved == true)`. There is no per-user scoping —
+  every user shares one "liked songs" set. (`library_albums` is correctly per-user; this
+  isn't.)
+- **Fix**: move to `users/{uid}/saved_tracks/{trackId}` — a per-user join like
+  `library_albums`. Do it with the 2.1 auth pass.
+
+### 2.7 — Spotify metadata cache: no TTL, ToS exposure
+
+- [ ] **Why**: `albums` / `artists` / `tracks` are a full, shared, **indefinitely-retained**
+  mirror of Spotify metadata with no `fetched_at` / refresh. Spotify's Developer Terms
+  restrict caching (broadly: refresh within ~24 h; don't build a standalone dataset), so a
+  multi-user perpetual mirror is in the grey/red zone. Storage cost is negligible; the
+  real risks are ToS, staleness (`popularity`, images, corrections), and read cost from
+  realtime `.snapshots` on browse data.
+- **Fix options** (see `docs/DATA_MODEL.md` § evaluation): add `fetched_at` + refresh-if-
+  stale; stop persisting `tracks` to Firestore (fetch per detail view into a memory/on-
+  device cache); switch the library list off realtime listeners; and/or move the cache to
+  `users/{uid}/…` (unambiguously a "client cache" under ToS) or behind a backend proxy.
 
 ---
 
