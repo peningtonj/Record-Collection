@@ -485,7 +485,7 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-07 | test | coil smoke | 5f78c90 | CoilNetworkSmokeTest — real fetch+decode through coil pipeline. |
 | 2026-09-08 | 4 | 4.1, 4.3, 4.4, 4.5, 4.6 | 41e5494 | addedAt preserved on re-sync; parseReleaseDate defensive; date-range boundary inclusive; sort reacts to settings; DI double-instance fixed. +AlbumMapperTest. |
 | 2026-09-08 | 1 | 1.2 | 09eab02 | ViewModels via `viewModel { }` + per-screen ViewModelStore owned by the navigator; `onCleared()` now fires on pop. +ScreenViewModelStoresTest, +DesktopNavigatorTest. |
-| 2026-09-08 | 1/4 | 1.3 (slice 1), 4.7, 4.8 | _pending_ | ResultExt helper; ProfileRepository → Result<Unit> w/ aggregation; sync failures → SyncState.Error; LoginViewModel surfaces AuthState.Error. +ResultExtTest, +ProfileRepositoryTest. |
+| 2026-09-08 | 1/4 | 1.3 (slice 1), 4.7, 4.8 | 9ab5512 | ResultExt helper; ProfileRepository → Result<Unit> w/ aggregation; sync failures → SyncState.Error; LoginViewModel surfaces AuthState.Error. +ResultExtTest, +ProfileRepositoryTest. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 passes. `desktopTest` = **70 tests / 0 failing** (as of 2026-09-08). Desktop app boots &
