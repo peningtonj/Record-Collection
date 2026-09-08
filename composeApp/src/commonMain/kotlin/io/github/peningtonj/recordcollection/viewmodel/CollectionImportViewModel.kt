@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.repository.ProfileRepository
@@ -15,7 +14,6 @@ import io.github.peningtonj.recordcollection.service.AlbumNameAndArtist
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 class CollectionImportViewModel(
     private val collectionImportService: CollectionImportService,
@@ -37,7 +35,7 @@ class CollectionImportViewModel(
     }
 
     init {
-        viewModelScope.launch {
+        launchSafely("loadUserPlaylists") {
             _userPlaylists.value = profileRepository.getUserSavedPlaylist()
         }
     }
@@ -47,69 +45,57 @@ class CollectionImportViewModel(
         _importSource.value = source
     }
 
-    fun draftCollectionFromUrl(url: String) {
-        viewModelScope.launch {
-            _uiState.value = UiState.Loading
-            val response = collectionImportService.getResponseFromOpenAI(url)
-            try {
-                val albums = collectionImportService.parseAlbumAndArtistResponse(response)
-                Napier.d { "Successfully found ${albums.size} albums" }
-                _uiState.value = UiState.AlbumsList(
-//                    openAiResponse = response,
-                    albumNames = albums
-                )
-//                _uiState.value = UiState.Idle
-            } catch (e: Exception) {
-                _uiState.value = UiState.Error("Failed to parse response: $response: $e")
-            }
-        }
+    fun draftCollectionFromUrl(url: String) = launchSafely(
+        operation = "draftCollectionFromUrl",
+        onError = { _uiState.value = UiState.Error("Failed to draft collection: ${it.message}") },
+    ) {
+        _uiState.value = UiState.Loading
+        val response = collectionImportService.getResponseFromOpenAI(url)
+        val albums = collectionImportService.parseAlbumAndArtistResponse(response)
+        Napier.d { "Successfully found ${albums.size} albums" }
+        _uiState.value = UiState.AlbumsList(albumNames = albums)
     }
-    fun getAlbumsFromDraft() {
-        viewModelScope.launch {
-            val current = _uiState.value
 
-            if (current !is UiState.AlbumsList) {
-                Napier.w { "getAlbumsFromDraft called in invalid state: $current" }
-                return@launch
-            }
+    fun getAlbumsFromDraft() = launchSafely(
+        operation = "getAlbumsFromDraft",
+        onError = { _uiState.value = UiState.Error("Import failed: ${it.message}") },
+    ) {
+        val current = _uiState.value
+        if (current !is UiState.AlbumsList) {
+            Napier.w { "getAlbumsFromDraft called in invalid state: $current" }
+            return@launchSafely
+        }
 
-            Napier.d("Importing albums from draft: ${current.albumNames}")
+        Napier.d("Importing albums from draft: ${current.albumNames}")
 
-            val lookupResults = mutableListOf<AlbumLookUpResult>()
+        val lookupResults = mutableListOf<AlbumLookUpResult>()
+        _uiState.value = UiState.Searching(albumNames = current.albumNames, albums = emptyList())
+
+        collectionImportService.streamAlbumLookups(current.albumNames) { result ->
+            lookupResults += result
             _uiState.value = UiState.Searching(
                 albumNames = current.albumNames,
-                albums = emptyList()
+                albums = lookupResults.toList()
             )
-
-            collectionImportService.streamAlbumLookups(current.albumNames) { result ->
-                lookupResults += result
-                _uiState.value = UiState.Searching(
-                    albumNames = current.albumNames,
-                    albums = lookupResults.toList()
-                )
-            }
-
-            val successfulAlbums = lookupResults.mapNotNull { it.album }
-            _uiState.value = UiState.ReadyToImport(albums = successfulAlbums)
         }
+
+        _uiState.value = UiState.ReadyToImport(albums = lookupResults.mapNotNull { it.album })
     }
 
-    fun getAlbumsFromPlaylist(playlistInput: String) {
-
-        //
-        viewModelScope.launch {
-            var playlistId = ""
-            playlistId = if (playlistInput.contains("open.spotify.com")) {
-                Regex("playlist/([a-zA-Z0-9]+)").find(playlistInput)?.groupValues?.get(1) ?: ""
-            } else {
-                playlistInput.trim()
-            }
-            _uiState.value = UiState.Loading
-            Napier.d("Importing albums from playlist")
-            _uiState.value = UiState.ReadyToImport(
-                collectionImportService.getAlbumsFromPlaylist(playlistId)
-            )
+    fun getAlbumsFromPlaylist(playlistInput: String) = launchSafely(
+        operation = "getAlbumsFromPlaylist",
+        onError = { _uiState.value = UiState.Error("Could not load playlist: ${it.message}") },
+    ) {
+        val playlistId = if (playlistInput.contains("open.spotify.com")) {
+            Regex("playlist/([a-zA-Z0-9]+)").find(playlistInput)?.groupValues?.get(1) ?: ""
+        } else {
+            playlistInput.trim()
         }
+        _uiState.value = UiState.Loading
+        Napier.d("Importing albums from playlist")
+        _uiState.value = UiState.ReadyToImport(
+            collectionImportService.getAlbumsFromPlaylist(playlistId)
+        )
     }
 }
 

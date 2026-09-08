@@ -1,7 +1,6 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.Tag
@@ -20,8 +19,6 @@ import io.github.peningtonj.recordcollection.usecase.ReleaseGroupUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 
 class AlbumViewModel (
@@ -35,39 +32,30 @@ class AlbumViewModel (
     private val _releaseGroupStatus = MutableStateFlow(ReleaseGroupStatus.Idle)
     val releaseGroupStatus = _releaseGroupStatus.asStateFlow()
 
-    fun setRating(albumId: String, rating: Int) {
-        viewModelScope.launch {
-            ratingRepository.addRating(albumId, rating)
-        }
+    fun setRating(albumId: String, rating: Int) = launchSafely("setRating($albumId)") {
+        ratingRepository.addRating(albumId, rating)
     }
 
-    fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) {
-        viewModelScope.launch {
-            tagService.addTagToAlbum(
-                albumId,
-                tagKey,
-                tagValue
-            )
-        }
+    fun addTagToAlbum(albumId: String, tagKey: String, tagValue: String) = launchSafely("addTagToAlbum($albumId)") {
+        tagService.addTagToAlbum(albumId, tagKey, tagValue)
     }
 
-    fun removeTagFromAlbum(albumId: String, tagId: String) {
-        viewModelScope.launch {
-            tagService.removeTagFromAlbum(
-                albumId,
-                tagId
-            )
-        }
+    fun removeTagFromAlbum(albumId: String, tagId: String) = launchSafely("removeTagFromAlbum($albumId)") {
+        tagService.removeTagFromAlbum(albumId, tagId)
     }
 
-    fun updateReleaseGroup(album: Album) = viewModelScope.launch {
+    fun updateReleaseGroup(album: Album) = launchSafely(
+        operation = "updateReleaseGroup(${album.id})",
+        onError = { _releaseGroupStatus.value = ReleaseGroupStatus.Idle },
+    ) {
         _releaseGroupStatus.value = ReleaseGroupStatus.Updating
         val release = releaseGroupUseCase.getReleaseFromAlbum(album)
         val releaseGroupId = release?.releaseGroup?.id
 
         if (releaseGroupId == null) {
             Napier.d { "Release group ID is null" }
-            return@launch
+            _releaseGroupStatus.value = ReleaseGroupStatus.Idle
+            return@launchSafely
         }
 
         albumRepository.updateReleaseGroupId(album.id, release.releaseGroup.id)
@@ -82,11 +70,10 @@ class AlbumViewModel (
         Napier.d { "Setting the release group $releaseGroupId to ${albums.joinToString(", ") {it.name}}" }
         releaseGroupUseCase.updateAlbums(releaseGroupId, albums)
         _releaseGroupStatus.value = ReleaseGroupStatus.Idle
-
     }
 
-    fun addAlbumToCollection(album: Album, collectionName: String, addToLibraryOverrideValue: Boolean? = null) {
-        viewModelScope.launch {
+    fun addAlbumToCollection(album: Album, collectionName: String, addToLibraryOverrideValue: Boolean? = null) =
+        launchSafely("addAlbumToCollection(${album.id} -> $collectionName)") {
             val settings = settingsRepository.settings.first()
             val appDefault = settings.defaultOnAddToCollection
             val addToLibrary = addToLibraryOverrideValue ?: settings.collectionAddToLibrary.getOrDefault(collectionName, OnAddToCollection.DEFAULT).value ?: appDefault
@@ -105,11 +92,11 @@ class AlbumViewModel (
                 collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum.id)
             }
         }
-    }
 
-    fun removeAlbumFromCollection(album: Album, collectionName: String) = viewModelScope.launch {
-        collectionAlbumRepository.removeAlbumFromCollection(collectionName, album.id)
-    }
+    fun removeAlbumFromCollection(album: Album, collectionName: String) =
+        launchSafely("removeAlbumFromCollection(${album.id})") {
+            collectionAlbumRepository.removeAlbumFromCollection(collectionName, album.id)
+        }
 
 }
 

@@ -1,8 +1,8 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.CancellationException
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.repository.CacheSize
 import io.github.peningtonj.recordcollection.repository.OnAddToCollection
@@ -12,7 +12,6 @@ import io.github.peningtonj.recordcollection.repository.SortOrder
 import io.github.peningtonj.recordcollection.repository.SyncInterval
 import io.github.peningtonj.recordcollection.repository.Theme
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
@@ -22,123 +21,57 @@ class SettingsViewModel(
     // Expose the repository's settings directly
     val settings: StateFlow<SettingsState> = settingsRepository.settings
 
-    fun updateTheme(theme: Theme) {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(theme = theme))
+    /** Applies [transform] to the current settings and persists them; failures are logged, not thrown. */
+    private fun edit(operation: String, transform: (SettingsState) -> SettingsState) =
+        launchSafely(operation) {
+            settingsRepository.updateSettings(transform(settings.value))
         }
+
+    fun updateTheme(theme: Theme) = edit("updateTheme") { it.copy(theme = theme) }
+
+    fun toggleAutoSync() = edit("toggleAutoSync") { it.copy(autoSync = !it.autoSync) }
+
+    fun updateSyncInterval(interval: SyncInterval) = edit("updateSyncInterval") { it.copy(syncInterval = interval) }
+
+    fun toggleShowAlbumYear() = edit("toggleShowAlbumYear") { it.copy(showAlbumYear = !it.showAlbumYear) }
+
+    fun toggleDefaultOnAddToCollection() =
+        edit("toggleDefaultOnAddToCollection") { it.copy(defaultOnAddToCollection = !it.defaultOnAddToCollection) }
+
+    fun toggleAddTracksOnMaxRating() =
+        edit("toggleAddTracksOnMaxRating") { it.copy(addTracksOnMaxRating = !it.addTracksOnMaxRating) }
+
+    fun toggleTransitionTrack() = edit("toggleTransitionTrack") { it.copy(transitionTrack = !it.transitionTrack) }
+
+    fun updateDefaultSortOrder(sortOrder: SortOrder) = edit("updateDefaultSortOrder") { it.copy(defaultSortOrder = sortOrder) }
+
+    fun updateCacheSize(cacheSize: CacheSize) = edit("updateCacheSize") { it.copy(cacheSize = cacheSize) }
+
+    fun resetToDefaults() = edit("resetToDefaults") { SettingsState() }
+
+    fun updateOpenAiApiKey(value: String) = edit("updateOpenAiApiKey") { it.copy(openAiApiKey = value) }
+
+    fun updateOnAddToLibrarySetting(collectionName: String, onAddToLibrary: OnAddToCollection) =
+        edit("updateOnAddToLibrarySetting") {
+            it.copy(collectionAddToLibrary = it.collectionAddToLibrary + (collectionName to onAddToLibrary))
+        }
+
+    fun validateOpenAiApiKey() = launchSafely("validateOpenAiApiKey") {
+        val currentSettings = settings.value
+        val valid = try {
+            openAiApi.isApiKeyValid(currentSettings.openAiApiKey)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Napier.e(e) { "Failed to validate OpenAI API key" }
+            false
+        }
+        settingsRepository.updateSettings(currentSettings.copy(openAiApiKeyValid = valid))
     }
 
-    fun toggleAutoSync() {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(autoSync = !currentSettings.autoSync))
-        }
-    }
+    fun clearCache() = launchSafely("clearCache") { settingsRepository.clearCache() }
 
-    fun updateSyncInterval(interval: SyncInterval) {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(syncInterval = interval))
-        }
-    }
+    fun exportLibrary() = launchSafely("exportLibrary") { settingsRepository.exportLibrary() }
 
-    fun toggleShowAlbumYear() {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(showAlbumYear = !currentSettings.showAlbumYear))
-        }
-    }
-    fun toggleDefaultOnAddToCollection() {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(defaultOnAddToCollection = !currentSettings.defaultOnAddToCollection))
-        }
-    }
-
-    fun toggleAddTracksOnMaxRating() {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(addTracksOnMaxRating = !currentSettings.addTracksOnMaxRating))
-        }
-    }
-
-
-    fun toggleTransitionTrack() {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(transitionTrack = !currentSettings.transitionTrack))
-        }
-    }
-
-    fun updateDefaultSortOrder(sortOrder: SortOrder) {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(defaultSortOrder = sortOrder))
-        }
-    }
-
-    fun updateCacheSize(cacheSize: CacheSize) {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(cacheSize = cacheSize))
-        }
-    }
-
-    fun resetToDefaults() {
-        viewModelScope.launch {
-            settingsRepository.updateSettings(SettingsState())
-        }
-    }
-
-    fun updateOpenAiApiKey(value: String) {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(openAiApiKey = value))
-        }
-    }
-
-    fun validateOpenAiApiKey() {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            val openAiApiKey = currentSettings.openAiApiKey
-
-            try {
-                settingsRepository.updateSettings(currentSettings.copy(openAiApiKeyValid = openAiApi.isApiKeyValid(openAiApiKey)))
-            } catch (e: Exception) {
-                Napier.e(e) { "Failed to validate OpenAI API key" }
-                settingsRepository.updateSettings(currentSettings.copy(openAiApiKeyValid = false))
-            }
-        }
-    }
-
-    fun clearCache() {
-        viewModelScope.launch {
-            // Implementation would clear the actual cache
-            settingsRepository.clearCache()
-        }
-    }
-
-    fun updateOnAddToLibrarySetting(collectionName: String, onAddToLibrary: OnAddToCollection) {
-        viewModelScope.launch {
-            val currentSettings = settings.value
-            settingsRepository.updateSettings(currentSettings.copy(collectionAddToLibrary = currentSettings.collectionAddToLibrary.toMutableMap().apply {
-                put(collectionName, onAddToLibrary)
-            }))
-        }
-    }
-
-    fun exportLibrary() {
-        viewModelScope.launch {
-            // Implementation would export library data
-            settingsRepository.exportLibrary()
-        }
-    }
-
-    fun importLibrary() {
-        viewModelScope.launch {
-            // Implementation would import library data
-            settingsRepository.importLibrary()
-        }
-    }
+    fun importLibrary() = launchSafely("importLibrary") { settingsRepository.importLibrary() }
 }

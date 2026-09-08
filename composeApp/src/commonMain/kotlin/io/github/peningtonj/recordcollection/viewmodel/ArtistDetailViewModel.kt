@@ -1,18 +1,17 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Artist
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 class ArtistDetailViewModel(
     private val artistRepository: ArtistRepository,
@@ -39,8 +38,10 @@ class ArtistDetailViewModel(
         loadArtistDetails()
     }
 
-    private fun loadArtistDetails() {
-        viewModelScope.launch {
+    private fun loadArtistDetails() = launchSafely(
+        operation = "loadArtistDetails($artistId)",
+        onError = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) },
+    ) {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
@@ -90,12 +91,13 @@ class ArtistDetailViewModel(
                             error = null
                         )
                     }
+            } catch (e: CancellationException) {
+                throw e
             } catch (error: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = error.message
                 )
             }
-        }
     }
 }

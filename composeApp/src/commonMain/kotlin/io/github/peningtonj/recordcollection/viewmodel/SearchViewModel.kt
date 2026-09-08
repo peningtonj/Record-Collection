@@ -30,7 +30,10 @@ class SearchViewModel(
     private var searchJob: Job? = null
 
     init {
-        viewModelScope.launch {
+        launchSafely(
+            operation = "updateNewReleaseAlbums",
+            onError = { _uiState.value = SearchScreenUiState.Error(it.message ?: "Failed to load new releases") },
+        ) {
             updateNewReleaseAlbums()
         }
     }

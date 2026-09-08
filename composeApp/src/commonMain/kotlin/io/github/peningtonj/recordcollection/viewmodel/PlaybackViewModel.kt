@@ -9,6 +9,7 @@ import io.github.peningtonj.recordcollection.repository.PlaybackRepository
 import io.github.peningtonj.recordcollection.service.PLAYBACK_ACTIVE_POLLING_DELAY
 import io.github.peningtonj.recordcollection.service.PlaybackSessionManager
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -150,7 +151,10 @@ class PlaybackViewModel(
         _isLoading.value = true
         try {
             action()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
+            Napier.e("Playback action failed", e)
             sessionManager.setError(e.message)
         } finally {
             _isLoading.value = false
@@ -161,7 +165,10 @@ class PlaybackViewModel(
         try {
             action()
             sessionManager.refreshPlaybackState("From ViewModel")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
+            Napier.e("Playback action failed", e)
             sessionManager.setError(e.message)
         }
     }

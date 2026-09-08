@@ -1,7 +1,6 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
 import io.github.peningtonj.recordcollection.repository.CollectionAlbumRepository
@@ -12,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
 
 class CollectionDetailViewModel(
     private val collectionRepository: AlbumCollectionRepository,
@@ -22,12 +20,18 @@ class CollectionDetailViewModel(
     private val _uiState = MutableStateFlow(CollectionDetailUiState())
     val uiState: StateFlow<CollectionDetailUiState> = _uiState.asStateFlow()
 
+    private val showError: (Throwable) -> Unit = { e ->
+        _uiState.value = _uiState.value.copy(error = e.message)
+    }
+
     init {
         loadCollectionDetails()
     }
 
-    private fun loadCollectionDetails() {
-        viewModelScope.launch {
+    private fun loadCollectionDetails() = launchSafely(
+        operation = "loadCollectionDetails($collectionName)",
+        onError = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) },
+    ) {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             combine(
@@ -58,48 +62,27 @@ class CollectionDetailViewModel(
                     }
                 )
             }
-        }
     }
 
-    fun addAlbumToCollection(albumId: String) {
-        viewModelScope.launch {
-            try {
-                collectionAlbumRepository.addAlbumToCollection(collectionName, albumId)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
+    fun addAlbumToCollection(albumId: String) =
+        launchSafely("addAlbumToCollection($albumId)", showError) {
+            collectionAlbumRepository.addAlbumToCollection(collectionName, albumId)
         }
-    }
 
-    fun removeAlbumFromCollection(albumId: String) {
-        viewModelScope.launch {
-            try {
-                collectionAlbumRepository.removeAlbumFromCollection(collectionName, albumId)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
+    fun removeAlbumFromCollection(albumId: String) =
+        launchSafely("removeAlbumFromCollection($albumId)", showError) {
+            collectionAlbumRepository.removeAlbumFromCollection(collectionName, albumId)
         }
-    }
 
-    fun reorderAlbums(albumPositions: List<Pair<String, Int>>) {
-        viewModelScope.launch {
-            try {
-                collectionAlbumRepository.reorderAlbums(collectionName, albumPositions)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
+    fun reorderAlbums(albumPositions: List<Pair<String, Int>>) =
+        launchSafely("reorderAlbums($collectionName)", showError) {
+            collectionAlbumRepository.reorderAlbums(collectionName, albumPositions)
         }
-    }
 
-    fun updateCollection(existingName: String, newCollectionDetails: AlbumCollection) {
-        viewModelScope.launch {
-            try {
-                collectionRepository.updateCollectionByName(newCollectionDetails, existingName)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
+    fun updateCollection(existingName: String, newCollectionDetails: AlbumCollection) =
+        launchSafely("updateCollection($existingName)", showError) {
+            collectionRepository.updateCollectionByName(newCollectionDetails, existingName)
         }
-    }
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)

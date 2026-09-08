@@ -14,7 +14,6 @@ import io.github.peningtonj.recordcollection.service.SyncAction
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +38,7 @@ class LibraryViewModel(
     init {
         // Fetch the Spotify user profile and cache the user ID so all user-scoped
         // repositories (collections, ratings, tags) can resolve their Firestore paths.
-        viewModelScope.launch {
+        launchSafely("initUserSession") {
             libraryService.initUserSession()
         }
     }
@@ -140,35 +139,19 @@ class LibraryViewModel(
         return FilterPreferences.loadFilter()
     }
 
-    /**
-     * Launches [block] on [viewModelScope], logging (not crashing on) any failure.
-     * Coroutine cancellation still propagates. For user-visible failures, route to a
-     * state flow instead (see [launchSync] / [startTrackSync]).
-     */
-    private fun launchCatching(operation: String, block: suspend () -> Unit): Job =
-        viewModelScope.launch {
-            try {
-                block()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Napier.e("$operation failed", e)
-            }
-        }
-
-    fun createCollectionFromCurrentFilter(name: String) = launchCatching("createCollectionFromCurrentFilter") {
+    fun createCollectionFromCurrentFilter(name: String) = launchSafely("createCollectionFromCurrentFilter") {
         collectionsService.createCollectionFromAlbums(filteredAlbums.value.map { it.album }, name)
     }
 
-    fun import() = launchCatching("import") {
+    fun import() = launchSafely("import") {
         collectionsService.import()
     }
 
-    fun addAlbumToLibrary(album: Album) = launchCatching("addAlbumToLibrary(${album.id})") {
+    fun addAlbumToLibrary(album: Album) = launchSafely("addAlbumToLibrary(${album.id})") {
         libraryService.addAlbumToLibrary(album)
     }
 
-    fun removeAlbumFromLibrary(album: Album) = launchCatching("removeAlbumFromLibrary(${album.id})") {
+    fun removeAlbumFromLibrary(album: Album) = launchSafely("removeAlbumFromLibrary(${album.id})") {
         libraryService.removeAlbumFromLibrary(album)
     }
 
@@ -205,15 +188,15 @@ class LibraryViewModel(
             }
         }
 
-    fun saveTrack(trackId: String) = launchCatching("saveTrack($trackId)") {
+    fun saveTrack(trackId: String) = launchSafely("saveTrack($trackId)") {
         libraryService.saveTrackLocalAndRemote(trackId)
     }
 
-    fun removeTrack(trackId: String) = launchCatching("removeTrack($trackId)") {
+    fun removeTrack(trackId: String) = launchSafely("removeTrack($trackId)") {
         libraryService.removeTrackLocalAndRemote(trackId)
     }
 
-    fun addAllSongsFromAlbumToSavedSongs(album: Album) = launchCatching("addAllSongsFromAlbumToSavedSongs(${album.id})") {
+    fun addAllSongsFromAlbumToSavedSongs(album: Album) = launchSafely("addAllSongsFromAlbumToSavedSongs(${album.id})") {
         libraryService.addAllSongsFromAlbumToSavedSongs(album)
     }
 }

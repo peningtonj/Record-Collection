@@ -70,7 +70,10 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ### 1.3 — Inconsistent error handling (throw vs `Result` vs null vs silent) ⚠️
 
-- [~] **IN PROGRESS** — large, cross-cutting; being done incrementally.
+- [x] **DONE** (2026-09-08) — done in three slices. The *harm* (crashes from unhandled
+  `viewModelScope.launch`, silently swallowed failures, `runCatching` eating
+  `CancellationException`) is fixed everywhere; converting every remaining throwing
+  repo/service method to `Result<T>` is now opportunistic (their VM callers all catch).
   - **Slice 1 — the sync path** (2026-09-08):
     - `util/ResultExt.kt` — `resultOf { }` (a `runCatching` that re-throws
       `CancellationException`), `List<Result<T>>.aggregate()`, `AggregateException`.
@@ -98,8 +101,22 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
       `ReleaseGroupUseCase.getReleaseFromAlbum` uses `.firstOrNull()` (was `.first()` —
       `NoSuchElementException` on an empty release list) and logs the failure.
     - Tests updated in `AlbumRepositoryTest`.
-  - **Still to do**: the rest of `LibraryService` / `CollectionsService`, `TrackRepository`
-    writes, and a project-wide convention pass. Item 1.4 (Flow operators) already done.
+  - **Slice 3 — the ViewModel layer + convention** (2026-09-08):
+    - `viewmodel/ViewModelExt.kt` — `ViewModel.launchSafely(operation, onError) { }`:
+      `viewModelScope.launch` with a uniform policy (cancellation propagates, everything
+      else is logged and passed to `onError`, never escapes).
+    - Every bare `viewModelScope.launch { }` command across **all** ViewModels converted:
+      `LibraryViewModel` (init + 8), `AlbumViewModel` (6), `SettingsViewModel` (16 → an
+      `edit()` helper), `CollectionsViewModel` (7), `CollectionDetailViewModel` (5),
+      `CollectionImportViewModel` (4), `AuthViewModel`, `SearchViewModel`,
+      `AlbumDetailViewModel`, `ArtistDetailViewModel`. Failures route to the screen's
+      UI-state / error field where one exists.
+    - `PlaybackViewModel` `executeWithLoading` / `executePlaybackAction`, and the
+      remaining `catch (e: Exception)` blocks, now re-throw `CancellationException`.
+    - `AGENTS.md` § Anti-Patterns + § Conventions updated.
+  - Item 1.4 (Flow operators) done earlier. `LibraryService` / `CollectionsService` /
+    `TrackRepository` internals still `throw` — that's now a documented contract (the VM
+    boundary catches); convert to `Result` opportunistically.
 - **Why**: `AGENTS.md` already flags this. The mix means callers can't know whether
   to `try/catch`, check for null, or inspect a `Result`. Sync operations currently
   **swallow failures entirely** — a failed sync looks identical to a successful one.
@@ -498,12 +515,11 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-08 | 1 | 1.2 | 09eab02 | ViewModels via `viewModel { }` + per-screen ViewModelStore owned by the navigator; `onCleared()` now fires on pop. +ScreenViewModelStoresTest, +DesktopNavigatorTest. |
 | 2026-09-08 | 1/4 | 1.3 (slice 1), 4.7, 4.8 | 9ab5512 | ResultExt helper; ProfileRepository → Result<Unit> w/ aggregation; sync failures → SyncState.Error; LoginViewModel surfaces AuthState.Error. +ResultExtTest, +ProfileRepositoryTest. |
 | 2026-09-08 | 1 | 1.3 (slice 2) | 85cfb70 | AlbumRepository.fetchAlbum → Result<Album>; fetchReleaseGroupId → Result.failure not throw; fetchMultipleAlbums resultOf; caller `.first()` → `.firstOrNull()`. |
+| 2026-09-08 | 1 | 1.3 (slice 3) | _pending_ | ViewModelExt.launchSafely; every bare viewModelScope.launch across all 10 VMs converted; PlaybackViewModel catches re-throw CancellationException; AGENTS.md updated. **1.3 done.** |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-passes. `desktopTest` = **70 tests / 0 failing** (as of 2026-09-08, 1.3 slice 2). Desktop
-app boots & runs.
+passes. `desktopTest` = **70 tests / 0 failing** (as of 2026-09-08). Desktop app boots & runs.
 
 `compileDebugKotlinAndroid` now **passes** (see 1.12 — fixed 2026-09-07).
 
-**Section 1 status**: 1.1, 1.2, 1.4–1.12 done. 1.3 (error handling) in progress —
-slice 1 (sync path) done, project-wide convention pass still pending.
+**Section 1 status**: all of Section 1 (1.1–1.12) is done.

@@ -1,7 +1,6 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.CollectionFolder
 import io.github.peningtonj.recordcollection.repository.AlbumCollectionRepository
@@ -10,160 +9,93 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
 
 class CollectionsViewModel(
     private val repository: AlbumCollectionRepository,
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(CollectionsUiState())
     val uiState: StateFlow<CollectionsUiState> = _uiState.asStateFlow()
-    
+
     private val _currentFolder = MutableStateFlow<String?>(null)
     val currentFolder: StateFlow<String?> = _currentFolder.asStateFlow()
 
+    private val showError: (Throwable) -> Unit = { e ->
+        _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+    }
 
     init {
         loadTopLevelItems()
     }
 
-    private fun loadTopLevelItems() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            combine(
-                repository.getAllTopLevelCollections(),
-                repository.getAllTopLevelFolders()
-            ) { collections, folders ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    collections = collections,
-                    folders = folders,
-                    error = null
-                )
-            }.catch { error ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = error.message
-                )
-            }.collect { }
-        }
+    private fun loadTopLevelItems() = launchSafely("loadTopLevelItems", showError) {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        combine(
+            repository.getAllTopLevelCollections(),
+            repository.getAllTopLevelFolders()
+        ) { collections, folders ->
+            _uiState.value = _uiState.value.copy(
+                isLoading = false, collections = collections, folders = folders, error = null
+            )
+        }.catch { error ->
+            _uiState.value = _uiState.value.copy(isLoading = false, error = error.message)
+        }.collect { }
     }
-    
+
     fun navigateToFolder(folderName: String) {
         _currentFolder.value = folderName
         loadFolderContents(folderName)
     }
-    
+
     fun navigateBack() {
         _currentFolder.value = null
         loadTopLevelItems()
     }
 
-    fun updateCollectionParent(
-        collection: AlbumCollection,
-        newParentName: String?
-    ) {
-        viewModelScope.launch {
-            try {
-                repository.updateCollectionByName(
-                    collection.copy(parentName = newParentName),
-                    collection.name
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
+    fun updateCollectionParent(collection: AlbumCollection, newParentName: String?) =
+        launchSafely("updateCollectionParent(${collection.name})", showError) {
+            repository.updateCollectionByName(collection.copy(parentName = newParentName), collection.name)
         }
+
+    fun updateCollection(existingName: String, newCollectionDetails: AlbumCollection) =
+        launchSafely("updateCollection($existingName)", showError) {
+            repository.updateCollectionByName(newCollectionDetails, existingName)
+        }
+
+    private fun loadFolderContents(folderName: String) = launchSafely("loadFolderContents($folderName)", showError) {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        combine(
+            repository.getCollectionsByFolder(folderName),
+            repository.getFoldersByParent(folderName)
+        ) { collections, folders ->
+            _uiState.value = _uiState.value.copy(
+                isLoading = false, collections = collections, folders = folders, error = null
+            )
+        }.catch { error ->
+            _uiState.value = _uiState.value.copy(isLoading = false, error = error.message)
+        }.collect { }
     }
 
-    fun updateCollection(
-        existingName: String,
-        newCollectionDetails: AlbumCollection
-    ) {
-        viewModelScope.launch {
-            try {
-                repository.updateCollectionByName(newCollectionDetails, existingName)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
-        }
+    private fun reloadCurrentView() {
+        _currentFolder.value?.let { loadFolderContents(it) } ?: loadTopLevelItems()
     }
 
-    private fun loadFolderContents(folderName: String) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            
-            combine(
-                repository.getCollectionsByFolder(folderName),
-                repository.getFoldersByParent(folderName)
-            ) { collections, folders ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    collections = collections,
-                    folders = folders,
-                    error = null
-                )
-            }.catch { error ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = error.message
-                )
-            }.collect { }
+    fun createCollection(name: String, description: String? = null) =
+        launchSafely("createCollection($name)", showError) {
+            repository.createCollection(name, description, _currentFolder.value)
+            reloadCurrentView()
         }
-    }
-    
-    fun createCollection(name: String, description: String? = null) {
-        viewModelScope.launch {
-            try {
-                repository.createCollection(name, description, _currentFolder.value)
-                // Reload current view
-                if (_currentFolder.value != null) {
-                    loadFolderContents(_currentFolder.value!!)
-                } else {
-                    loadTopLevelItems()
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
-        }
+
+    fun createTopLevelFolder(name: String) = launchSafely("createTopLevelFolder($name)", showError) {
+        repository.createFolder(
+            CollectionFolder(folderName = name, collections = emptyList(), folders = emptyList(), parentName = null)
+        )
+        reloadCurrentView()
     }
 
-    fun createTopLevelFolder(name: String) {
-        viewModelScope.launch {
-            try {
-                repository.createFolder(
-                    CollectionFolder(
-                        folderName = name,
-                        collections = emptyList(),
-                        folders = emptyList(),
-                        parentName = null
-                    )
-                )
-                // Reload current view
-                if (_currentFolder.value != null) {
-                    loadFolderContents(_currentFolder.value!!)
-                } else {
-                    loadTopLevelItems()
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
-        }
-    }
-
-    fun deleteCollection(name: String) {
-        viewModelScope.launch {
-            try {
-                repository.deleteCollection(name)
-                // Reload current view
-                if (_currentFolder.value != null) {
-                    loadFolderContents(_currentFolder.value!!)
-                } else {
-                    loadTopLevelItems()
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
-        }
+    fun deleteCollection(name: String) = launchSafely("deleteCollection($name)", showError) {
+        repository.deleteCollection(name)
+        reloadCurrentView()
     }
 }
 
@@ -173,4 +105,3 @@ data class CollectionsUiState(
     val isLoading: Boolean = false,
     val error: String? = null
 )
-

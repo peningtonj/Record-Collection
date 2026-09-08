@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 class AuthViewModel(
     private val authRepository: SpotifyAuthRepository,
@@ -31,10 +30,8 @@ class AuthViewModel(
         initialValue = false
     )
 
-    fun logout() {
-        viewModelScope.launch {
-            userSessionRepository.clearUserId()
-            authRepository.logout()
-        }
+    fun logout() = launchSafely("logout") {
+        userSessionRepository.clearUserId()
+        authRepository.logout()
     }
 }

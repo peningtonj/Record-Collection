@@ -104,10 +104,20 @@ a listed anti-pattern.
 - **No hardcoded dependency versions in `build.gradle.kts`** — everything goes through `libs.versions.toml`
 - **No ad-hoc `CoroutineScope(...)`** that isn't owned and cancelled by something
 - **No get-then-set on Firestore** — use `FieldValue.arrayUnion/arrayRemove` / transactions
+- **No bare `viewModelScope.launch { … }`** for a command — use `launchSafely("name") { … }`
+  (`viewmodel/ViewModelExt.kt`): cancellation propagates, everything else is logged/routed,
+  never crashes. When the failure must be *shown*, pass `onError = { _uiState.value = … }`.
+- **No `runCatching` / `try { } catch (e: Exception)` around suspend code without
+  re-throwing `CancellationException`** — use `resultOf { }` (`util/ResultExt.kt`) or add
+  `catch (e: CancellationException) { throw e }` first.
 
 ## Conventions & Gotchas
 
-- **Error handling is inconsistent** — some methods throw, some return `Result<T>`; prefer `Result<T>` for new code
+- **Error handling** — repository/service suspend functions that can fail should return
+  `Result<T>` (`resultOf { }` to build one, `List<Result<T>>.aggregate()` to fold a batch).
+  ViewModels use `launchSafely` and route failures to a UI-state flow. Flows never `throw`
+  in an operator (emit `null` / use `.catch { }`). Legacy throwing methods still exist —
+  their callers must `try`/`catch`; convert opportunistically.
 - **Navigation** uses a custom `Screen` sealed class (`navigation/NavigationScreen.kt`) — add new screens there and in `NavigationHostComposable`
 - `SharingStarted.WhileSubscribed(5000)` is the standard for all `StateFlow` in ViewModels
 - The `AlbumEvent` system (`AlbumAdded`, `AlbumUpdated`, `AlbumDeleted`) must be dispatched after any album DB write — don't bypass it
