@@ -455,6 +455,9 @@ Ordered oldest → newest. Docs-only commits (progress-log updates, link fixes) 
 | `9ab5512` | 1.3 (slice 1), 4.7, 4.8 | `ResultExt` helper; `ProfileRepository` → `Result<Unit>` w/ aggregation; sync failures → `SyncState.Error`; `LoginViewModel` surfaces `AuthState.Error`; `+ResultExtTest`, `+ProfileRepositoryTest` |
 | `85cfb70` | 1.3 (slice 2) | `AlbumRepository.fetchAlbum` → `Result<Album>`; `fetchReleaseGroupId` → `Result.failure` not `throw`; `fetchMultipleAlbums` `resultOf`; caller `.first()` → `.firstOrNull()` |
 | `28464bd` | 1.3 (slice 3) | `ViewModelExt.launchSafely`; every bare `viewModelScope.launch` across all 10 VMs converted; `PlaybackViewModel` catches re-throw `CancellationException`; `AGENTS.md` updated |
+| `d82a21e` | 2.7 (observability) | `util/TrafficMetrics` + `TrafficSource` — lock-free per-screen Firestore/Spotify call counters, periodic `Traffic` log report; wired through `LoggingUtils` and screen navigation |
+| `a1705c9` | 2.7 (v1) | denormalised stable-field projection on `users/{uid}/library_albums`; `getAllAlbumsInLibrary` renders from one listener, no `albums` fan-out; `scripts/backfill_library_projection.py`; `+AlbumMapperTest` |
+| `c4c2453` | 2.7 (collections) | same projection on `collections/{name}.albums[]`; `getAlbumsInCollection` no longer joins `albums`; `addAlbumToCollection(name, album)`; backfill script extended; `+AlbumMapperTest` |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **76 tests / 0 failing**.
