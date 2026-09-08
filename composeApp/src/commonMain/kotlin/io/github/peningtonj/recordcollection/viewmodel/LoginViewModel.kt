@@ -40,11 +40,17 @@ class LoginViewModel(
         )
 
     init {
-        // Handle navigation when authenticated
         viewModelScope.launch {
             authState.collect { state ->
-                if (state is AuthState.Authenticated) {
-                    navigateToLibrary()
+                when (state) {
+                    is AuthState.Authenticated -> navigateToLibrary()
+                    // Surface a failure that happened outside startAuth() (e.g. a token
+                    // refresh that failed mid-session and bounced the user back to Login)
+                    // so it isn't a dead end — the retry button drives startAuth() again.
+                    is AuthState.Error -> _uiState.update {
+                        it.copy(isLoading = false, error = state.message, showRetry = true)
+                    }
+                    else -> {}
                 }
             }
         }

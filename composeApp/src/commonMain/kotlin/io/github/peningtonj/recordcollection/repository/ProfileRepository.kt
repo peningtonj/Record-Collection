@@ -6,6 +6,8 @@ import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.SavedAlbumDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SpotifyProfileDto
 import io.github.peningtonj.recordcollection.network.spotify.model.getAllItems
+import io.github.peningtonj.recordcollection.util.aggregate
+import io.github.peningtonj.recordcollection.util.resultOf
 import kotlin.collections.chunked
 
 class ProfileRepository(
@@ -28,22 +30,28 @@ class ProfileRepository(
                 )
             } ?: emptyList()
 
-    suspend fun removeAlbumsFromSpotifyLibrary(albums: List<Album>) {
-        albums.map { it.spotifyId }
-            .filter { it.isNotEmpty() }
-            .chunked(20)
-            .forEach { chunk ->
-                spotifyApi.user.removeAlbumsFromCurrentUsersLibrary(chunk)
-            }
-    }
+    /**
+     * Removes [albums] from the user's Spotify library, 20 at a time. Every chunk is
+     * attempted; the [Result] is a failure (carrying an [AggregateException]) if any
+     * chunk failed, so a partial failure is never silently dropped.
+     */
+    suspend fun removeAlbumsFromSpotifyLibrary(albums: List<Album>): Result<Unit> =
+        writeAlbumChunks(albums) { chunk ->
+            spotifyApi.user.removeAlbumsFromCurrentUsersLibrary(chunk)
+        }
 
-    suspend fun addAlbumsToSpotifyLibrary(albums: List<Album>) {
-        albums.map { it.spotifyId }
-            .filter { it.isNotEmpty() }
-            .chunked(20)
-            .forEach { chunk ->
-                spotifyApi.user.saveAlbumsToCurrentUsersLibrary(chunk)
-            }
+    /** Adds [albums] to the user's Spotify library, 20 at a time. See [removeAlbumsFromSpotifyLibrary]. */
+    suspend fun addAlbumsToSpotifyLibrary(albums: List<Album>): Result<Unit> =
+        writeAlbumChunks(albums) { chunk ->
+            spotifyApi.user.saveAlbumsToCurrentUsersLibrary(chunk)
+        }
+
+    private suspend fun writeAlbumChunks(
+        albums: List<Album>,
+        write: suspend (List<String>) -> Unit,
+    ): Result<Unit> {
+        val chunks = albums.map { it.spotifyId }.filter { it.isNotEmpty() }.chunked(20)
+        return chunks.map { chunk -> resultOf { write(chunk) } }.aggregate().map { }
     }
 
     suspend fun fetchUserSavedAlbums(): List<SavedAlbumDto> {

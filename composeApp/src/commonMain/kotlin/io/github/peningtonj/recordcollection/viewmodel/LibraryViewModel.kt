@@ -12,7 +12,9 @@ import io.github.peningtonj.recordcollection.service.LibraryService
 import io.github.peningtonj.recordcollection.service.LibraryStats
 import io.github.peningtonj.recordcollection.service.SyncAction
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -138,59 +140,82 @@ class LibraryViewModel(
         return FilterPreferences.loadFilter()
     }
 
-    fun createCollectionFromCurrentFilter(name: String) =
+    /**
+     * Launches [block] on [viewModelScope], logging (not crashing on) any failure.
+     * Coroutine cancellation still propagates. For user-visible failures, route to a
+     * state flow instead (see [launchSync] / [startTrackSync]).
+     */
+    private fun launchCatching(operation: String, block: suspend () -> Unit): Job =
         viewModelScope.launch {
-            collectionsService.createCollectionFromAlbums(filteredAlbums.value.map { it.album }, name)
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Napier.e("$operation failed", e)
+            }
         }
 
-    fun import() =
-        viewModelScope.launch {
-            collectionsService.import()
-        }
+    fun createCollectionFromCurrentFilter(name: String) = launchCatching("createCollectionFromCurrentFilter") {
+        collectionsService.createCollectionFromAlbums(filteredAlbums.value.map { it.album }, name)
+    }
 
-    fun addAlbumToLibrary(album: Album) =
-        viewModelScope.launch {
-            libraryService.addAlbumToLibrary(album)
-        }
+    fun import() = launchCatching("import") {
+        collectionsService.import()
+    }
 
-    fun removeAlbumFromLibrary(album: Album) =
-        viewModelScope.launch {
-            libraryService.removeAlbumFromLibrary(album)
-        }
+    fun addAlbumToLibrary(album: Album) = launchCatching("addAlbumToLibrary(${album.id})") {
+        libraryService.addAlbumToLibrary(album)
+    }
+
+    fun removeAlbumFromLibrary(album: Album) = launchCatching("removeAlbumFromLibrary(${album.id})") {
+        libraryService.removeAlbumFromLibrary(album)
+    }
 
     fun launchSync(syncAction: SyncAction, removeDuplicates: Boolean) =
         viewModelScope.launch {
-            if (_syncState.value is SyncState.Ready) {
-                val differences = (_syncState.value as SyncState.Ready).differences
-                _syncState.value = SyncState.Syncing
-                libraryService.applySync(differences, syncAction, removeDuplicates)
-                _syncState.value = SyncState.Idle
-            } else {
-                Napier.d { "Tried to start a sync with ${_syncState.value}" }
+            val state = _syncState.value
+            if (state !is SyncState.Ready) {
+                Napier.d { "Tried to start a sync with $state" }
+                return@launch
+            }
+            _syncState.value = SyncState.Syncing
+            _syncState.value = try {
+                libraryService.applySync(state.differences, syncAction, removeDuplicates)
+                SyncState.Idle
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Napier.e("applySync failed", e)
+                SyncState.Error(e.message ?: "Sync failed")
             }
         }
 
     fun startTrackSync() =
         viewModelScope.launch {
             _trackSyncState.value = SyncState.Syncing
-            libraryService.updateLibraryTracksFromSpotify()
-            _trackSyncState.value = SyncState.Idle
+            _trackSyncState.value = try {
+                libraryService.updateLibraryTracksFromSpotify()
+                SyncState.Idle
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Napier.e("track sync failed", e)
+                SyncState.Error(e.message ?: "Track sync failed")
+            }
+        }
+
+    fun saveTrack(trackId: String) = launchCatching("saveTrack($trackId)") {
+        libraryService.saveTrackLocalAndRemote(trackId)
     }
 
-    fun saveTrack(trackId: String) =
-        viewModelScope.launch {
-            libraryService.saveTrackLocalAndRemote(trackId)
-        }
+    fun removeTrack(trackId: String) = launchCatching("removeTrack($trackId)") {
+        libraryService.removeTrackLocalAndRemote(trackId)
+    }
 
-    fun removeTrack(trackId: String) =
-        viewModelScope.launch {
-            libraryService.removeTrackLocalAndRemote(trackId)
-        }
-
-    fun addAllSongsFromAlbumToSavedSongs(album: Album) =
-        viewModelScope.launch {
-            libraryService.addAllSongsFromAlbumToSavedSongs(album)
-        }
+    fun addAllSongsFromAlbumToSavedSongs(album: Album) = launchCatching("addAllSongsFromAlbumToSavedSongs(${album.id})") {
+        libraryService.addAllSongsFromAlbumToSavedSongs(album)
+    }
 }
 
 sealed class SyncState {

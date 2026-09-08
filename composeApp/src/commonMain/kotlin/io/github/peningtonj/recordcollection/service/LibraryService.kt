@@ -207,7 +207,7 @@ class LibraryService(
                 albumRepository.removeAlbumFromLibrary(album.id)
             }
             Napier.d { "Removing ${differences.userSavedAlbumsDuplicates.size} from spotify" }
-            profileRepository.removeAlbumsFromSpotifyLibrary(differences.userSavedAlbumsDuplicates)
+            profileRepository.removeAlbumsFromSpotifyLibrary(differences.userSavedAlbumsDuplicates).getOrThrow()
         }
 
         // Pre-compute sets for efficient lookups
@@ -225,7 +225,7 @@ class LibraryService(
                 batchArtistsThenSaveLocalAlbums(spotifyOnlyAlbums)
 
                 // Add local-only albums to Spotify library
-                profileRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
+                profileRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums).getOrThrow()
             }
 
             SyncAction.Intersection -> {
@@ -235,13 +235,13 @@ class LibraryService(
                 }
 
                 // Remove albums that are only in Spotify library
-                profileRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums)
+                profileRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums).getOrThrow()
             }
 
             SyncAction.UseLocal -> {
-                profileRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums)
-                profileRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums)
-                
+                profileRepository.removeAlbumsFromSpotifyLibrary(spotifyOnlyAlbums).getOrThrow()
+                profileRepository.addAlbumsToSpotifyLibrary(localOnlyAlbums).getOrThrow()
+
                 // Don't sync saved tracks in this case as we're using local only
             }
 
@@ -260,12 +260,12 @@ class LibraryService(
 
     suspend fun addAlbumToLibrary(album: Album) {
         albumRepository.addAlbumToLibrary(album.id)
-        profileRepository.addAlbumsToSpotifyLibrary(listOf(album))
+        profileRepository.addAlbumsToSpotifyLibrary(listOf(album)).getOrThrow()
     }
 
     suspend fun removeAlbumFromLibrary(album: Album) {
         albumRepository.removeAlbumFromLibrary(album.id)
-        profileRepository.removeAlbumsFromSpotifyLibrary(listOf(album))
+        profileRepository.removeAlbumsFromSpotifyLibrary(listOf(album)).getOrThrow()
     }
 
     suspend fun updateLibraryTracksFromSpotify() {

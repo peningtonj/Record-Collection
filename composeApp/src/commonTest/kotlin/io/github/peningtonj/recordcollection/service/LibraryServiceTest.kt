@@ -119,8 +119,8 @@ class LibraryServiceTest {
         )
 
         coEvery { albumRepository.removeAlbumFromLibrary(any()) } just Runs
-        coEvery { profileRepository.removeAlbumsFromSpotifyLibrary(any()) } just Runs
-        coEvery { profileRepository.addAlbumsToSpotifyLibrary(any()) } just Runs
+        coEvery { profileRepository.removeAlbumsFromSpotifyLibrary(any()) } returns Result.success(Unit)
+        coEvery { profileRepository.addAlbumsToSpotifyLibrary(any()) } returns Result.success(Unit)
         coEvery { albumRepository.saveAlbumIfNotPresent(any()) } just Runs
         coEvery { albumRepository.addAlbumToLibrary(any()) } just Runs
 
@@ -149,14 +149,33 @@ class LibraryServiceTest {
         )
 
         coEvery { albumRepository.removeAlbumFromLibrary(any()) } just Runs
-        coEvery { profileRepository.removeAlbumsFromSpotifyLibrary(any()) } just Runs
-        coEvery { profileRepository.addAlbumsToSpotifyLibrary(any()) } just Runs
+        coEvery { profileRepository.removeAlbumsFromSpotifyLibrary(any()) } returns Result.success(Unit)
+        coEvery { profileRepository.addAlbumsToSpotifyLibrary(any()) } returns Result.success(Unit)
         coEvery { albumRepository.saveAlbumIfNotPresent(any()) } just Runs
         coEvery { albumRepository.addAlbumToLibrary(any()) } just Runs
 
         service.applySync(differences, SyncAction.UseLocal)
 
         coVerify { profileRepository.removeAlbumsFromSpotifyLibrary(uniqueRemoteAlbums) }
+    }
+
+    @Test
+    fun `applySync surfaces a Spotify write failure instead of swallowing it`() = runTest {
+        val differences = LibraryDifferences(
+            localCount = 2, spotifyCount = 2, onlyInLocal = 1, onlyInSpotify = 1, inBoth = 1,
+            localLibrary = localAlbums, userSavedAlbums = remoteAlbums,
+            localDuplicates = emptyList(), userSavedAlbumsDuplicates = emptyList(),
+        )
+        coEvery { profileRepository.removeAlbumsFromSpotifyLibrary(any()) } returns Result.success(Unit)
+        coEvery { profileRepository.addAlbumsToSpotifyLibrary(any()) } returns
+            Result.failure(RuntimeException("Spotify 500"))
+        coEvery { albumRepository.saveAlbumIfNotPresent(any()) } just Runs
+        coEvery { albumRepository.addAlbumToLibrary(any()) } just Runs
+        coEvery { albumRepository.removeAlbumFromLibrary(any()) } just Runs
+
+        assertFailsWith<RuntimeException> {
+            service.applySync(differences, SyncAction.UseLocal)
+        }
     }
 
     @Test
@@ -174,8 +193,8 @@ class LibraryServiceTest {
         )
 
         coEvery { albumRepository.removeAlbumFromLibrary(any()) } just Runs
-        coEvery { profileRepository.removeAlbumsFromSpotifyLibrary(any()) } just Runs
-        coEvery { profileRepository.addAlbumsToSpotifyLibrary(any()) } just Runs
+        coEvery { profileRepository.removeAlbumsFromSpotifyLibrary(any()) } returns Result.success(Unit)
+        coEvery { profileRepository.addAlbumsToSpotifyLibrary(any()) } returns Result.success(Unit)
         coEvery { albumRepository.saveAlbumIfNotPresent(any()) } just Runs
         coEvery { albumRepository.addAlbumToLibrary(any()) } just Runs
 
@@ -200,8 +219,8 @@ class LibraryServiceTest {
         )
 
         coEvery { albumRepository.removeAlbumFromLibrary(any()) } just Runs
-        coEvery { profileRepository.removeAlbumsFromSpotifyLibrary(any()) } just Runs
-        coEvery { profileRepository.addAlbumsToSpotifyLibrary(any()) } just Runs
+        coEvery { profileRepository.removeAlbumsFromSpotifyLibrary(any()) } returns Result.success(Unit)
+        coEvery { profileRepository.addAlbumsToSpotifyLibrary(any()) } returns Result.success(Unit)
         coEvery { albumRepository.saveAlbumIfNotPresent(any()) } just Runs
         coEvery { albumRepository.addAlbumToLibrary(any()) } just Runs
 

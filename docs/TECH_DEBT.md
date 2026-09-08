@@ -70,8 +70,25 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ### 1.3 — Inconsistent error handling (throw vs `Result` vs null vs silent) ⚠️
 
-- [ ] **NOT STARTED** — large, cross-cutting; tackle incrementally after 1.2. Item 1.4
-  (one instance) is done.
+- [~] **IN PROGRESS** — large, cross-cutting; being done incrementally.
+  - **Slice 1 — the sync path** (2026-09-08):
+    - `util/ResultExt.kt` — `resultOf { }` (a `runCatching` that re-throws
+      `CancellationException`), `List<Result<T>>.aggregate()`, `AggregateException`.
+    - `ProfileRepository.add/removeAlbumsFromSpotifyLibrary` → `Result<Unit>`, every
+      chunk attempted, partial failure reported not swallowed (**4.7 DONE**).
+    - `LibraryService.applySync` / `addAlbumToLibrary` / `removeAlbumFromLibrary`
+      `.getOrThrow()` those results so a failed Spotify write propagates.
+    - `LibraryViewModel`: `launchSync` / `startTrackSync` wrapped → `SyncState.Error`
+      (a failed sync is now visible, not silent). New `launchCatching(op) { }` helper;
+      the 6 other fire-and-forget `viewModelScope.launch` mutations use it (log, don't
+      crash).
+    - `LoginViewModel` surfaces `AuthState.Error` in its UI state (**4.8 DONE** — the
+      Login retry button already drove recovery; now the reason is shown too).
+    - Tests: `ResultExtTest`, `ProfileRepositoryTest`, `LibraryServiceTest`
+      "applySync surfaces a Spotify write failure".
+  - **Still to do**: `AlbumRepository.fetchAlbum` (`Album?` + `throw`), the rest of
+    `LibraryService` / `CollectionsService`, `TrackRepository` writes, and a project-wide
+    convention pass. Item 1.4 (Flow operators) already done.
 - **Why**: `AGENTS.md` already flags this. The mix means callers can't know whether
   to `try/catch`, check for null, or inspect a `Result`. Sync operations currently
   **swallow failures entirely** — a failed sync looks identical to a successful one.
@@ -383,12 +400,15 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 - [x] **4.6 `ModularDependencyContainer.albumEventDispatcher` lazy block** — DONE
   (2026-09-08). Removed the shadowing local `albumTagRepository`; the block now uses the
   `by lazy` member throughout, so there's a single `AlbumTagRepository` instance.
-- [ ] **4.7 `ProfileRepository` fire-and-forget** — `addAlbumsToSpotifyLibrary` /
-  `removeAlbumsFromSpotifyLibrary` discard the API `Result`. Aggregate failures and
-  return `Result<Unit>` / a partial-failure report.
-- [ ] **4.8 `AuthState.Error` is a dead end** — nothing transitions out of it; a
-  transient auth failure wedges the app until restart. Add a retry path / timeout back
-  to `NotAuthenticated`.
+- [x] **4.7 `ProfileRepository` fire-and-forget** — DONE (2026-09-08, with 1.3 slice 1).
+  `add/removeAlbumsFromSpotifyLibrary` return `Result<Unit>`; every 20-album chunk is
+  attempted and a partial failure is reported via `AggregateException`. `LibraryService`
+  `.getOrThrow()`s them so `LibraryViewModel` can show `SyncState.Error`.
+- [x] **4.8 `AuthState.Error` is a dead end** — DONE (2026-09-08). `LoginViewModel` now
+  observes `AuthState.Error` and puts it in `uiState` with `showRetry = true`; the
+  existing "Try Again" button calls `startAuth()` → `Authenticating`. (The
+  `AuthNavigationWrapper` already routed an unauthenticated user to Login, so the wedge
+  was really "no visible reason + easy to miss the button" — now the error text shows.)
 
 ---
 
@@ -465,12 +485,13 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-07 | test | coil smoke | 5f78c90 | CoilNetworkSmokeTest — real fetch+decode through coil pipeline. |
 | 2026-09-08 | 4 | 4.1, 4.3, 4.4, 4.5, 4.6 | 41e5494 | addedAt preserved on re-sync; parseReleaseDate defensive; date-range boundary inclusive; sort reacts to settings; DI double-instance fixed. +AlbumMapperTest. |
 | 2026-09-08 | 1 | 1.2 | 09eab02 | ViewModels via `viewModel { }` + per-screen ViewModelStore owned by the navigator; `onCleared()` now fires on pop. +ScreenViewModelStoresTest, +DesktopNavigatorTest. |
+| 2026-09-08 | 1/4 | 1.3 (slice 1), 4.7, 4.8 | _pending_ | ResultExt helper; ProfileRepository → Result<Unit> w/ aggregation; sync failures → SyncState.Error; LoginViewModel surfaces AuthState.Error. +ResultExtTest, +ProfileRepositoryTest. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-passes. `desktopTest` = **61 tests / 0 failing** (as of 2026-09-08). Desktop app boots &
+passes. `desktopTest` = **70 tests / 0 failing** (as of 2026-09-08). Desktop app boots &
 runs.
 
 `compileDebugKotlinAndroid` now **passes** (see 1.12 — fixed 2026-09-07).
 
-**Not done in Section 1**: 1.3 (error handling — large, incremental). Everything else in
-Section 1 is done (1.1, 1.2, 1.4–1.12).
+**Section 1 status**: 1.1, 1.2, 1.4–1.12 done. 1.3 (error handling) in progress —
+slice 1 (sync path) done, project-wide convention pass still pending.
