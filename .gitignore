@@ -35,7 +35,9 @@ captures
 # Python
 __pycache__/
 *.pyc
+# Firebase Admin SDK service-account keys — NEVER commit (full project admin)
 serviceAccountKey*.json
+*-firebase-adminsdk-*.json
 # local Python virtualenvs
 records/
 .venv/
