@@ -19,11 +19,11 @@ Key package responsibilities:
 
 ## Dependency Injection Pattern
 
-`DependencyContainer` is provided via `LocalDependencyContainer` (a `CompositionLocal`). ViewModels are **not** obtained from a framework; they're constructed manually inside `remember { }` blocks in `ViewModelFactoryExtensions.kt`:
+`DependencyContainer` is provided via `LocalDependencyContainer` (a `CompositionLocal`). ViewModels are obtained through `viewModel { }` in `ViewModelFactoryExtensions.kt`, which registers them with the `LocalViewModelStoreOwner` in scope — an app-session store (`App.kt`) for the always-on VMs, and a per-screen store owned by the navigator (`ScreenViewModelStores`, provided by `NavigationHost`) for screen VMs, so `onCleared()` fires on pop:
 
 ```kotlin
 // Add a new rememberXxxViewModel() here when creating a new screen
-val vm = rememberLibraryViewModel()   // pulls from LocalDependencyContainer.current
+val vm = rememberLibraryViewModel()   // viewModel { LibraryViewModel(deps...) }
 ```
 
 Adding a new dependency: add to `DependencyContainer` interface → implement in `ModularDependencyContainer` → wire in `DependencyContainerFactory.create()` (desktop) and the Android equivalent.
@@ -96,7 +96,7 @@ a listed anti-pattern.
 ## Anti-Patterns — do NOT add new code that does these
 
 - **No `runBlocking` in repositories / off the main thread** — make it `suspend`, launch from a ViewModel scope
-- **No `remember { XxxViewModel(...) }`** — use the `viewModel { }` factory so `onCleared()` fires (existing code violates this; see TECH_DEBT 1.2)
+- **No `remember { XxxViewModel(...) }`** — use `viewModel { }` (via a `rememberXxxViewModel()` in `ViewModelFactoryExtensions.kt`) so `onCleared()` fires. Screen VMs are cleared when the screen is popped; components rendered *outside* `NavigationHost` (nav panel, `RecordCollectionApp`) resolve to the app-session store instead.
 - **No `throw` inside `Flow` operators** — emit `null` / a `Result` / a `LoadState` instead
 - **No `System.currentTimeMillis()` / `System.getenv` in `commonMain`** — use `kotlinx.datetime.Clock`
 - **No top-level declarations without a `package`**

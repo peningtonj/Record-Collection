@@ -41,34 +41,32 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 
 ### 1.2 — ViewModels created with `remember { }` instead of a ViewModel factory ⚠️
 
-- [ ] **NOT STARTED** — needs a navigator change first (see below); deferred as a
-  standalone piece of work. This is the highest-impact remaining Section 1 item.
-- **Why**: All 12 `androidx.lifecycle.ViewModel` subclasses are built in
-  `viewmodel/ViewModelFactoryExtensions.kt` via `remember { XxxViewModel(...) }`.
-  They are never registered with a `ViewModelStore`, so `onCleared()` is **never
-  called**. Every navigation leaks a `viewModelScope` and its Firestore `.snapshots`
-  listeners — they keep running (and keep billing reads) forever.
-- **Where**: `viewmodel/ViewModelFactoryExtensions.kt` (every `rememberXxxViewModel`),
-  and `viewmodel/PlaybackViewModel.kt:169` (`onCleared()` override that never fires).
-- **Blocker**: navigation is fully custom (`navigation/NavigationScreen.kt` +
-  `DesktopNavigator`/`AndroidNavigator`; `NavigationHost` just does
-  `content(currentScreen)`). There is **no per-screen `ViewModelStoreOwner`**, so
-  `viewModel { }` on its own would only dedupe to one app/window-level store — still
-  never cleared. A correct fix requires the navigator to own a `ViewModelStore` per
-  back-stack entry and `.clear()` it on pop.
-- **Fix (sequenced)**:
-  1. Add `org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose` to the catalog.
-  2. In the navigator, keep a `Map<Screen, ViewModelStore>`; on `NavigateBack` /
-     `PopUpTo` (inclusive) call `store.clear()` for the popped entries.
-  3. Wrap each rendered screen in a `CompositionLocalProvider(LocalViewModelStoreOwner
-     provides <entry owner>)`.
-  4. Rewrite `rememberXxxViewModel` as `viewModel { XxxViewModel(deps...) }` reading
-     `LocalDependencyContainer`.
-  5. Verify `onCleared()` fires on back-navigation (add a log / test).
-- **Interim mitigation** (if the full switch is deferred): give each VM a private
-  `CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)` instead of
-  `viewModelScope`, expose a `dispose()`, and call it from a
-  `DisposableEffect(Unit) { onDispose { vm.dispose() } }` in the screen.
+- [x] **DONE** (2026-09-08) — `rememberXxxViewModel` now use `viewModel { }` against a
+  `LocalViewModelStoreOwner`:
+  - `navigation/ScreenViewModelStores.kt` — one `ViewModelStore` per back-stack `Screen`.
+    Both navigators hold one and call `retainOnly(backStack + current)` after every
+    `navigate()`, which `.clear()`s (→ `onCleared()`) the stores of popped screens.
+    `Navigator.viewModelStoreOwnerFor(screen)` exposes it.
+  - `NavigationHost` (both actuals) wraps `content(screen)` in
+    `CompositionLocalProvider(LocalViewModelStoreOwner provides navigator.viewModelStoreOwnerFor(screen))`.
+  - `App.kt` provides an app-session `ViewModelStoreOwner` (cleared in a
+    `DisposableEffect onDispose`) for the always-on VMs (playback / search / settings /
+    auth) and for components rendered outside `NavigationHost` (the desktop nav panel).
+  - `ViewModelFactoryExtensions.kt` rewritten: every factory is `viewModel { … }` except
+    `rememberSettingsViewModel` (returns the DI-container singleton — it also backs the
+    theme, process lifetime).
+  - `lifecycle-viewmodel-compose` added to the catalog + `commonMain`.
+  - Verified: `ScreenViewModelStoresTest` + `DesktopNavigatorTest` (navigate → back /
+    `popUpTo` → the popped screen's ViewModel gets `onCleared`). `AlbumDetailViewModel` /
+    `ArtistDetailViewModel` keep a one-line `onCleared` log for leak-spotting.
+- **Known follow-ups (not regressions — pre-existing multiplicity now just visible)**:
+  - `LibraryViewModel` / `CollectionsViewModel` / `AlbumViewModel` are `rememberXxx()`'d
+    from several screens *and* the always-on nav panel → multiple live instances, each
+    with its own Firestore listeners. They're arguably app-scoped singletons; consider
+    hoisting them into the DI container like `settingsViewModel`.
+  - Desktop `PopUpTo` trims the back stack but doesn't move `currentScreen` (Android's
+    does) — unrelated to this item, but it means `popUpTo` to a screen you're "below"
+    is a no-op visually.
 
 ### 1.3 — Inconsistent error handling (throw vs `Result` vs null vs silent) ⚠️
 
@@ -466,12 +464,13 @@ These are systemic. Fix the pattern everywhere it appears, not just one instance
 | 2026-09-08 | 1 | 1.10 | 6dd4c89 | All deps via version catalog; ktor unified 3.1.0, coil 3.2.0, serialization-json 1.9.0, coroutines-test 1.10.2; pruned 8 dead template entries. |
 | 2026-09-07 | test | coil smoke | 5f78c90 | CoilNetworkSmokeTest — real fetch+decode through coil pipeline. |
 | 2026-09-08 | 4 | 4.1, 4.3, 4.4, 4.5, 4.6 | 41e5494 | addedAt preserved on re-sync; parseReleaseDate defensive; date-range boundary inclusive; sort reacts to settings; DI double-instance fixed. +AlbumMapperTest. |
+| 2026-09-08 | 1 | 1.2 | _pending_ | ViewModels via `viewModel { }` + per-screen ViewModelStore owned by the navigator; `onCleared()` now fires on pop. +ScreenViewModelStoresTest, +DesktopNavigatorTest. |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-passes. `desktopTest` = **55 tests / 0 failing** (as of 2026-09-08).
+passes. `desktopTest` = **61 tests / 0 failing** (as of 2026-09-08). Desktop app boots &
+runs.
 
 `compileDebugKotlinAndroid` now **passes** (see 1.12 — fixed 2026-09-07).
 
-**Not done in Section 1**: 1.2 (ViewModel factory — needs navigator work), 1.3 (error
-handling — large, incremental), 1.10 (rest of version-catalog consolidation), 1.12
-(Android build — pre-existing, newly documented).
+**Not done in Section 1**: 1.3 (error handling — large, incremental). Everything else in
+Section 1 is done (1.1, 1.2, 1.4–1.12).

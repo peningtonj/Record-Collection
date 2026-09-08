@@ -2,6 +2,7 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.usecase.GetAlbumDetailUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,11 @@ class AlbumDetailViewModel(
 ): ViewModel() {
     private val _uiState = MutableStateFlow<AlbumScreenUiState>(AlbumScreenUiState.Loading)
     val uiState = _uiState.asStateFlow()
+
+    override fun onCleared() {
+        Napier.d("AlbumDetailViewModel($albumId) cleared")
+        super.onCleared()
+    }
 
     fun loadAlbum() {
         viewModelScope.launch {

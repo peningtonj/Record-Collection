@@ -1,6 +1,7 @@
 package io.github.peningtonj.recordcollection.navigation
 
 import androidx.compose.runtime.Stable
+import androidx.lifecycle.ViewModelStoreOwner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,6 +14,10 @@ class AndroidNavigator : Navigator {
     override val currentRoute: String? = null
 
     private val _backStack = mutableListOf<Screen>()
+
+    private val viewModelStores = ScreenViewModelStores()
+    override fun viewModelStoreOwnerFor(screen: Screen): ViewModelStoreOwner =
+        viewModelStores.ownerFor(screen)
 
     private val _canNavigateBack = MutableStateFlow(false)
     override val canNavigateBack: StateFlow<Boolean> = _canNavigateBack.asStateFlow()
@@ -42,6 +47,7 @@ class AndroidNavigator : Navigator {
             }
         }
         _canNavigateBack.value = _backStack.size > 1
+        viewModelStores.retainOnly(_backStack.toSet() + _currentScreenFlow.value)
     }
 }
 

@@ -3,6 +3,7 @@ package io.github.peningtonj.recordcollection.navigation
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.ViewModelStoreOwner
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +16,10 @@ class DesktopNavigator : Navigator {
     override val currentScreen: StateFlow<Screen> = _currentScreenFlow.asStateFlow()
     override val currentRoute: String? = null
     private val _backStack = mutableStateOf(emptyList<Screen>())
+
+    private val viewModelStores = ScreenViewModelStores()
+    override fun viewModelStoreOwnerFor(screen: Screen): ViewModelStoreOwner =
+        viewModelStores.ownerFor(screen)
 
     init {
         Napier.d("DesktopNavigator initialized with Login screen")
@@ -50,6 +55,6 @@ class DesktopNavigator : Navigator {
             }
         }
         _canNavigateBack.value = _backStack.value.size > 1
-
+        viewModelStores.retainOnly(_backStack.value.toSet() + _currentScreenFlow.value)
     }
 }

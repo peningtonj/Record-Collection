@@ -2,6 +2,7 @@ package io.github.peningtonj.recordcollection.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Artist
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
@@ -21,6 +22,11 @@ class ArtistDetailViewModel(
 
     private val _uiState = MutableStateFlow(ArtistDetailUiState())
     val uiState: StateFlow<ArtistDetailUiState> = _uiState.asStateFlow()
+
+    override fun onCleared() {
+        Napier.d("ArtistDetailViewModel($artistId) cleared")
+        super.onCleared()
+    }
 
     data class ArtistDetailUiState(
         val artist: Artist? = null,

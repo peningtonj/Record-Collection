@@ -2,7 +2,7 @@
 package io.github.peningtonj.recordcollection.navigation
 
 import androidx.compose.runtime.staticCompositionLocalOf
-import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.lifecycle.ViewModelStoreOwner
 import kotlinx.coroutines.flow.StateFlow
 
 interface Navigator {
@@ -10,6 +10,12 @@ interface Navigator {
     val currentScreen: StateFlow<Screen>
     val currentRoute: String?
     val canNavigateBack: StateFlow<Boolean>
+
+    /**
+     * The [ViewModelStoreOwner] scoped to [screen]'s back-stack entry. Screen-scoped
+     * ViewModels are cleared when the screen is popped — see [ScreenViewModelStores].
+     */
+    fun viewModelStoreOwnerFor(screen: Screen): ViewModelStoreOwner
 
 
     // Convenience methods
