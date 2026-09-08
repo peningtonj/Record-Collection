@@ -4,12 +4,27 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** Entry stored inside a CollectionDocument's albums array */
+/**
+ * Entry stored inside a CollectionDocument's albums array. Carries the same denormalised
+ * stable-field projection as `library_albums` (see docs/DATA_MODEL.md) so a collection
+ * renders without joining the shared `albums` catalogue.
+ */
 @Serializable
 data class CollectionAlbumEntry(
     @SerialName("album_id") val albumId: String = "",
     val position: Int = 0,
-    @SerialName("added_at") val addedAt: Long = 0L
+    @SerialName("added_at") val addedAt: Long = 0L,
+
+    // ── denormalised projection ──
+    val name:                     String  = "",
+    @SerialName("primary_artist") val primaryArtist: String = "",
+    val artists:                  String  = "[]",   // JSON List<SimplifiedArtist>
+    @SerialName("release_date")   val releaseDate:   String = "",
+    @SerialName("album_type")     val albumType:     String = "",
+    @SerialName("total_tracks")   val totalTracks:   Long   = 0,
+    @SerialName("spotify_id")     val spotifyId:     String = "",
+    @SerialName("spotify_uri")    val spotifyUri:    String = "",
+    @SerialName("image_url")      val imageUrl:      String? = null,
 )
 
 /**

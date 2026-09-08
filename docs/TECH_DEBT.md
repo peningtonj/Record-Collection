@@ -271,15 +271,16 @@ disagree, this document is the source of truth for *what is actually wrong today
 
 ### 2.7 — Spotify metadata cache: no TTL, ToS exposure
 
-- [~] **v1 landed** — the library list now renders from a denormalised stable-field
-  projection on `users/{uid}/library_albums` (one listener, no `albums` fan-out). See
-  `docs/DATA_MODEL.md`. **Run `scripts/backfill_library_projection.py`** to populate
-  existing entries — the app falls back to the old join until then.
+- [~] **v1 + collections landed** — the library list *and* collection views now render
+  from a denormalised stable-field projection (on `users/{uid}/library_albums` and on
+  each `collections/{name}.albums[]` entry respectively) — one `library_albums` listener,
+  no `albums` fan-out. See `docs/DATA_MODEL.md`. **Run
+  `scripts/backfill_library_projection.py`** to populate existing entries (it backfills
+  both) — the app falls back to the old join until then.
 - [ ] **v2 remaining**: `albums`/`artists`/`tracks` are still a shared, indefinitely-
   retained mirror with no `fetched_at`. Add a ~24 h TTL + refresh; stop persisting
   `tracks` as a permanent collection (fetch per detail view into a memory/on-device
-  cache); denormalise collection entries so `CollectionAlbumRepository` stops joining
-  `albums`; and/or move the volatile cache to `users/{uid}/…` or a backend proxy.
+  cache); and/or move the volatile cache to `users/{uid}/…` or a backend proxy.
   Traffic before/after is measurable via `util/TrafficMetrics` (`Traffic` log tag).
 
 ### 2.8 — Playback poller runs unconditionally
@@ -456,5 +457,5 @@ Ordered oldest → newest. Docs-only commits (progress-log updates, link fixes) 
 | `28464bd` | 1.3 (slice 3) | `ViewModelExt.launchSafely`; every bare `viewModelScope.launch` across all 10 VMs converted; `PlaybackViewModel` catches re-throw `CancellationException`; `AGENTS.md` updated |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **75 tests / 0 failing**.
+and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **76 tests / 0 failing**.
 Desktop app boots & runs.

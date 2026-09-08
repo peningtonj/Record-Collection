@@ -1,10 +1,12 @@
 package io.github.peningtonj.recordcollection.repository
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
+import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollectionInfo
 import io.github.peningtonj.recordcollection.db.domain.CollectionAlbum
 import io.github.peningtonj.recordcollection.db.domain.CollectionAlbumEntry
 import io.github.peningtonj.recordcollection.db.domain.CollectionDocument
+import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.util.LoggingUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -32,31 +34,37 @@ class CollectionAlbumRepository(
 
     // ── Reads ─────────────────────────────────────────────────────────────────
 
+    /**
+     * Renders a collection from the denormalised projection on each entry — no join
+     * against shared `albums` (see docs/DATA_MODEL.md). Rating / in-library come from the
+     * one cheap per-user `library_albums` listener. Entries written before the projection
+     * existed (blank `name`) fall back to `albums` until `backfill_library_projection.py`
+     * runs.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getAlbumsInCollection(collectionName: String): Flow<List<CollectionAlbum>> {
         LoggingUtils.logFirebaseQuery("collections", "snapshot (albums array)", mapOf("collectionName" to collectionName))
         return collectionsFlow().flatMapLatest { ref ->
             ref.document(collectionName).snapshots.flatMapLatest { snapshot ->
-                val entries = snapshot.data<CollectionDocument?>()?.albums ?: emptyList()
+                val entries = (snapshot.data<CollectionDocument?>()?.albums ?: emptyList()).sortedBy { it.position }
                 LoggingUtils.logFirebaseResult("collections", "getAlbumsInCollection(collection=$collectionName)", entries.size)
                 if (entries.isEmpty()) return@flatMapLatest flowOf(emptyList())
 
-                val sorted = entries.sortedBy { it.position }
-                val albumIds = sorted.map { it.albumId }
+                val staleIds = entries.filter { it.name.isBlank() }.map { it.albumId }
+                val staleAlbumsFlow =
+                    if (staleIds.isEmpty()) flowOf(emptyMap())
+                    else albumRepository.getAlbumsByIds(staleIds).map { it.associateBy(Album::id) }
 
-                combine(
-                    albumRepository.getAlbumsByIds(albumIds),
-                    userLibraryRepository.getAllLibraryEntries()
-                ) { albums, libraryEntries ->
-                    val albumMap = albums.associateBy { it.id }
+                combine(staleAlbumsFlow, userLibraryRepository.getAllLibraryEntries()) { staleAlbums, libraryEntries ->
                     val libraryMap = libraryEntries.associateBy { it.albumId }
-                    sorted.mapNotNull { entry ->
-                        val album = albumMap[entry.albumId]
+                    entries.mapNotNull { entry ->
+                        val album = if (entry.name.isNotBlank()) AlbumMapper.collectionEntryToDomain(entry)
+                                    else staleAlbums[entry.albumId]
                         if (album == null) {
                             LoggingUtils.w(LoggingUtils.Category.REPOSITORY, "Album '${entry.albumId}' in collection '$collectionName' not found")
                             null
                         } else {
-                            val lib = libraryMap[album.id]
+                            val lib = libraryMap[entry.albumId]
                             CollectionAlbum(
                                 collectionName = collectionName,
                                 album = album.copy(rating = lib?.rating, inLibrary = lib?.inLibrary ?: false),
@@ -116,18 +124,18 @@ class CollectionAlbumRepository(
 
     // ── Writes ────────────────────────────────────────────────────────────────
 
-    suspend fun addAlbumToCollection(collectionName: String, albumId: String) {
+    suspend fun addAlbumToCollection(collectionName: String, album: Album) {
         LoggingUtils.logFirebaseQuery("collection", "get for addAlbumToCollection", mapOf("collectionName" to collectionName))
         val docRef = collectionsRef().document(collectionName)
         val currentAlbums = docRef.get().data<CollectionDocument?>()?.albums ?: emptyList()
-        if (currentAlbums.any { it.albumId == albumId }) {
-            LoggingUtils.logFirebaseQuery("collection", "addAlbumToCollection – already present, skipping", mapOf("albumId" to albumId))
+        if (currentAlbums.any { it.albumId == album.id }) {
+            LoggingUtils.logFirebaseQuery("collection", "addAlbumToCollection – already present, skipping", mapOf("albumId" to album.id))
             return
         }
         val nextPosition = (currentAlbums.maxOfOrNull { it.position } ?: 0) + 1
-        val updatedAlbums = currentAlbums + CollectionAlbumEntry(albumId = albumId, position = nextPosition, addedAt = Clock.System.now().epochSeconds)
-        LoggingUtils.logFirebaseWrite("collection", "set merge (add album)", collectionName, mapOf("albumId" to albumId, "position" to nextPosition))
-        docRef.set(mapOf("albums" to updatedAlbums), merge = true)
+        val entry = AlbumMapper.toCollectionEntry(album, nextPosition, Clock.System.now().epochSeconds)
+        LoggingUtils.logFirebaseWrite("collection", "set merge (add album)", collectionName, mapOf("albumId" to album.id, "position" to nextPosition))
+        docRef.set(mapOf("albums" to currentAlbums + entry), merge = true)
     }
 
     suspend fun removeAlbumFromCollection(collectionName: String, albumId: String) {

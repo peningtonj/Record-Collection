@@ -151,17 +151,24 @@ Combine **D + E + F** (with **C** for tracks): the per-user join table carries a
 projection of stable fields so the library renders from one read, and everything volatile
 is a short-lived cache refreshed per Spotify's terms.
 
-**Status — v1 landed** (`getAllAlbumsInLibrary` reads the projection; one `library_albums`
-listener, no `albums` fan-out):
+**Status — v1 + collections landed** (`getAllAlbumsInLibrary` and
+`getAlbumsInCollection` both read the projection; one `library_albums` listener, no
+`albums` fan-out):
 - `LibraryAlbumDocument` carries the projection; `AlbumMapper.toLibraryProjection` /
   `libraryProjectionToDomain` map it. Written on `addToLibrary` and on sync.
+- `CollectionAlbumEntry` carries the same stable-field projection;
+  `AlbumMapper.toCollectionEntry` / `collectionEntryToDomain` map it. Written on
+  `addAlbumToCollection(name, album)`. `getAlbumsInCollection` renders from the entry
+  projections + the one cheap `library_albums` listener (for rating / in-library);
+  entries with a blank `name` fall back to the `albums` join until the backfill runs.
 - **Migration**: `scripts/backfill_library_projection.py` copies the projection onto
-  existing `library_albums` entries. Run it right after deploying — until then the app
-  falls back to the old `albums` join for un-backfilled entries (blank `name`), so nothing
-  breaks, but the read-cost win only lands once the backfill runs.
+  existing `library_albums` entries **and** `collections/{name}.albums[]` entries. Run it
+  right after deploying — until then the app falls back to the old `albums` join for
+  un-backfilled entries (blank `name`), so nothing breaks, but the read-cost win only
+  lands once the backfill runs.
 - **Still v2**: the volatile-metadata TTL cache (genres / popularity / full images /
   tracklist still come from the shared `albums`/`artists`/`tracks` collections with no
-  TTL); dropping `tracks` as a permanent collection; collections still join `albums`.
+  TTL); dropping `tracks` as a permanent collection.
 
 ### `users/{uid}/library_albums/{albumId}`
 
@@ -211,15 +218,17 @@ from Spotify on demand (album-detail view, artist-detail view) into a cache with
 
 ### Collections
 
-`collections/{name}.albums[]` currently joins against shared `albums`. Resolve collection
-entries against the local `library_albums` cache instead; for the "in a collection but not
-in the library" case, denormalise the same minimal projection into the collection entry.
+**Landed.** `collections/{name}.albums[]` entries now carry the same stable-field
+projection as `library_albums`. `getAlbumsInCollection` renders from those, joining only
+the one cheap `library_albums` listener for rating / in-library — no `albums` fan-out.
+Entries written before the projection existed (blank `name`) fall back to the `albums`
+join until `backfill_library_projection.py` runs.
 
 ### What this fixes
 
 | Concern | Effect |
 |---|---|
-| Read cost (#2) | library grid = 1 collection read, no `ceil(N/30)` fan-out; big latency + offline-first win too |
+| Read cost (#2) | library grid + collection views = 1 collection read, no `ceil(N/30)` fan-out; big latency + offline-first win too |
 | Spotify ToS (#1) | stored-forever data is now minimal, per-user, and written as a side effect of the user's own action; volatile data is TTL'd |
 | Staleness (#3) | only stable fields are stored; volatile fields refresh |
 | Coupling (#5) | shared catalogue demoted to a self-healing cache; the per-user table is exactly where 2.1's isolation rules apply |

@@ -2,16 +2,19 @@
 """
 backfill_library_projection.py
 ==============================
-Populates the denormalised projection on each `users/{uid}/library_albums/{albumId}`
-document from the matching `albums/{albumId}` doc, so the library renders without joining
-the shared `albums` catalogue (see docs/DATA_MODEL.md, TECH_DEBT 2.7).
+Populates the denormalised stable-field projection from `albums/{albumId}` onto:
+  - every `users/{uid}/library_albums/{albumId}` document
+  - every entry in `users/{uid}/collections/{name}.albums[]`
 
-Copies these stable fields onto the library entry:
+so the library and collection screens render without joining the shared `albums`
+catalogue (see docs/DATA_MODEL.md, TECH_DEBT 2.7).
+
+Copies these stable fields:
     name, primary_artist, artists, release_date, album_type, total_tracks,
-    spotify_id, spotify_uri, image_url, projection_fetched_at
+    spotify_id, spotify_uri, image_url  (+ projection_fetched_at on library entries)
 
 Idempotent: entries that already have a non-empty `name` are skipped unless --force.
-Only touches entries with `in_library == true`.
+Library entries are only touched when `in_library == true`.
 
 Run this immediately after deploying the projection change — until it runs, the app
 falls back to the old join for un-backfilled entries (blank `name`).
@@ -73,34 +76,58 @@ def main() -> int:
             album_cache[album_id] = snap.to_dict() if snap.exists else None
         return album_cache[album_id]
 
-    updated = skipped = missing = 0
+    def projection_for(album_id: str) -> dict | None:
+        album = album_doc(album_id)
+        if album is None:
+            return None
+        p = {f: album.get(f) for f in PROJECTION_FIELDS if album.get(f) is not None}
+        p["image_url"] = first_image_url(album)
+        return p
+
+    lib_updated = lib_skipped = missing = 0
+    col_updated = col_skipped = 0
+
     for user in db.collection("users").stream():
+        # ── library_albums ──
         for entry in user.reference.collection("library_albums").stream():
             data = entry.to_dict() or {}
             if not data.get("in_library", False):
                 continue
             if data.get("name") and not args.force:
-                skipped += 1
+                lib_skipped += 1
                 continue
-
-            album = album_doc(entry.id)
-            if album is None:
+            p = projection_for(entry.id)
+            if p is None:
                 missing += 1
-                print(f"  ⚠  users/{user.id}/library_albums/{entry.id}: no albums/{entry.id} — skipped")
+                print(f"  ⚠  users/{user.id}/library_albums/{entry.id}: no albums/{entry.id}")
                 continue
-
-            projection = {f: album.get(f) for f in PROJECTION_FIELDS if album.get(f) is not None}
-            projection["image_url"] = first_image_url(album)
-            projection["projection_fetched_at"] = int(time.time() * 1000)
-
-            print(f"  {'[dry] ' if dry else ''}users/{user.id}/library_albums/{entry.id} ← "
-                  f"{projection.get('name')!r} / {projection.get('primary_artist')!r}")
+            p["projection_fetched_at"] = int(time.time() * 1000)
+            print(f"  {'[dry] ' if dry else ''}library_albums/{entry.id} ← {p.get('name')!r}")
             if not dry:
-                entry.reference.set(projection, merge=True)
-            updated += 1
+                entry.reference.set(p, merge=True)
+            lib_updated += 1
 
-    print(f"\n{'DRY RUN — ' if dry else ''}{updated} entries backfilled, "
-          f"{skipped} already done, {missing} missing their album doc.")
+        # ── collections[].albums[] ──
+        for coll in user.reference.collection("collections").stream():
+            entries = (coll.to_dict() or {}).get("albums") or []
+            changed = False
+            for e in entries:
+                if e.get("name") and not args.force:
+                    col_skipped += 1
+                    continue
+                p = projection_for(e.get("album_id", ""))
+                if p is None:
+                    missing += 1
+                    continue
+                e.update(p)
+                changed = True
+                col_updated += 1
+                print(f"  {'[dry] ' if dry else ''}collections/{coll.id}[{e.get('album_id')}] ← {p.get('name')!r}")
+            if changed and not dry:
+                coll.reference.set({"albums": entries}, merge=True)
+
+    print(f"\n{'DRY RUN — ' if dry else ''}library: {lib_updated} backfilled / {lib_skipped} skipped; "
+          f"collections: {col_updated} backfilled / {col_skipped} skipped; {missing} missing an album doc.")
     if dry:
         print("Re-run with --execute to apply.")
     return 0

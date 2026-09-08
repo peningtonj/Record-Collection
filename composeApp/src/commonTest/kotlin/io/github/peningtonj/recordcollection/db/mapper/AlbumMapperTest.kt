@@ -73,6 +73,22 @@ class AlbumMapperTest {
     }
 
     @Test
+    fun `collection entry round-trips the stable fields`() {
+        val original = TestAlbumDataFactory.album(id = "c1", name = "Blonde")
+        val entry = AlbumMapper.toCollectionEntry(original, position = 3, addedAtEpochSeconds = 1_700_000_000)
+        val back = AlbumMapper.collectionEntryToDomain(entry)
+
+        assertEquals(3, entry.position)
+        assertEquals(1_700_000_000, entry.addedAt)
+        assertEquals(original.id, back.id)
+        assertEquals(original.name, back.name)
+        assertEquals(original.primaryArtist, back.primaryArtist)
+        assertEquals(original.releaseDate, back.releaseDate)
+        assertEquals(original.artists, back.artists)
+        assertEquals(false, back.inLibrary)
+    }
+
+    @Test
     fun `libraryProjectionToDomain tolerates a blank album_type`() {
         val album = AlbumMapper.libraryProjectionToDomain(
             albumId = "x", name = "N", primaryArtist = "A", artistsJson = "[]",

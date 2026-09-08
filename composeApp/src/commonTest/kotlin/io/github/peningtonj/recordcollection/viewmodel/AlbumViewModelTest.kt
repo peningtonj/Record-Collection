@@ -163,7 +163,7 @@ class AlbumViewModelTest {
 
         coVerify { albumRepository.getAlbumByNameAndArtistIfPresent(testAlbum.name, testAlbum.primaryArtist) }
         coVerify { albumRepository.saveAlbum(testAlbum, addToLibraryOverride) }
-        coVerify { collectionAlbumRepository.addAlbumToCollection(collectionName, testAlbum.id) }
+        coVerify { collectionAlbumRepository.addAlbumToCollection(collectionName, testAlbum) }
     }
 
     @Test
@@ -182,7 +182,7 @@ class AlbumViewModelTest {
         // Then
         coVerify { albumRepository.getAlbumByNameAndArtistIfPresent(testAlbum.name, testAlbum.primaryArtist) }
         coVerify { albumRepository.addAlbumToLibrary(testAlbum) }
-        coVerify { collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum.id) }
+        coVerify { collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum) }
         coVerify(exactly = 0) { albumRepository.saveAlbum(any<Album>(), any()) }
     }
 
@@ -197,7 +197,7 @@ class AlbumViewModelTest {
         viewModel.addAlbumToCollection(testAlbum, collectionName, addToLibraryOverrideValue = false)
         advanceUntilIdle()
 
-        coVerify { collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum.id) }
+        coVerify { collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum) }
         coVerify(exactly = 0) { albumRepository.addAlbumToLibrary(any()) }
     }
 

@@ -82,14 +82,14 @@ class AlbumViewModel (
             val existingAlbum = albumRepository.getAlbumByNameAndArtistIfPresent(album.name, album.primaryArtist).first()
             if (existingAlbum == null) {
                 albumRepository.saveAlbum(album, addToLibrary)
-                collectionAlbumRepository.addAlbumToCollection(collectionName, album.id)
+                collectionAlbumRepository.addAlbumToCollection(collectionName, album)
 
             } else {
                 if (addToLibraryOverrideValue ?: false) {
                     albumRepository.addAlbumToLibrary(album)
                 }
 
-                collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum.id)
+                collectionAlbumRepository.addAlbumToCollection(collectionName, existingAlbum)
             }
         }
 

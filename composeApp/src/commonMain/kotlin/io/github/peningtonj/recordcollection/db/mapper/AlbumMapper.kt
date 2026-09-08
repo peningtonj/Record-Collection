@@ -3,6 +3,7 @@ package io.github.peningtonj.recordcollection.db.mapper
 import io.github.peningtonj.recordcollection.db.domain.Album
 import io.github.peningtonj.recordcollection.db.domain.AlbumDocument
 import io.github.peningtonj.recordcollection.db.domain.AlbumType
+import io.github.peningtonj.recordcollection.db.domain.CollectionAlbumEntry
 import io.github.peningtonj.recordcollection.db.domain.Image
 import io.github.peningtonj.recordcollection.db.domain.SimplifiedArtist
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumDto
@@ -99,6 +100,36 @@ object AlbumMapper {
         "image_url" to album.images.firstOrNull()?.url,
         "projection_fetched_at" to kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
     )
+
+    /** A `CollectionAlbumEntry` carrying the stable-field projection (see [toLibraryProjection]). */
+    fun toCollectionEntry(
+        album: Album,
+        position: Int,
+        addedAtEpochSeconds: Long,
+    ): CollectionAlbumEntry =
+        CollectionAlbumEntry(
+            albumId = album.id,
+            position = position,
+            addedAt = addedAtEpochSeconds,
+            name = album.name,
+            primaryArtist = album.primaryArtist,
+            artists = Json.encodeToString(album.artists),
+            releaseDate = album.releaseDate.toString(),
+            albumType = album.albumType.name,
+            totalTracks = album.totalTracks.toLong(),
+            spotifyId = album.spotifyId,
+            spotifyUri = album.spotifyUri,
+            imageUrl = album.images.firstOrNull()?.url,
+        )
+
+    fun collectionEntryToDomain(
+        entry: CollectionAlbumEntry,
+    ): Album = libraryProjectionToDomain(
+        albumId = entry.albumId, name = entry.name, primaryArtist = entry.primaryArtist,
+        artistsJson = entry.artists, releaseDate = entry.releaseDate, albumType = entry.albumType,
+        totalTracks = entry.totalTracks, spotifyId = entry.spotifyId, spotifyUri = entry.spotifyUri,
+        imageUrl = entry.imageUrl, rating = null, addedAt = null,
+    ).copy(inLibrary = false)
 
     /** Rebuilds an [Album] from a library projection. Volatile fields (genres, updatedAt, …) are left empty. */
     fun libraryProjectionToDomain(

@@ -64,9 +64,9 @@ class CollectionDetailViewModel(
             }
     }
 
-    fun addAlbumToCollection(albumId: String) =
-        launchSafely("addAlbumToCollection($albumId)", showError) {
-            collectionAlbumRepository.addAlbumToCollection(collectionName, albumId)
+    fun addAlbumToCollection(album: io.github.peningtonj.recordcollection.db.domain.Album) =
+        launchSafely("addAlbumToCollection(${album.id})", showError) {
+            collectionAlbumRepository.addAlbumToCollection(collectionName, album)
         }
 
     fun removeAlbumFromCollection(albumId: String) =

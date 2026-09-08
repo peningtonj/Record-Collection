@@ -16,10 +16,7 @@ class CollectionsService(
     suspend fun createCollectionFromAlbums(albums: List<Album>, name: String) {
         albumCollectionRepository.createCollection(name)
         albums.forEach { album ->
-            collectionAlbumRepository.addAlbumToCollection(
-                collectionName = name,
-                albumId = album.id
-            )
+            collectionAlbumRepository.addAlbumToCollection(collectionName = name, album = album)
         }
     }
 
@@ -31,10 +28,7 @@ class CollectionsService(
             albumCollectionRepository.createCollection(playlist.name)
             albums.onSuccess { response ->
                 response.forEach { album ->
-                    collectionAlbumRepository.addAlbumToCollection(
-                        collectionName = playlist.name,
-                        albumId = album.id
-                    )
+                    collectionAlbumRepository.addAlbumToCollection(collectionName = playlist.name, album = album)
                 }
             }
         }
