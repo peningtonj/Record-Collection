@@ -149,7 +149,7 @@ object ErrorMessageMapper {
                 message = "An unexpected error occurred. Please try again.",
                 category = ErrorCategory.UNKNOWN,
                 canRetry = true,
-                technicalDetails = "${throwable.javaClass.simpleName}: ${throwable.message}"
+                technicalDetails = "${throwable::class.simpleName}: ${throwable.message}"
             )
         }
     }

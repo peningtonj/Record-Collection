@@ -12,17 +12,6 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
-// GitLive Firebase 2.3.0 was built against Kotlin 2.2.0 and drags kotlin-stdlib up to
-// 2.2.0; this project's compiler is 2.1.21, and a 2.2.0 stdlib klib is unreadable to it
-// ("Symbol for Any not found"). Pin the stdlib to the compiler version.
-configurations.all {
-    resolutionStrategy {
-        force("org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}")
-        force("org.jetbrains.kotlin:kotlin-stdlib-js:${libs.versions.kotlin.get()}")
-        force("org.jetbrains.kotlin:kotlin-dom-api-compat:${libs.versions.kotlin.get()}")
-    }
-}
-
 kotlin {
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)

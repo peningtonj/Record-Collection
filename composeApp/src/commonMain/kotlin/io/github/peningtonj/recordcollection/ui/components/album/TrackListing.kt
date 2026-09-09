@@ -32,8 +32,8 @@ fun TrackListing(
     onAddToLibraryClick: (Track) -> Unit = {},
     onRemoveFromLibraryClick: (Track) -> Unit = {},
     ) {
-    // Group tracks by disc number
-    val tracksByDisc = tracks.groupBy { it.discNumber }.toSortedMap()
+    // Group tracks by disc number (ascending). `toSortedMap` is JVM-only — sort the entries.
+    val tracksByDisc = tracks.groupBy { it.discNumber }.toList().sortedBy { it.first }
     val hasMultipleDiscs = tracksByDisc.size > 1
 
     LazyColumn(
@@ -269,5 +269,5 @@ private fun formatDuration(durationMs: Long): String {
     val duration = durationMs.milliseconds
     val minutes = duration.inWholeMinutes
     val seconds = duration.inWholeSeconds % 60
-    return "%d:%02d".format(minutes, seconds)
+    return "$minutes:${seconds.toString().padStart(2, '0')}"
 }

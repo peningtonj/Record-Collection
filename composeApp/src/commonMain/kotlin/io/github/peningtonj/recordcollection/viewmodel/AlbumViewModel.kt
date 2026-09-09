@@ -76,7 +76,7 @@ class AlbumViewModel (
         launchSafely("addAlbumToCollection(${album.id} -> $collectionName)") {
             val settings = settingsRepository.settings.first()
             val appDefault = settings.defaultOnAddToCollection
-            val addToLibrary = addToLibraryOverrideValue ?: settings.collectionAddToLibrary.getOrDefault(collectionName, OnAddToCollection.DEFAULT).value ?: appDefault
+            val addToLibrary = addToLibraryOverrideValue ?: (settings.collectionAddToLibrary[collectionName] ?: OnAddToCollection.DEFAULT).value ?: appDefault
 
             Napier.d { "Adding album ${album.id} to collection $collectionName" }
             val existingAlbum = albumRepository.getAlbumByNameAndArtistIfPresent(album.name, album.primaryArtist).first()

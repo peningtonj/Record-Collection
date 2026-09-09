@@ -94,10 +94,7 @@ fun CollectionScreen(
     
     // Settings
     val settings by settingsViewModel.settings.collectAsState()
-    val addToLibrarySetting = settings.collectionAddToLibrary.getOrDefault(
-        collectionName, 
-        OnAddToCollection.DEFAULT
-    )
+    val addToLibrarySetting = settings.collectionAddToLibrary[collectionName] ?: OnAddToCollection.DEFAULT
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
