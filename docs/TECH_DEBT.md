@@ -299,6 +299,10 @@ disagree, this document is the source of truth for *what is actually wrong today
   sees nothing playing, resetting to the active rate the moment playback resumes. App left
   open with nothing playing settled to ~3 `/me/player` req/min (was ~30–40), confirmed via
   `TrafficMetrics`. `+PlaybackPollerTest`.
+- [~] **Active rate 1.5 s → 2.5 s** (`PLAYBACK_ACTIVE_POLLING_DELAY`) — the now-playing bar
+  interpolates progress client-side and the last 4 s of a track drops to
+  `TRANSITIONING_POLLING_DELAY_MS`, so this only bounds how fast an external skip/pause
+  shows. ~40 % fewer `/me/player` calls while playing.
 - [ ] **Still open**: no window-focus / lifecycle signal — a desktop window in the
   background or an Android app that's backgrounded still polls (just at the idle rate).
   Wiring an `isForeground` expect/actual into the poller would let it pause entirely.
@@ -472,7 +476,11 @@ Ordered oldest → newest. Docs-only commits (progress-log updates, link fixes) 
 | `f2551fe` | 2.7 (tracklists) | `TrackRepository.getAlbumTracks` — in-memory 24 h-TTL cache; removed the permanent `tracks` tracklist mirror (`getTracksForAlbum` / `checkAndUpdateTracksIfNeeded` / `fetchAndSaveTracks`); `combine(5)`→`(4)` in `GetAlbumDetailUseCase` |
 | `be0e015` | 2.8 | `PlaybackPoller` progressive idle back-off (`PLAYBACK_IDLE_BACKOFF_STEPS` 8→20→45→60 s); ~3 `/me/player` req/min while idle, was ~30–40; `+PlaybackPollerTest` |
 | `59679e6` | 2.7 (tracklists) | album-tracklist heart indicator restored via `GET /me/tracks/contains` (`markSavedStatus`) + `savedOverrides` for optimistic toggle; `+TrackRepositoryTest` |
+| `c33b8a7` | 2.7 (backfill) | `backfill_library_projection.py` iterates users via `list_documents()` (phantom parent docs); **run against prod** — cold library open now does 0 `getAlbumsByIds` reads (was ~16k `albums` docs/session) |
+| `983d1ae` | traffic | liked-tracks sync diffs by track id (was `List<Track>` equality → ~4,400 Firestore writes/sync churning the whole set); `initUserSession` skips `GET /me` once the id is known; `+LibraryServiceTest` |
+| `47d28fa` | traffic | new-releases feed: page 1 only + 30-min session cache in `AlbumRepository` (was ~5 `/browse` calls + a 100-id whereIn per Search init); `+AlbumRepositoryTest` |
+| `35c0209` | 2.8 | `PLAYBACK_ACTIVE_POLLING_DELAY` 1.5 s → 2.5 s |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **80 tests / 0 failing**.
+and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **82 tests / 0 failing**.
 Desktop app boots & runs.
