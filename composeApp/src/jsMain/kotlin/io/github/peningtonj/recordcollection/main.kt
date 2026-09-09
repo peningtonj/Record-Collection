@@ -33,6 +33,8 @@ fun main() {
         setSingletonImageLoaderFactory { context ->
             ImageLoader.Builder(context)
                 .components { add(KtorNetworkFetcherFactory(httpClient = { HttpClient() })) }
+                // No real filesystem in the browser — memory cache only.
+                .diskCachePolicy(coil3.request.CachePolicy.DISABLED)
                 .build()
         }
         App(dependencies, navigator)

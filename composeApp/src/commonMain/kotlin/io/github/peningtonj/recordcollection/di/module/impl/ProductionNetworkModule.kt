@@ -4,6 +4,7 @@ import io.github.peningtonj.recordcollection.di.module.NetworkModule
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
+import io.github.peningtonj.recordcollection.network.NoRetryAttribute
 import io.github.peningtonj.recordcollection.network.httpClientEngine
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
 import io.github.peningtonj.recordcollection.util.LoggingUtils
@@ -186,7 +187,7 @@ class ProductionNetworkModule : NetworkModule {
                             "RATE LIMITED ${response.status} — ${request.method.value} ${request.url.toString().spotifyPath()} | retry-after=${retryAfter}s remaining=$remaining/$limit",
                             tag = LoggingUtils.Category.SPOTIFY.tag
                         )
-                        val isPolling = request.headers["X-No-Retry"] == "true"
+                        val isPolling = request.attributes.getOrNull(NoRetryAttribute) == true
                         if (isPolling) return@retryIf false
                     }
 

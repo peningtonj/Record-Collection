@@ -11,8 +11,9 @@
     </style>
     <script>
         // Firebase Web config — public by design on web (see docs/WEB_TARGET_PLAN.md).
-        // Fill these in from the Firebase console (Project settings → Your apps → Web app).
-        const firebaseConfig = {
+        // Must be `window.firebaseConfig` (a real global) — the Kotlin FirebaseDriver
+        // reads it as a global property; a bare `const` inside a webpack bundle won't reach it.
+        window.firebaseConfig = {
           apiKey: "AIzaSyBUSi6hv4Cl-lMAn2Cg8OJVLCNcIFwDHjo",
           authDomain: "record-collection-66c1d.firebaseapp.com",
           projectId: "record-collection-66c1d",

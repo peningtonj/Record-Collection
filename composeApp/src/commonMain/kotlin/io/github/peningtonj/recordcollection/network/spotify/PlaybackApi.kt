@@ -12,6 +12,7 @@ import io.github.peningtonj.recordcollection.network.spotify.model.StartPlayback
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpRequestRetry
+import io.github.peningtonj.recordcollection.network.NoRetryAttribute
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -29,7 +30,7 @@ class PlaybackApi(
     suspend fun getPlaybackState() : Result<PlaybackDto> = runCatching {
 //        Napier.d { "Getting playback state" }
         val response = client.get("${BASE_URL}/me/player") {
-            header("X-No-Retry", "true")
+            attributes.put(NoRetryAttribute, true)
         }
 //        Napier.d { "Playback response ${response.status}" }
 

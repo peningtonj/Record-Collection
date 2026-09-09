@@ -95,6 +95,11 @@ kotlin {
         jsMain.dependencies {
             implementation(libs.ktor.client.js)
             implementation(libs.coil.network.ktor3)
+            // okio (via coil) touches Node's `os`/`path` when it builds its default
+            // FileSystem — browser shims so ImageLoader.Builder doesn't crash. See
+            // webpack.config.d/node-fallbacks.js.
+            implementation(npm("os-browserify", "0.3.0"))
+            implementation(npm("path-browserify", "1.0.1"))
         }
     }
 }

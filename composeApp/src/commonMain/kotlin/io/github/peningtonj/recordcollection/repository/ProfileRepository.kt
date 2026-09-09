@@ -15,7 +15,9 @@ class ProfileRepository(
 ) {
     /** Returns the current Spotify user's profile, or null on failure. */
     suspend fun getCurrentUserProfile(): SpotifyProfileDto? =
-        spotifyApi.user.getCurrentUserProfile().getOrNull()
+        spotifyApi.user.getCurrentUserProfile()
+            .onFailure { io.github.aakira.napier.Napier.e("getCurrentUserProfile failed", it) }
+            .getOrNull()
 
     suspend fun getUserSavedPlaylist() =
         spotifyApi.user.getUserPlaylists().getOrNull()
