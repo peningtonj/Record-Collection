@@ -206,11 +206,17 @@ this a mechanical move.
 
 ---
 
-## Phase 1 spike — **done**
+## Phase 1 spike — **done** (Phase 2 mostly done)
 
-The `js(IR) { browser }` target builds, bundles, and **renders the real Compose UI in a
-browser** — the Login screen paints, Firebase JS initializes, the Ktor `Js` engine makes
-requests, and the DI graph runs. Zero UI code changed.
+The `js(IR) { browser }` target builds, bundles, and **runs the app in a browser with
+real data** — Firebase anonymous auth, Firestore (833 library entries / 17 collections /
+478 artists, no permission errors), the Spotify Web API over CORS, live `/me/player`
+polling in the now-playing bar, and the 459-album grid with ratings + saved hearts. Zero
+UI code changed.
+
+**Known gaps:** album-art images don't load yet (Coil network fetch on JS — cards render,
+art is blank); the Spotify login **popup** (`WebAuthHandler`) is written but only exercised
+via a pre-existing token — a cold login still needs a manual run.
 
 **Landed:**
 - **Toolchain**: Kotlin 2.1.21 → **2.2.0**, Compose Multiplatform 1.8.1 → **1.9.0**,
@@ -243,16 +249,28 @@ The dev server binds `127.0.0.1:8888` (`webpack.config.d/dev-server.js`) so the 
 redirect resolves to `http://127.0.0.1:8888/callback` — **the URI the desktop handler
 already registers**. Open the app at `127.0.0.1`, not `localhost`, or the origins won't match.
 
-**Before it's usable end-to-end** (Phases 2–4):
-1. Put the real Firebase **Web** app config into `jsMain/resources/index.html`
-   (`window.firebaseConfig` — currently `REPLACE_ME`).
-2. Dev auth needs no new Spotify registration — it reuses `http://127.0.0.1:8888/callback`.
-   A production deploy registers its own `https://<host>/callback`.
-3. Confirm Spotify's API sends permissive CORS headers for browser origins (it does for
-   the Web API; watch for any endpoint that doesn't).
+**Fixed along the way (web-only bugs in shared code):**
+- `X-No-Retry` request header → `NoRetryAttribute` (Ktor attribute). A custom header
+  triggers a CORS preflight; Spotify's `/me/player` doesn't answer it, so every poll
+  failed with "Fail to fetch".
+- Ktor `3.1.0` → `3.2.4`. The `3.1.0` JS engine rejected gzip'd responses with
+  `Content-Length mismatch`, which broke `/me` deserialization → no `userId` → empty
+  library.
+- Coil `ImageLoader.Builder` on JS calls okio's default `FileSystem` → `os.tmpdir()` →
+  crash. `os-browserify` / `path-browserify` shims + `diskCachePolicy(DISABLED)`.
+
+**Still to do:**
+1. **Album art** — Coil `coil-network-ktor3` isn't fetching images on JS. Investigate the
+   fetcher / CORS on `i.scdn.co`.
+2. **Cold Spotify login** — run `WebAuthHandler`'s popup flow from a logged-out state
+   (clear `localStorage`) and confirm the `/callback` poll + token exchange.
+3. Dev auth reuses `http://127.0.0.1:8888/callback` (already registered). A production
+   deploy registers its own `https://<host>/callback`.
 4. **Real per-user Firebase auth (TECH_DEBT 2.1) must land before any public web deploy** —
    see the risk note below.
 5. URL routing (§8) and the small-screen `RecordCollectionApp` actual (§7).
+6. Silence the stale JS incremental-compile ICEs (`compileDevelopmentExecutableKotlinJs`
+   crashes after a dep change; a clean fixes it) — consider `kotlin.incremental.js.ir=false`.
 
 ---
 
