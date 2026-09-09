@@ -29,15 +29,17 @@ class LibraryService(
     private val userSessionRepository: UserSessionRepository
 ) {
     /**
-     * Fetches the current Spotify user's profile and caches their ID in UserSessionRepository.
-     * Always re-fetches so that switching accounts is handled correctly — if the same user
-     * logs in again no Settings write is needed, but a different user gets their own ID set.
+     * Caches the current Spotify user's ID in [UserSessionRepository].
+     *
+     * The ID is immutable for a session and persisted across restarts, so this is a
+     * no-op once we have one — `logout()` clears it, which forces a re-fetch on the next
+     * call. Skipping the redundant `/me` matters because several `LibraryViewModel`
+     * instances each run this on init.
      */
     suspend fun initUserSession() {
+        if (userSessionRepository.getUserId() != null) return
         val profile = profileRepository.getCurrentUserProfile() ?: return
-        if (userSessionRepository.getUserId() != profile.id) {
-            userSessionRepository.setUserId(profile.id)
-        }
+        userSessionRepository.setUserId(profile.id)
     }
 
     // Core data operations
@@ -272,18 +274,19 @@ class LibraryService(
         val remoteSavedTracks = trackRepository.fetchLibraryTracks()
         val localSavedTracks = trackRepository.getSavedTracks().first()
 
-        val onlyLocal = localSavedTracks - remoteSavedTracks
-        val onlyRemote = remoteSavedTracks - localSavedTracks
+        // Diff by track id — the two sources build `Track` differently (isSaved flag,
+        // nested album), so `List<Track>` set subtraction treats every track as changed
+        // and re-writes the whole liked-songs set on each sync.
+        val remoteIds = remoteSavedTracks.mapTo(mutableSetOf()) { it.id }
+        val localIds = localSavedTracks.mapTo(mutableSetOf()) { it.id }
 
-        Napier.d { "Updating library tracks from Spotify: ${onlyLocal.size} local, ${onlyRemote.size} remote" }
+        val toRemove = localSavedTracks.filter { it.id !in remoteIds }
+        val toAdd = remoteSavedTracks.filter { it.id !in localIds }
 
-        onlyLocal.forEach { track ->
-            trackRepository.removeTrackFromLibrary(track.id)
-        }
+        Napier.d { "Updating library tracks from Spotify: -${toRemove.size} / +${toAdd.size}" }
 
-        onlyRemote.forEach { track ->
-            trackRepository.saveTrackToLibrary(track)
-        }
+        toRemove.forEach { trackRepository.removeTrackFromLibrary(it.id) }
+        toAdd.forEach { trackRepository.saveTrackToLibrary(it) }
     }
 
     suspend fun saveTrackLocalAndRemote(trackId: String) {

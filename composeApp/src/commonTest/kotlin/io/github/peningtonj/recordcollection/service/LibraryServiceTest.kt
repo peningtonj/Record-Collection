@@ -5,6 +5,7 @@ import io.github.peningtonj.recordcollection.db.domain.filter.DateRange
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.repository.*
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
+import io.github.peningtonj.recordcollection.testDataFactory.TestTrackDataFactory
 import io.github.peningtonj.recordcollection.viewmodel.LibraryDifferences
 import io.mockk.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -230,5 +231,34 @@ class LibraryServiceTest {
         coVerify { albumRepository.removeAlbumFromLibrary(uniqueLocalAlbums[1].id) }
         coVerify { profileRepository.removeAlbumsFromSpotifyLibrary(uniqueRemoteAlbums) }
 
+    }
+
+    @Test
+    fun `updateLibraryTracksFromSpotify diffs by id, not object equality`() = runTest {
+        // The two sources build Track differently (isSaved, nested album). Only genuine
+        // adds/removes should be written — not every track on every sync.
+        val album = TestAlbumDataFactory.album("a", "A")
+        val local = listOf(
+            TestTrackDataFactory.track(1, album).copy(isSaved = true),
+            TestTrackDataFactory.track(2, album).copy(isSaved = true),
+            TestTrackDataFactory.track(3, album).copy(isSaved = true), // only local -> remove
+        )
+        val remote = listOf(
+            TestTrackDataFactory.track(1, album).copy(isSaved = false, name = "renamed"),
+            TestTrackDataFactory.track(2, album).copy(isSaved = false),
+            TestTrackDataFactory.track(4, album).copy(isSaved = false), // only remote -> add
+        )
+        coEvery { trackRepository.fetchLibraryTracks() } returns remote
+        coEvery { trackRepository.getSavedTracks() } returns flowOf(local)
+        coEvery { trackRepository.removeTrackFromLibrary(any()) } just Runs
+        coEvery { trackRepository.saveTrackToLibrary(any()) } just Runs
+
+        service.updateLibraryTracksFromSpotify()
+
+        coVerify(exactly = 1) { trackRepository.removeTrackFromLibrary("track_3_id") }
+        coVerify(exactly = 1) { trackRepository.saveTrackToLibrary(match { it.id == "track_4_id" }) }
+        coVerify(exactly = 0) { trackRepository.removeTrackFromLibrary("track_1_id") }
+        coVerify(exactly = 0) { trackRepository.removeTrackFromLibrary("track_2_id") }
+        coVerify(exactly = 0) { trackRepository.saveTrackToLibrary(match { it.id != "track_4_id" }) }
     }
 }
