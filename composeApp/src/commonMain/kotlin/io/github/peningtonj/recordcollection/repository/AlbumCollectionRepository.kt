@@ -2,9 +2,11 @@ package io.github.peningtonj.recordcollection.repository
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
+import io.github.peningtonj.recordcollection.db.domain.CollectionAlbumEntry
 import io.github.peningtonj.recordcollection.db.domain.CollectionDocument
 import io.github.peningtonj.recordcollection.db.domain.CollectionFolder
 import io.github.peningtonj.recordcollection.db.domain.CollectionFolderDocument
+import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.util.LoggingUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,11 +61,26 @@ class AlbumCollectionRepository(
         }
     }
 
+    // Collection documents are written as plain-primitive maps, not set(CollectionDocument):
+    // GitLive's Kotlin/JS serializer boxes `Long` fields and writes an empty `albums` list
+    // as `[null]` (which then fails every read). See db/FirestoreMap.kt.
+    private fun collectionDocMap(
+        name: String, description: String?, parentName: String?,
+        createdAt: Long, updatedAt: Long, albums: List<CollectionAlbumEntry>,
+    ): Map<String, Any?> = mapOf(
+        "name" to name,
+        "description" to description,
+        "parent_name" to parentName,
+        "created_at" to createdAt.toDouble(),
+        "updated_at" to updatedAt.toDouble(),
+        "albums" to albums.map(AlbumMapper::collectionEntryToFirestoreMap),
+    )
+
     suspend fun createCollection(name: String, description: String? = null, parent: String? = null) {
         val now = Clock.System.now().epochSeconds
         LoggingUtils.logFirebaseWrite("collection", "set (create)", name)
         collectionsRef().document(name).set(
-            CollectionDocument(name = name, description = description, createdAt = now, updatedAt = now, parentName = parent, albums = emptyList())
+            collectionDocMap(name, description, parent, createdAt = now, updatedAt = now, albums = emptyList())
         )
     }
 
@@ -72,16 +89,17 @@ class AlbumCollectionRepository(
         if (newCollectionDetails.name != existingName) {
             val existing = collectionsRef().document(existingName).get().data<CollectionDocument?>()
             collectionsRef().document(newCollectionDetails.name).set(
-                CollectionDocument(
+                collectionDocMap(
                     name = newCollectionDetails.name, description = newCollectionDetails.description,
+                    parentName = newCollectionDetails.parentName,
                     createdAt = existing?.createdAt ?: now, updatedAt = now,
-                    parentName = newCollectionDetails.parentName, albums = existing?.albums ?: emptyList()
+                    albums = existing?.albums ?: emptyList(),
                 )
             )
             collectionsRef().document(existingName).delete()
         } else {
             collectionsRef().document(existingName).set(
-                mapOf("description" to newCollectionDetails.description, "parent_name" to newCollectionDetails.parentName, "updated_at" to now),
+                mapOf("description" to newCollectionDetails.description, "parent_name" to newCollectionDetails.parentName, "updated_at" to now.toDouble()),
                 merge = true
             )
         }

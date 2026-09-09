@@ -94,11 +94,33 @@ object AlbumMapper {
         "artists" to Json.encodeToString(album.artists),
         "release_date" to album.releaseDate.toString(),
         "album_type" to album.albumType.name,
-        "total_tracks" to album.totalTracks.toLong(),
+        // Int / Double, never a Kotlin Long — GitLive's JS SDK rejects a boxed Long.
+        // Firestore stores int64/double regardless, so the `Long` model fields read fine.
+        "total_tracks" to album.totalTracks,
         "spotify_id" to album.spotifyId,
         "spotify_uri" to album.spotifyUri,
         "image_url" to album.images.firstOrNull()?.url,
-        "projection_fetched_at" to kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
+        "projection_fetched_at" to kotlinx.datetime.Clock.System.now().toEpochMilliseconds().toDouble(),
+    )
+
+    /**
+     * A `collections/{name}.albums[]` entry as a plain-primitive map. Built by hand
+     * (not `set(CollectionAlbumEntry)`) so it's safe to write from the Kotlin/JS build —
+     * see [io.github.peningtonj.recordcollection.db.isFirestoreRawMapSafe].
+     */
+    fun collectionEntryToFirestoreMap(entry: CollectionAlbumEntry): Map<String, Any?> = mapOf(
+        "album_id" to entry.albumId,
+        "position" to entry.position,
+        "added_at" to entry.addedAt.toDouble(),
+        "name" to entry.name,
+        "primary_artist" to entry.primaryArtist,
+        "artists" to entry.artists,
+        "release_date" to entry.releaseDate,
+        "album_type" to entry.albumType,
+        "total_tracks" to entry.totalTracks.toInt(),
+        "spotify_id" to entry.spotifyId,
+        "spotify_uri" to entry.spotifyUri,
+        "image_url" to entry.imageUrl,
     )
 
     /** A `CollectionAlbumEntry` carrying the stable-field projection (see [toLibraryProjection]). */

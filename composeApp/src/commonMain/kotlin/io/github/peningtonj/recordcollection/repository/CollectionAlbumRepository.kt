@@ -123,40 +123,44 @@ class CollectionAlbumRepository(
     }
 
     // ── Writes ────────────────────────────────────────────────────────────────
+    //
+    // The `albums` array is written as List<Map<String, Any?>> of plain primitives —
+    // NOT set(mapOf("albums" to List<CollectionAlbumEntry>)). GitLive's Kotlin/JS
+    // serializer boxes the entries' `Long` fields (rejected by the JS SDK) and can turn
+    // an empty list into `[null]`. See db/FirestoreMap.kt.
 
-    suspend fun addAlbumToCollection(collectionName: String, album: Album) {
-        LoggingUtils.logFirebaseQuery("collection", "get for addAlbumToCollection", mapOf("collectionName" to collectionName))
+    private suspend fun mutateAlbums(
+        collectionName: String,
+        op: String,
+        transform: (List<CollectionAlbumEntry>) -> List<CollectionAlbumEntry>,
+    ) {
         val docRef = collectionsRef().document(collectionName)
-        val currentAlbums = docRef.get().data<CollectionDocument?>()?.albums ?: emptyList()
-        if (currentAlbums.any { it.albumId == album.id }) {
-            LoggingUtils.logFirebaseQuery("collection", "addAlbumToCollection – already present, skipping", mapOf("albumId" to album.id))
-            return
+        val current = docRef.get().data<CollectionDocument?>()?.albums ?: emptyList()
+        val updated = transform(current)
+        if (updated == current) return
+        LoggingUtils.logFirebaseWrite("collection", "set merge ($op)", collectionName, mapOf("count" to updated.size))
+        docRef.set(mapOf("albums" to updated.map(AlbumMapper::collectionEntryToFirestoreMap)), merge = true)
+    }
+
+    suspend fun addAlbumToCollection(collectionName: String, album: Album) =
+        mutateAlbums(collectionName, "add album") { current ->
+            if (current.any { it.albumId == album.id }) return@mutateAlbums current
+            val nextPosition = (current.maxOfOrNull { it.position } ?: 0) + 1
+            current + AlbumMapper.toCollectionEntry(album, nextPosition, Clock.System.now().epochSeconds)
         }
-        val nextPosition = (currentAlbums.maxOfOrNull { it.position } ?: 0) + 1
-        val entry = AlbumMapper.toCollectionEntry(album, nextPosition, Clock.System.now().epochSeconds)
-        LoggingUtils.logFirebaseWrite("collection", "set merge (add album)", collectionName, mapOf("albumId" to album.id, "position" to nextPosition))
-        docRef.set(mapOf("albums" to currentAlbums + entry), merge = true)
-    }
 
-    suspend fun removeAlbumFromCollection(collectionName: String, albumId: String) {
-        val docRef = collectionsRef().document(collectionName)
-        val currentAlbums = docRef.get().data<CollectionDocument?>()?.albums ?: emptyList()
-        val updatedAlbums = currentAlbums.filter { it.albumId != albumId }
-        LoggingUtils.logFirebaseWrite("collection", "set merge (remove album)", collectionName, mapOf("albumId" to albumId))
-        docRef.set(mapOf("albums" to updatedAlbums), merge = true)
-    }
+    suspend fun removeAlbumFromCollection(collectionName: String, albumId: String) =
+        mutateAlbums(collectionName, "remove album") { current -> current.filter { it.albumId != albumId } }
 
     suspend fun reorderAlbums(collectionName: String, albumPositions: List<Pair<String, Int>>) {
-        val docRef = collectionsRef().document(collectionName)
-        val currentAlbums = docRef.get().data<CollectionDocument?>()?.albums ?: emptyList()
         val positionMap = albumPositions.toMap()
-        val updatedAlbums = currentAlbums.map { entry -> positionMap[entry.albumId]?.let { entry.copy(position = it) } ?: entry }
-        LoggingUtils.logFirebaseWrite("collection", "set merge (reorder)", collectionName, mapOf("count" to albumPositions.size))
-        docRef.set(mapOf("albums" to updatedAlbums), merge = true)
+        mutateAlbums(collectionName, "reorder") { current ->
+            current.map { entry -> positionMap[entry.albumId]?.let { entry.copy(position = it) } ?: entry }
+        }
     }
 
     suspend fun clearCollection(collectionName: String) {
         LoggingUtils.logFirebaseWrite("collection", "set merge (clear albums)", collectionName)
-        collectionsRef().document(collectionName).set(mapOf("albums" to emptyList<CollectionAlbumEntry>()), merge = true)
+        collectionsRef().document(collectionName).set(mapOf("albums" to emptyList<Any?>()), merge = true)
     }
 }

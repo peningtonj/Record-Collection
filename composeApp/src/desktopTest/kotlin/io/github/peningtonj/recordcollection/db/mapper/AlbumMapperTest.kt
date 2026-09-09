@@ -51,7 +51,7 @@ class AlbumMapperTest {
             artistsJson = p["artists"] as String,
             releaseDate = p["release_date"] as String,
             albumType = p["album_type"] as String,
-            totalTracks = p["total_tracks"] as Long,
+            totalTracks = (p["total_tracks"] as Int).toLong(),
             spotifyId = p["spotify_id"] as String,
             spotifyUri = p["spotify_uri"] as String,
             imageUrl = p["image_url"] as String?,
