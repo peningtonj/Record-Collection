@@ -71,11 +71,14 @@ kotlin {
             implementation(libs.gitlive.firebase.firestore)
             implementation(libs.gitlive.firebase.auth)
         }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.mockk.core)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.turbine) // For testing Flows
+        // Tests are JVM-only (mockk has no JS/Native artifact) and run via :composeApp:desktopTest.
+        val desktopTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.mockk.core)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.turbine) // For testing Flows
+            }
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)

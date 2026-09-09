@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Collection</title>
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #121212; }
+        #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+                   color: #b3b3b3; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    </style>
+    <script>
+        // Firebase Web config — public by design on web (see docs/WEB_TARGET_PLAN.md).
+        // Fill these in from the Firebase console (Project settings → Your apps → Web app).
+        window.firebaseConfig = {
+            apiKey: "REPLACE_ME",
+            authDomain: "record-collection-66c1d.firebaseapp.com",
+            projectId: "record-collection-66c1d",
+            appId: "REPLACE_ME",
+            storageBucket: "record-collection-66c1d.appspot.com",
+            messagingSenderId: "REPLACE_ME"
+        };
+    </script>
+</head>
+<body>
+    <div id="loading">Loading Record Collection…</div>
+    <script src="recordcollection.js"></script>
+</body>
+</html>
