@@ -11,7 +11,11 @@ import io.github.peningtonj.recordcollection.events.AlbumEventDispatcher
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.spotify.LibraryApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
+import io.github.peningtonj.recordcollection.network.spotify.UserApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AlbumsResponse
+import io.github.peningtonj.recordcollection.network.spotify.model.NewReleasesResponse
+import io.github.peningtonj.recordcollection.network.spotify.model.PaginatedResponse
+import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedAlbumDto
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.UserLibraryRepository
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
@@ -198,6 +202,26 @@ class AlbumRepositoryTest {
         // saveAlbum is what performs the Firestore write + library write; when
         // saveToDb = false it must not run.
         coVerify(exactly = 0) { userLibraryRepository.addToLibrary(any()) }
+    }
+
+    @Test
+    fun `fetchAllNewReleases caches within the session and re-fetches on forceRefresh`() = runTest {
+        val userApi = mockk<UserApi>()
+        every { spotifyApi.user } returns userApi
+        val dto = mockk<SimplifiedAlbumDto>()
+        val page = PaginatedResponse(
+            href = "h", items = listOf(dto), total = 1, limit = 1, offset = 0, next = null, previous = null
+        )
+        coEvery { userApi.getNewReleases() } returns Result.success(NewReleasesResponse(page))
+        mockkObject(AlbumMapper)
+        every { AlbumMapper.toDomain(dto) } returns testAlbum
+
+        repository.fetchAllNewReleases()
+        repository.fetchAllNewReleases()
+        coVerify(exactly = 1) { userApi.getNewReleases() }
+
+        repository.fetchAllNewReleases(forceRefresh = true)
+        coVerify(exactly = 2) { userApi.getNewReleases() }
     }
 
     // MISC API OPERATIONS TESTS

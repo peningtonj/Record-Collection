@@ -275,15 +275,21 @@ class AlbumRepository(
         spotifyApi.library.getAlbum(resolveSpotifyId(albumId))
             .map { AlbumMapper.toDomain(it) }
 
-    suspend fun fetchAllNewReleases(): List<Album> {
-        val response = spotifyApi.user.getNewReleases().getOrNull() ?: return emptyList()
+    // New-releases browse feed: first page only (20 albums fills the grid) and cached for
+    // the app session, so opening Search — or bouncing in and out of it — doesn't re-hit
+    // Spotify or re-run the whereIn against `albums`. Refresh chip passes forceRefresh.
+    private var newReleasesCache: Pair<Long, List<Album>>? = null
 
-        val result = response.albums.getAllItems { nextUrl ->
-            Napier.d("Fetching next page of new releases: $nextUrl")
-            spotifyApi.user.fetchNextNewReleases(nextUrl)
+    suspend fun fetchAllNewReleases(forceRefresh: Boolean = false): List<Album> {
+        val now = Clock.System.now().toEpochMilliseconds()
+        newReleasesCache?.let { (fetchedAt, albums) ->
+            if (!forceRefresh && now - fetchedAt < NEW_RELEASES_TTL_MS) return albums
         }
-
-        return result.getOrNull()?.map { AlbumMapper.toDomain(it) } ?: emptyList()
+        val response = spotifyApi.user.getNewReleases().getOrNull()
+            ?: return newReleasesCache?.second ?: emptyList()
+        val albums = response.albums.items.map { AlbumMapper.toDomain(it) }
+        newReleasesCache = now to albums
+        return albums
     }
 
     suspend fun fetchMultipleAlbums(ids: List<String>, saveToDb: Boolean = true): Result<List<Album>> = resultOf {
@@ -347,5 +353,9 @@ class AlbumRepository(
         Napier.d("Fetched ${playlists.size} playlists")
 
         return playlists.associateWith { playlist -> spotifyApi.temp.extractAlbumsFromPlaylist(playlist) }
+    }
+
+    companion object {
+        private const val NEW_RELEASES_TTL_MS = 30 * 60 * 1000L
     }
 }

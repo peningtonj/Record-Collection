@@ -117,7 +117,7 @@ fun SearchScreen(
                         AssistChip(
                             onClick = {
                                 viewModel.viewModelScope.launch {
-                                    viewModel.updateNewReleaseAlbums()
+                                    viewModel.updateNewReleaseAlbums(forceRefresh = true)
                                 }
                             },
                             leadingIcon = {

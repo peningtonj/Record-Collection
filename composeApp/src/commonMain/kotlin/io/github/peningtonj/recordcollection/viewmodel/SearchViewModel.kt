@@ -38,10 +38,10 @@ class SearchViewModel(
         }
     }
 
-    suspend fun updateNewReleaseAlbums() {
+    suspend fun updateNewReleaseAlbums(forceRefresh: Boolean = false) {
         _uiState.value = if (_uiState.value is SearchScreenUiState.Idle) SearchScreenUiState.LoadingNewReleases else _uiState.value
 
-        val newReleases = albumRepository.fetchAllNewReleases()
+        val newReleases = albumRepository.fetchAllNewReleases(forceRefresh)
 
         if (newReleases.isEmpty()) {
             _newReleaseAlbums.value = emptyList()
