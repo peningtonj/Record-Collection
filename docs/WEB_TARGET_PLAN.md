@@ -111,13 +111,12 @@ Ordered roughly by effort. "commonMain change" means the fix also improves andro
 
 - Current: `DesktopAuthHandler` (`ServerSocket(8888)` + `java.awt.Desktop.browse`),
   `AndroidAuthHandler` (Custom Tabs).
-- Web `WebAuthHandler`: PKCE stays identical; `window.location.href = authorizeUrl`; a
-  `callback.html` (or a `#callback` hash route) reads `?code=` / `state`, hands it back
-  to the app (via `localStorage` event / `BroadcastChannel`, or just resume on the main
-  page after redirect). Spotify's Authorization Code + PKCE flow is designed for browser
-  SPAs — this is the simplest of the three handlers.
-- Redirect URI: register `https://<host>/callback` (and `http://localhost:8080/callback`
-  for dev) in the Spotify dashboard.
+- Web `WebAuthHandler` (implemented): PKCE is identical; open the authorize URL in a
+  popup and poll `popup.location.href` until it redirects back to `<origin>/callback`
+  (readable once same-origin), then read `?code=`/`state` and close the popup.
+- Redirect URI: dev reuses the desktop handler's `http://127.0.0.1:8888/callback` (Spotify
+  requires the loopback IP, not `localhost`, for non-HTTPS URIs). Production registers
+  `https://<host>/callback`.
 
 ### 6. Coil network fetcher  *(~0.5 d)*
 
@@ -230,22 +229,25 @@ requests, and the DI graph runs. Zero UI code changed.
   2-arg `Map.getOrDefault` / `String.format` / `Throwable.javaClass` all removed.
 - **Web runtime**: `jsMain/main.kt` (`ComposeViewport` + Coil `coil-network-ktor3` loader
   + background anon-auth), `WebDependencyContainerFactory` (`StorageSettings`/localStorage),
-  `WebAuthHandler` (browser PKCE — popup + poll for the `/callback.html` redirect),
-  `WebNavigator`, `index.html` + `callback.html`, `webpack.config.d/node-fallbacks.js`.
+  `WebAuthHandler` (browser PKCE — popup + poll for the `/callback` redirect),
+  `WebNavigator`, `index.html`, `webpack.config.d/` (node fallbacks + dev-server host/port).
 - **Tests**: `commonTest` → `desktopTest` (mockk has no JS artifact and broke
   `:kotlinNpmInstall`; the tests are JVM-only anyway). 82/0, unchanged.
 
 **Build & verify:**
 ```
 ./gradlew :composeApp:jsBrowserDevelopmentWebpack   # bundle
-./gradlew :composeApp:jsBrowserDevelopmentRun       # dev server on :8080
+./gradlew :composeApp:jsBrowserDevelopmentRun       # dev server — open http://127.0.0.1:8888
 ```
+The dev server binds `127.0.0.1:8888` (`webpack.config.d/dev-server.js`) so the OAuth
+redirect resolves to `http://127.0.0.1:8888/callback` — **the URI the desktop handler
+already registers**. Open the app at `127.0.0.1`, not `localhost`, or the origins won't match.
 
 **Before it's usable end-to-end** (Phases 2–4):
 1. Put the real Firebase **Web** app config into `jsMain/resources/index.html`
    (`window.firebaseConfig` — currently `REPLACE_ME`).
-2. Register the redirect URI `http://localhost:8080/callback.html` (dev) and the prod
-   origin's `/callback.html` in the Spotify dashboard.
+2. Dev auth needs no new Spotify registration — it reuses `http://127.0.0.1:8888/callback`.
+   A production deploy registers its own `https://<host>/callback`.
 3. Confirm Spotify's API sends permissive CORS headers for browser origins (it does for
    the Web API; watch for any endpoint that doesn't).
 4. **Real per-user Firebase auth (TECH_DEBT 2.1) must land before any public web deploy** —

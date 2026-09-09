@@ -13,12 +13,15 @@ import kotlinx.coroutines.delay
  * so this is the simplest of the three handlers: open the authorize URL in a popup and
  * poll until it redirects back to our origin with `?code=`.
  *
- * The redirect URI is `<origin>/callback.html` — register `http://localhost:8080/callback.html`
- * (dev) and the production origin's `/callback.html` in the Spotify dashboard.
+ * The redirect URI is `<origin>/callback`. Served from `http://127.0.0.1:8888` in dev, that
+ * resolves to `http://127.0.0.1:8888/callback` — the URI the desktop handler already
+ * registers (Spotify requires the loopback IP, not `localhost`, for non-HTTPS URIs). A
+ * production deploy registers its own `https://<host>/callback`. Nothing is served at that
+ * path — the popup is closed as soon as the opener reads `?code=` off its URL.
  */
 class WebAuthHandler(client: HttpClient) : BaseAuthHandler(client) {
 
-    override fun getRedirectUri(): String = "${window.location.origin}/callback.html"
+    override fun getRedirectUri(): String = "${window.location.origin}/callback"
 
     override fun generateCodeChallenge(codeVerifier: String): String {
         val hex = io.github.peningtonj.recordcollection.util.sha256Hex(codeVerifier)
@@ -41,7 +44,7 @@ class WebAuthHandler(client: HttpClient) : BaseAuthHandler(client) {
             // Throws while the popup is on accounts.spotify.com (cross-origin); readable once
             // it redirects back to our origin.
             val href = runCatching { popup.location.href }.getOrNull() ?: continue
-            if (!href.contains("/callback.html")) continue
+            if (!href.contains("/callback")) continue
 
             val params = URLBuilder(href).parameters
             popup.close()
