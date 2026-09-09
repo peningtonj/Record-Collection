@@ -121,7 +121,7 @@ class SpotifyAuthRepository(
 
     // Settings Operations
     private fun saveToken(token: AccessToken, refreshToken: String = "") {
-        val expiresAt = Clock.System.now().toEpochMilliseconds() + (token.expiresIn * 1000) - (60 * 1000)
+        val expiresAt = Clock.System.now().toEpochMilliseconds() + (token.expiresIn * 1000L) - 60_000L
         Napier.d { "Saving token to settings with refresh token: ${token.refreshToken ?: refreshToken} ($expiresAt)" }
         settings[KEY_ACCESS_TOKEN] = token.accessToken
         settings[KEY_TOKEN_TYPE] = token.tokenType

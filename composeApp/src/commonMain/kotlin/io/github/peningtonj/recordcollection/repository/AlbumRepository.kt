@@ -356,6 +356,6 @@ class AlbumRepository(
     }
 
     companion object {
-        private const val NEW_RELEASES_TTL_MS = 30 * 60 * 1000L
+        private const val NEW_RELEASES_TTL_MS = 1_800_000L // 30 min
     }
 }

@@ -13,7 +13,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
-import net.dankito.readability4j.Readability4J
 
 /**
  * Very small OpenAI wrapper for chat‑style prompts.
@@ -37,9 +36,7 @@ class OpenAiApi(
 
     suspend fun getUrlContent(url: String): String {
         val html = client.get(url).body<String>()
-        val readability = Readability4J(url, html)
-        val article = readability.parse()
-        return article.textContent ?: error("No content found in $url")
+        return extractReadableText(url, html).ifBlank { error("No content found in $url") }
     }
     /**
      * Sends a prompt to the model and returns the assistant’s reply.

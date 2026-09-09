@@ -12,6 +12,17 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
+// GitLive Firebase 2.3.0 was built against Kotlin 2.2.0 and drags kotlin-stdlib up to
+// 2.2.0; this project's compiler is 2.1.21, and a 2.2.0 stdlib klib is unreadable to it
+// ("Symbol for Any not found"). Pin the stdlib to the compiler version.
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}")
+        force("org.jetbrains.kotlin:kotlin-stdlib-js:${libs.versions.kotlin.get()}")
+        force("org.jetbrains.kotlin:kotlin-dom-api-compat:${libs.versions.kotlin.get()}")
+    }
+}
+
 kotlin {
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
@@ -27,13 +38,26 @@ kotlin {
         }
     }
 
+    js(IR) {
+        browser {
+            commonWebpackConfig {
+                outputFileName = "recordcollection.js"
+            }
+        }
+        binaries.executable()
+    }
+
     sourceSets {
         val desktopMain by getting
+        val jsMain by getting
 
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.browser)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.coil.network.okhttp)
+            implementation(libs.readability4j)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -51,12 +75,9 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.auth)
             implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.client.okhttp)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.napier)
             implementation(libs.coil.compose)
-            implementation(libs.coil.network.okhttp)
-            implementation(libs.readability4j)
             implementation(libs.multiplatform.settings)
             implementation(libs.gitlive.firebase.firestore)
             implementation(libs.gitlive.firebase.auth)
@@ -73,8 +94,15 @@ kotlin {
             implementation(libs.skiko.awt.runtime.macos.arm64)
             implementation(libs.ktor.server.core)
             implementation(libs.ktor.client.java)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.coil.network.okhttp)
+            implementation(libs.readability4j)
             implementation(libs.apache.httpclient)
             implementation(libs.multiplatform.settings.jvm)
+        }
+        jsMain.dependencies {
+            implementation(libs.ktor.client.js)
+            implementation(libs.coil.network.ktor3)
         }
     }
 }

@@ -4,11 +4,14 @@ import io.github.peningtonj.recordcollection.di.module.NetworkModule
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.openAi.OpenAiApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
+import io.github.peningtonj.recordcollection.network.httpClientEngine
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
 import io.github.peningtonj.recordcollection.util.LoggingUtils
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
-import io.ktor.client.engine.okhttp.*
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.plugins.auth.*
 import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -45,7 +48,7 @@ class ProductionNetworkModule : NetworkModule {
     override fun provideHttpClient(): HttpClient = genericClient.value
 
     private fun buildGenericClient(): HttpClient =
-        HttpClient(OkHttp) {
+        HttpClient(httpClientEngine) {
             // Configure timeouts
             install(HttpTimeout) {
                 requestTimeoutMillis = 30_000  // 30 seconds for the entire request
@@ -67,8 +70,10 @@ class ProductionNetworkModule : NetworkModule {
                         cause
                     )
                     cause is kotlinx.coroutines.TimeoutCancellationException ||
-                    cause is java.net.SocketTimeoutException ||
-                    cause is java.io.IOException
+                    cause is HttpRequestTimeoutException ||
+                    cause is SocketTimeoutException ||
+                    cause is ConnectTimeoutException ||
+                    cause is kotlinx.io.IOException
                 }
                 
                 retryIf(maxRetries) { request, response ->
@@ -140,7 +145,7 @@ class ProductionNetworkModule : NetworkModule {
 
     override fun provideSpotifyApi(authRepository: SpotifyAuthRepository): SpotifyApi {
         spotifyClient?.close()
-        val client = HttpClient(OkHttp) {
+        val client = HttpClient(httpClientEngine) {
             // Configure timeouts for Spotify API
             install(HttpTimeout) {
                 requestTimeoutMillis = 30_000  // 30 seconds for the entire request
@@ -163,8 +168,10 @@ class ProductionNetworkModule : NetworkModule {
                         LoggingUtils.Category.SPOTIFY.tag
                     )
                     cause is kotlinx.coroutines.TimeoutCancellationException ||
-                            cause is java.net.SocketTimeoutException ||
-                            cause is java.io.IOException
+                    cause is HttpRequestTimeoutException ||
+                    cause is SocketTimeoutException ||
+                    cause is ConnectTimeoutException ||
+                    cause is kotlinx.io.IOException
                 }
 
                 retryIf(maxRetries) { request, response ->

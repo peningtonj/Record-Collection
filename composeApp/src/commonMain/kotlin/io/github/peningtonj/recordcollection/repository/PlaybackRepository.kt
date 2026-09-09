@@ -53,7 +53,7 @@ class PlaybackRepository(
 
     suspend fun fetchHistory(
         limit: Int = 10,
-        after: Long? = Clock.System.now().toEpochMilliseconds() - (1000 * 60 * 60),
+        after: Long? = Clock.System.now().toEpochMilliseconds() - 3_600_000L,
         before: Long? = null
     ) =
         HistoryResponseMapper.toDomain(
