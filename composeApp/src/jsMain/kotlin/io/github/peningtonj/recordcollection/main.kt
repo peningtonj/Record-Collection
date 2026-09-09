@@ -14,7 +14,6 @@ import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.di.WebDependencyContainerFactory
 import io.github.peningtonj.recordcollection.navigation.WebNavigator
-import io.ktor.client.HttpClient
 import kotlinx.browser.document
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -32,9 +31,12 @@ fun main() {
     ComposeViewport(document.body!!) {
         setSingletonImageLoaderFactory { context ->
             ImageLoader.Builder(context)
-                .components { add(KtorNetworkFetcherFactory(httpClient = { HttpClient() })) }
-                // No real filesystem in the browser — memory cache only.
-                .diskCachePolicy(coil3.request.CachePolicy.DISABLED)
+                .components { add(KtorNetworkFetcherFactory()) }
+                // No filesystem in the browser: no disk cache object. Leave the *policy*
+                // enabled, though — a DISABLED disk-cache policy makes coil's NetworkFetcher
+                // send `Cache-Control: no-store` on the image request, which triggers a CORS
+                // preflight that i.scdn.co rejects ("Failed to fetch"). Memory cache only.
+                .diskCache(null)
                 .build()
         }
         App(dependencies, navigator)
