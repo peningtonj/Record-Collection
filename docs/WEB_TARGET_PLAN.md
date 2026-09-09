@@ -207,6 +207,45 @@ this a mechanical move.
 
 ---
 
+## Phase 1 spike — findings (branch `web-target-spike`, commit `ca866c7`)
+
+The spike added the `js(IR) { browser }` target and every platform `actual`
+(`httpClientEngine`, `extractReadableText`, `Platform`, `sha256Hex` as a pure-Kotlin
+SHA-256, `secureRandomHex` via Web Crypto, `FirebaseDriver` reading `window.firebaseConfig`,
+plus `RecordCollectionApp` / `NavigationHost` / `onRightClick`). `ProductionNetworkModule`
+now takes the engine by injection instead of importing `OkHttp` in `commonMain`, and its
+`java.net` / `java.io` exception checks were swapped for Ktor multiplatform types. All of
+that is done and is good hygiene for the JVM targets too.
+
+**Two blockers surfaced:**
+
+1. **Toolchain version wall (hard blocker).** GitLive Firebase `2.3.0` *and*
+   `kotlinx-serialization-json 1.9.0` are built against **Kotlin 2.2.0** and publish 2.2.0
+   `.klib`s. This project's compiler is **2.1.21**, which cannot read a 2.2.0 klib for a
+   klib target — `compileKotlinJs` fails with `IllegalStateException: Symbol for Any not
+   found` / `Missing stdlib class`. The JVM/Android targets tolerate the same mismatch
+   (bytecode metadata is more lenient); **JS/Wasm do not.** Forcing `kotlin-stdlib` down
+   to 2.1.21 only moves the failure to serialization's and GitLive's own klibs.
+   - **Fix**: bump to **Kotlin 2.2.x + Compose Multiplatform 1.9.x** (CMP 1.9.0 is the
+     first release on Kotlin 2.2.0), plus the usual co-bumps (`compose-hot-reload`,
+     `kotlinx-datetime`). This is a cross-cutting change that re-touches Android + desktop
+     and needs the full test suite + a run on each platform — it should land as its own
+     PR *before* the web target, not inside it. GitLive Firebase `2.1.0` (Kotlin 2.0.20
+     klibs) would sidestep it, but serialization 1.9.0 still wouldn't, and downgrading
+     serialization risks its own API churn.
+
+2. **Kotlin/JS 2.1.21 const-eval ICE (minor, worked around).** Three `Long`-arithmetic
+   expressions (`Clock.System.now().toEpochMilliseconds() - (1000 * 60 * 60)` etc.) crash
+   the K2 web frontend with `NoSuchElementException: Collection contains no element
+   matching the predicate`. Rewriting each with explicit `L` literals fixes it; likely
+   gone in Kotlin 2.2.x anyway.
+
+**Status**: the `web-target-spike` branch holds all of Phase 1 bar the toolchain bump.
+Resume by upgrading Kotlin/CMP on `main`, then rebasing the branch and re-running
+`./gradlew :composeApp:compileKotlinJs`.
+
+---
+
 ## Codebase-specific risks
 
 - **`ProductionNetworkModule` in `commonMain`** imports the OkHttp engine directly — the
