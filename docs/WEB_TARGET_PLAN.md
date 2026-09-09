@@ -207,42 +207,50 @@ this a mechanical move.
 
 ---
 
-## Phase 1 spike — findings (branch `web-target-spike`, commit `ca866c7`)
+## Phase 1 spike — **done**
 
-The spike added the `js(IR) { browser }` target and every platform `actual`
-(`httpClientEngine`, `extractReadableText`, `Platform`, `sha256Hex` as a pure-Kotlin
-SHA-256, `secureRandomHex` via Web Crypto, `FirebaseDriver` reading `window.firebaseConfig`,
-plus `RecordCollectionApp` / `NavigationHost` / `onRightClick`). `ProductionNetworkModule`
-now takes the engine by injection instead of importing `OkHttp` in `commonMain`, and its
-`java.net` / `java.io` exception checks were swapped for Ktor multiplatform types. All of
-that is done and is good hygiene for the JVM targets too.
+The `js(IR) { browser }` target builds, bundles, and **renders the real Compose UI in a
+browser** — the Login screen paints, Firebase JS initializes, the Ktor `Js` engine makes
+requests, and the DI graph runs. Zero UI code changed.
 
-**Two blockers surfaced:**
+**Landed:**
+- **Toolchain**: Kotlin 2.1.21 → **2.2.0**, Compose Multiplatform 1.8.1 → **1.9.0**,
+  compose-hot-reload → 1.1.1, kotlinx-datetime → 0.6.2 (own commit on `main`). This was
+  the hard blocker — GitLive Firebase 2.3.0 and kotlinx-serialization 1.9.0 publish Kotlin
+  2.2.0 klibs that a 2.1.21 compiler can't read for a klib target (the JVM targets
+  tolerated the skew). Kotlin 2.2.0 also fixed the JS const-eval ICE the spike hit on
+  three `Long`-arithmetic expressions.
+- **Platform seams**: `httpClientEngine` (OkHttp/OkHttp/Js), `extractReadableText`
+  (readability4j/readability4j/tag-strip), `Platform`, `sha256Hex` (pure-Kotlin SHA-256 on
+  web), `secureRandomHex` (Web Crypto), `FirebaseDriver` (reads `window.firebaseConfig`),
+  `RecordCollectionApp` / `NavigationHost` / `onRightClick`. `ProductionNetworkModule`
+  takes the engine by injection instead of importing `OkHttp` in `commonMain`, with Ktor
+  multiplatform exception types.
+- **commonMain JVM-ism cleanup** (also improves the JVM targets): `Map.toSortedMap` /
+  2-arg `Map.getOrDefault` / `String.format` / `Throwable.javaClass` all removed.
+- **Web runtime**: `jsMain/main.kt` (`ComposeViewport` + Coil `coil-network-ktor3` loader
+  + background anon-auth), `WebDependencyContainerFactory` (`StorageSettings`/localStorage),
+  `WebAuthHandler` (browser PKCE — popup + poll for the `/callback.html` redirect),
+  `WebNavigator`, `index.html` + `callback.html`, `webpack.config.d/node-fallbacks.js`.
+- **Tests**: `commonTest` → `desktopTest` (mockk has no JS artifact and broke
+  `:kotlinNpmInstall`; the tests are JVM-only anyway). 82/0, unchanged.
 
-1. **Toolchain version wall (hard blocker).** GitLive Firebase `2.3.0` *and*
-   `kotlinx-serialization-json 1.9.0` are built against **Kotlin 2.2.0** and publish 2.2.0
-   `.klib`s. This project's compiler is **2.1.21**, which cannot read a 2.2.0 klib for a
-   klib target — `compileKotlinJs` fails with `IllegalStateException: Symbol for Any not
-   found` / `Missing stdlib class`. The JVM/Android targets tolerate the same mismatch
-   (bytecode metadata is more lenient); **JS/Wasm do not.** Forcing `kotlin-stdlib` down
-   to 2.1.21 only moves the failure to serialization's and GitLive's own klibs.
-   - **Fix**: bump to **Kotlin 2.2.x + Compose Multiplatform 1.9.x** (CMP 1.9.0 is the
-     first release on Kotlin 2.2.0), plus the usual co-bumps (`compose-hot-reload`,
-     `kotlinx-datetime`). This is a cross-cutting change that re-touches Android + desktop
-     and needs the full test suite + a run on each platform — it should land as its own
-     PR *before* the web target, not inside it. GitLive Firebase `2.1.0` (Kotlin 2.0.20
-     klibs) would sidestep it, but serialization 1.9.0 still wouldn't, and downgrading
-     serialization risks its own API churn.
+**Build & verify:**
+```
+./gradlew :composeApp:jsBrowserDevelopmentWebpack   # bundle
+./gradlew :composeApp:jsBrowserDevelopmentRun       # dev server on :8080
+```
 
-2. **Kotlin/JS 2.1.21 const-eval ICE (minor, worked around).** Three `Long`-arithmetic
-   expressions (`Clock.System.now().toEpochMilliseconds() - (1000 * 60 * 60)` etc.) crash
-   the K2 web frontend with `NoSuchElementException: Collection contains no element
-   matching the predicate`. Rewriting each with explicit `L` literals fixes it; likely
-   gone in Kotlin 2.2.x anyway.
-
-**Status**: the `web-target-spike` branch holds all of Phase 1 bar the toolchain bump.
-Resume by upgrading Kotlin/CMP on `main`, then rebasing the branch and re-running
-`./gradlew :composeApp:compileKotlinJs`.
+**Before it's usable end-to-end** (Phases 2–4):
+1. Put the real Firebase **Web** app config into `jsMain/resources/index.html`
+   (`window.firebaseConfig` — currently `REPLACE_ME`).
+2. Register the redirect URI `http://localhost:8080/callback.html` (dev) and the prod
+   origin's `/callback.html` in the Spotify dashboard.
+3. Confirm Spotify's API sends permissive CORS headers for browser origins (it does for
+   the Web API; watch for any endpoint that doesn't).
+4. **Real per-user Firebase auth (TECH_DEBT 2.1) must land before any public web deploy** —
+   see the risk note below.
+5. URL routing (§8) and the small-screen `RecordCollectionApp` actual (§7).
 
 ---
 
