@@ -22,8 +22,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-// Polling delays — defined here since PlaybackSessionManager owns the poller
-const val PLAYBACK_ACTIVE_POLLING_DELAY = 1500L
+// Polling delays — defined here since PlaybackSessionManager owns the poller.
+// The now-playing bar interpolates progress client-side (PlaybackBar), so the active
+// delay only bounds how fast an external play/pause/skip is picked up — 2.5 s is plenty,
+// and the last-4 s of a track drops to TRANSITIONING_POLLING_DELAY_MS anyway.
+const val PLAYBACK_ACTIVE_POLLING_DELAY = 2500L
 const val PLAYBACK_INACTIVE_POLLING_DELAY = 8000L
 const val TRANSITIONING_POLLING_DELAY_MS = 150L
 
