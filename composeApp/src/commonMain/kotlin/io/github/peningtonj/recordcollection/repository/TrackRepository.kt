@@ -124,7 +124,7 @@ class TrackRepository(
 
     suspend fun saveTrackToLibrary(track: Track) {
         LoggingUtils.logFirebaseWrite("tracks", "set (saveTrackToLibrary)", track.id)
-        tracksCollection.document(track.id).set(TrackMapper.toDocument(track.copy(isSaved = true)))
+        tracksCollection.document(track.id).set(TrackMapper.toDocumentMap(track.copy(isSaved = true)))
     }
 
     suspend fun saveTracksRemote(trackIds: List<String>) {

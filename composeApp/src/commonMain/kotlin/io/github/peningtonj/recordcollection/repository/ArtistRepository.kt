@@ -8,6 +8,7 @@ import io.github.peningtonj.recordcollection.db.domain.ArtistDocument
 import io.github.peningtonj.recordcollection.db.domain.Image
 import io.github.peningtonj.recordcollection.db.domain.SimplifiedArtist
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
+import io.github.peningtonj.recordcollection.db.mapper.ArtistMapper
 import io.github.peningtonj.recordcollection.network.miscApi.MiscApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
 import io.github.peningtonj.recordcollection.network.spotify.model.AristAlbumsRequest
@@ -78,16 +79,16 @@ class ArtistRepository(
     suspend fun saveArtist(artist: FullArtistDto) {
         LoggingUtils.logFirebaseWrite("artists", "set", artist.id, mapOf("name" to artist.name))
         artistsRef.document(artist.id).set(
-            ArtistDocument(
+            ArtistMapper.toDocumentMap(
                 id = artist.id,
-                followers = artist.followers.total.toLong(),
+                followers = artist.followers.total,
                 genres = artist.genres,
                 href = artist.href,
-                images = Json.encodeToString(artist.images),
+                imagesJson = Json.encodeToString(artist.images),
                 name = artist.name,
-                popularity = artist.popularity.toLong(),
+                popularity = artist.popularity,
                 type = artist.type,
-                uri = artist.uri
+                uri = artist.uri,
             )
         )
     }
@@ -95,16 +96,16 @@ class ArtistRepository(
     suspend fun saveArtist(artist: EnrichedArtist) {
         LoggingUtils.logFirebaseWrite("artists", "set", artist.artist.id, mapOf("name" to artist.artist.name))
         artistsRef.document(artist.artist.id).set(
-            ArtistDocument(
+            ArtistMapper.toDocumentMap(
                 id = artist.artist.id,
-                followers = artist.artist.followers.total.toLong(),
+                followers = artist.artist.followers.total,
                 genres = artist.enhancedGenres,
                 href = artist.artist.href,
-                images = Json.encodeToString(artist.artist.images),
+                imagesJson = Json.encodeToString(artist.artist.images),
                 name = artist.artist.name,
-                popularity = artist.artist.popularity.toLong(),
+                popularity = artist.artist.popularity,
                 type = artist.artist.type,
-                uri = artist.artist.uri
+                uri = artist.artist.uri,
             )
         )
     }

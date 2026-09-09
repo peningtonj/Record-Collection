@@ -6,6 +6,32 @@ import io.github.peningtonj.recordcollection.network.spotify.model.FullArtistDto
 import io.github.peningtonj.recordcollection.network.spotify.model.SimplifiedArtistDto
 
 object ArtistMapper {
+    /**
+     * `artists/{id}` as a plain-primitive map — not `set(ArtistDocument)`, whose `Long`
+     * followers/popularity the GitLive JS SDK rejects. See db/FirestoreMap.kt.
+     */
+    fun toDocumentMap(
+        id: String,
+        followers: Int,
+        genres: List<String>,
+        href: String,
+        imagesJson: String,
+        name: String,
+        popularity: Int,
+        type: String,
+        uri: String,
+    ): Map<String, Any?> = mapOf(
+        "id" to id,
+        "followers" to followers,
+        "genres" to genres,
+        "href" to href,
+        "images" to imagesJson,
+        "name" to name,
+        "popularity" to popularity,
+        "type" to type,
+        "uri" to uri,
+    )
+
     fun toDomain(entity: SimplifiedArtistDto) : SimplifiedArtist {
         return SimplifiedArtist(
             id = entity.id,

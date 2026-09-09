@@ -57,10 +57,12 @@ class AlbumRepository(
             docRef.get().takeIf { it.exists }?.data<AlbumDocument>()?.addedAt
         }.getOrNull()
         val now = Clock.System.now()
+        // Plain-primitive map, not set(AlbumDocument): GitLive's JS SDK rejects the
+        // boxed Long in total_tracks / updated_at. See db/FirestoreMap.kt.
         docRef.set(
-            AlbumMapper.toDocument(album).copy(
-                addedAt = existingAddedAt ?: now.toString(),
-                updatedAt = now.toEpochMilliseconds()
+            AlbumMapper.toDocumentMap(album) + mapOf(
+                "added_at" to (existingAddedAt ?: now.toString()),
+                "updated_at" to now.toEpochMilliseconds().toDouble(),
             )
         )
     }

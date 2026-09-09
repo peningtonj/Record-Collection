@@ -183,6 +183,27 @@ object AlbumMapper {
         rating = rating,
     )
 
+    /**
+     * `albums/{id}` as a plain-primitive map (see [collectionEntryToFirestoreMap]).
+     * Callers override `added_at` / `updated_at` as needed (map `+` wins on the right).
+     */
+    fun toDocumentMap(album: Album): Map<String, Any?> = mapOf(
+        "id" to album.id,
+        "spotify_id" to album.spotifyId,
+        "name" to album.name,
+        "primary_artist" to album.primaryArtist,
+        "artists" to Json.encodeToString(album.artists),
+        "release_date" to album.releaseDate.toString(),
+        "total_tracks" to album.totalTracks,
+        "spotify_uri" to album.spotifyUri,
+        "added_at" to album.addedAt?.toString(),
+        "album_type" to album.albumType.name,
+        "images" to Json.encodeToString(album.images),
+        "updated_at" to album.updatedAt?.toDouble(),
+        "external_ids" to album.externalIds?.let { Json.encodeToString(it) },
+        "release_group_id" to album.releaseGroupId,
+    )
+
     /** Writes album metadata only — inLibrary and rating are stored in the user library sub-collection. */
     fun toDocument(album: Album): AlbumDocument {
         return AlbumDocument(

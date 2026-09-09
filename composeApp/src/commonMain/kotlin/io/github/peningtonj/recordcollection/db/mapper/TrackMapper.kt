@@ -44,6 +44,23 @@ object TrackMapper {
         )
     }
 
+    /**
+     * `tracks/{id}` as a plain-primitive map — not `set(TrackDocument)`, whose `Long`
+     * track/disc/duration fields the GitLive JS SDK rejects. See db/FirestoreMap.kt.
+     */
+    fun toDocumentMap(track: Track): Map<String, Any?> = mapOf(
+        "name" to track.name,
+        "album_id" to track.albumId,
+        "track_number" to track.trackNumber.toInt(),
+        "duration_ms" to track.durationMs.toInt(),
+        "spotify_uri" to track.spotifyUri,
+        "artists" to Json.encodeToString(track.artists),
+        "primary_artist" to (track.artists.firstOrNull()?.name ?: "Unknown Artist"),
+        "is_explicit" to track.isExplicit,
+        "disc_number" to track.discNumber.toInt(),
+        "is_saved" to track.isSaved,
+    )
+
     fun toDocument(track: Track): TrackDocument = TrackDocument(
         name = track.name,
         albumId = track.albumId,

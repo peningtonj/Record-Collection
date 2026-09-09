@@ -2,7 +2,11 @@ package io.github.peningtonj.recordcollection.db
 
 import dev.gitlive.firebase.firestore.FieldValue
 import io.github.peningtonj.recordcollection.db.domain.CollectionDocument
+import io.github.peningtonj.recordcollection.db.domain.SimplifiedArtist
+import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.db.mapper.AlbumMapper
+import io.github.peningtonj.recordcollection.db.mapper.ArtistMapper
+import io.github.peningtonj.recordcollection.db.mapper.TrackMapper
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -56,6 +60,27 @@ class FirestoreMapTest {
         assertEquals(1_700_000_000.0, m["added_at"])
         assertEquals(album.totalTracks, m["total_tracks"])
         assertEquals("Amnesiac", m["name"])
+    }
+
+    @Test
+    fun `album, artist and track document maps are safe writes`() {
+        assertTrue(isFirestoreRawMapSafe(AlbumMapper.toDocumentMap(TestAlbumDataFactory.album())))
+
+        assertTrue(
+            isFirestoreRawMapSafe(
+                ArtistMapper.toDocumentMap(
+                    id = "a", followers = 5_000_000, genres = listOf("rock"), href = "h",
+                    imagesJson = "[]", name = "Radiohead", popularity = 82, type = "artist", uri = "u",
+                ),
+            ),
+        )
+
+        val track = Track(
+            id = "t", name = "Idioteque", artists = listOf(SimplifiedArtist("a", "Radiohead", "u", emptyMap(), "h", "artist")),
+            albumId = "kid-a", isExplicit = false, trackNumber = 8L, discNumber = 1L, durationMs = 189_000L,
+            spotifyUri = "spotify:track:t",
+        )
+        assertTrue(isFirestoreRawMapSafe(TrackMapper.toDocumentMap(track)))
     }
 
     @Test
