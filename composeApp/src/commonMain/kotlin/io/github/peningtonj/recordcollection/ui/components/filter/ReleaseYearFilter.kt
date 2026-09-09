@@ -38,7 +38,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+
+/** The calendar year right now, in the device's timezone. */
+private fun currentYear(): Int =
+    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
 
 @Composable
 fun ReleaseYearFilter(
@@ -105,25 +110,28 @@ fun ReleaseYearWidget(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
+        val currentYear = remember { currentYear() }
+
         // Range slider for years
-        var yearRange by remember { mutableStateOf(startYear.toFloat() ..2025f) }
+        var yearRange by remember { mutableStateOf(startYear.toFloat()..currentYear.toFloat()) }
         var selectedLabel by remember { mutableStateOf<String?>(null) }
 
         Text("${yearRange.start.toInt()} - ${yearRange.endInclusive.toInt()}")
 
         RangeSlider(
             value = yearRange,
-            onValueChange = { 
+            onValueChange = {
                 yearRange = it
                 selectedLabel = null // Clear label when manually adjusting slider
             },
-            valueRange = startYear.toFloat()..Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).year.toFloat(),
+            valueRange = startYear.toFloat()..currentYear.toFloat(),
             modifier = Modifier
                 .padding(vertical = 8.dp)
                 .height(32.dp)
         )
 
         QuickSelectButtons(
+            currentYear = currentYear,
             onClick = { range, label ->
                 yearRange = range
                 selectedLabel = label
@@ -155,13 +163,14 @@ fun ReleaseYearWidget(
 
 @Composable
 fun QuickSelectButtons(
+    currentYear: Int,
     onClick: (ClosedFloatingPointRange<Float>, String) -> Unit
 ) {
-    val currentYear = 2025
+    val decadeStart = currentYear - (currentYear % 10)
     val presets = listOf(
         "This Year" to (currentYear.toFloat()..currentYear.toFloat()),
-        "This Decade" to (2020f..currentYear.toFloat()),
-        "Last 5 Years" to ((currentYear - 5f)..currentYear.toFloat()),
+        "This Decade" to (decadeStart.toFloat()..currentYear.toFloat()),
+        "Last 5 Years" to ((currentYear - 5).toFloat()..currentYear.toFloat()),
     )
 
     FlowRow(
