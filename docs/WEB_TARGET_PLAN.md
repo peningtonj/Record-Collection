@@ -261,6 +261,16 @@ already registers**. Open the app at `127.0.0.1`, not `localhost`, or the origin
   makes coil's `NetworkFetcher` add `Cache-Control: no-store`, which turns the image GET
   into a non-simple cross-origin request that `i.scdn.co` won't preflight. `null` cache
   object + enabled policy = plain simple GET = loads.
+- **All Firestore writes from shared code → plain-primitive `Map<String, Any?>`**
+  (`458313b`, `2381be7`). GitLive's Kotlin/JS serializer (a) hands a Kotlin `Long` to the
+  JS SDK as a boxed object → `setDoc(): Unsupported field value: a custom Long object`,
+  and (b) writes an **empty** `@Serializable` list field as `[null]` (the generated list
+  descriptor reports `elementsCount == 1`), poisoning every future read of that doc — a
+  single empty web-created collection took down the whole collections list in prod. The
+  hand-built maps use `Int`/`Double` (never `Long`) and route lists through GitLive's
+  size-aware list serializer so `[]` stays `[]`. Reads are unchanged (models keep `Long`;
+  GitLive coerces `Number → Long`). Pinned by `:firestore-probe:jsNodeTest`.
+  Repair pre-existing `[null]` docs: `python3 scripts/scan_firestore_health.py --cred serviceAccountKey.json --repair-null-albums`.
 
 **Still to do:**
 1. **Cold Spotify login** — run `WebAuthHandler`'s popup flow from a logged-out state
