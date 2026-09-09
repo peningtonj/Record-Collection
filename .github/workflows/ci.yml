@@ -97,3 +97,6 @@ jobs:
 
       - name: Build web bundle (Kotlin/JS + webpack)
         run: ./gradlew :composeApp:jsBrowserDevelopmentWebpack --no-daemon
+
+      - name: GitLive/JS write-shape probe
+        run: ./gradlew :firestore-probe:jsNodeTest --no-daemon
