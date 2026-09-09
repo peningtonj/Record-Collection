@@ -276,12 +276,12 @@ disagree, this document is the source of truth for *what is actually wrong today
 
 ### 2.7 — Spotify metadata cache: no TTL, ToS exposure
 
-- [~] **v1 + collections landed** — the library list *and* collection views now render
-  from a denormalised stable-field projection (on `users/{uid}/library_albums` and on
-  each `collections/{name}.albums[]` entry respectively) — one `library_albums` listener,
-  no `albums` fan-out. See `docs/DATA_MODEL.md`. **Run
-  `scripts/backfill_library_projection.py`** to populate existing entries (it backfills
-  both) — the app falls back to the old join until then.
+- [x] **v1 + collections landed + backfilled** — the library list *and* collection views
+  render from a denormalised stable-field projection (on `users/{uid}/library_albums` and
+  on each `collections/{name}.albums[]` entry) — one `library_albums` listener, no
+  `albums` fan-out. See `docs/DATA_MODEL.md`. `scripts/backfill_library_projection.py`
+  **run 2026-09-09** (460 library + 679 collection entries); a cold library open now
+  shows **zero** `getAlbumsByIds` reads (was ~16k `albums` doc reads/session).
 - [~] **tracklist cache landed** — `tracks` is no longer a permanent Firestore mirror of
   album tracklists. `TrackRepository.getAlbumTracks(album)` fetches from Spotify into an
   in-memory 24 h-TTL `Map` (`TRACKLIST_TTL`), dropped on restart. Album detail, the

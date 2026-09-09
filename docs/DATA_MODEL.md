@@ -162,10 +162,12 @@ is a short-lived cache refreshed per Spotify's terms.
   projections + the one cheap `library_albums` listener (for rating / in-library);
   entries with a blank `name` fall back to the `albums` join until the backfill runs.
 - **Migration**: `scripts/backfill_library_projection.py` copies the projection onto
-  existing `library_albums` entries **and** `collections/{name}.albums[]` entries. Run it
-  right after deploying — until then the app falls back to the old `albums` join for
-  un-backfilled entries (blank `name`), so nothing breaks, but the read-cost win only
-  lands once the backfill runs.
+  existing `library_albums` entries **and** `collections/{name}.albums[]` entries.
+  **Executed 2026-09-09** — 460 library + 679 collection entries backfilled (1 collection
+  entry references an album with no `albums/{id}` doc, stays on the fallback path).
+  Measured on a cold library open right after: the `getAlbumsByIds` whereIn fan-out
+  (~16k `albums` doc reads/session) dropped to **zero** — the library now reads only the
+  per-user `library_albums` collection.
 - **Still v2**: the volatile-metadata TTL cache (genres / popularity / full images /
   tracklist still come from the shared `albums`/`artists`/`tracks` collections with no
   TTL); dropping `tracks` as a permanent collection.

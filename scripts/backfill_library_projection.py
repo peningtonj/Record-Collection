@@ -87,9 +87,11 @@ def main() -> int:
     lib_updated = lib_skipped = missing = 0
     col_updated = col_skipped = 0
 
-    for user in db.collection("users").stream():
+    # `users/{uid}` parent docs are often phantom (never explicitly written), so
+    # `.stream()` skips them — `.list_documents()` returns their refs regardless.
+    for user in db.collection("users").list_documents():
         # ── library_albums ──
-        for entry in user.reference.collection("library_albums").stream():
+        for entry in user.collection("library_albums").stream():
             data = entry.to_dict() or {}
             if not data.get("in_library", False):
                 continue
@@ -108,7 +110,7 @@ def main() -> int:
             lib_updated += 1
 
         # ── collections[].albums[] ──
-        for coll in user.reference.collection("collections").stream():
+        for coll in user.collection("collections").stream():
             entries = (coll.to_dict() or {}).get("albums") or []
             changed = False
             for e in entries:
