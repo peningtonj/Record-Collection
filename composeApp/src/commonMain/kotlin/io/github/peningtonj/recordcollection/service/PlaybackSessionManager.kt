@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.random.Random
 
 // Polling delays — defined here since PlaybackSessionManager owns the poller.
@@ -144,8 +146,7 @@ class PlaybackSessionManager(
                 startFromTrack = null,
                 collection = session.playingFrom,
                 isShuffled = session.isShuffled
-            )
-            playbackPoller.setPollingDelay(PLAYBACK_ACTIVE_POLLING_DELAY)
+            ) // startAlbum() re-polls at the active cadence
         }
     }
 
@@ -186,7 +187,7 @@ class PlaybackSessionManager(
         }
 
         _isSessionAppInitialized.value = true
-        playbackPoller.setPollingDelay(PLAYBACK_ACTIVE_POLLING_DELAY)
+        playbackPoller.pollNowActive()
     }
 
     fun isLastTrackInAlbum(): Boolean =
@@ -210,6 +211,11 @@ class PlaybackSessionManager(
 
     fun setPollingDelay(delayMs: Long) {
         playbackPoller.setPollingDelay(delayMs)
+    }
+
+    /** Drop to active polling and re-poll immediately (see [PlaybackPoller.pollNowActive]). */
+    fun pollNowActive() {
+        playbackPoller.pollNowActive()
     }
 
     suspend fun refreshPlaybackState(callerName: String = "") {
@@ -247,8 +253,18 @@ class PlaybackPoller(
     private var pollingJob: Job? = null
     private val _delayMs = MutableStateFlow(PLAYBACK_ACTIVE_POLLING_DELAY)
 
+    /** Cuts the current inter-poll wait short so a just-issued command is picked up now. */
+    private val wake = Channel<Unit>(Channel.CONFLATED)
+
     /** Consecutive polls that saw nothing playing — drives the idle back-off. */
     private var idlePolls = 0
+
+    /**
+     * Set by [pollNowActive]. Holds the *next* poll at the active cadence even if it sees
+     * nothing playing yet, so a play/shuffle command that Spotify hasn't registered by the
+     * time we poll is still caught ~2.5 s later rather than after an 8 s+ back-off.
+     */
+    private var forceActiveNextPoll = false
 
     fun start(scope: CoroutineScope) {
         pollingJob?.cancel()
@@ -259,11 +275,17 @@ class PlaybackPoller(
                     val playback = playbackRepository.getCurrentPlayback(pollerName = pollerName)
                     onPlaybackUpdate(playback)
                     if (playback == null || !playback.isPlaying) {
-                        val step = minOf(idlePolls, PLAYBACK_IDLE_BACKOFF_STEPS.lastIndex)
-                        _delayMs.value = PLAYBACK_IDLE_BACKOFF_STEPS[step]
-                        idlePolls++
+                        if (forceActiveNextPoll) {
+                            _delayMs.value = PLAYBACK_ACTIVE_POLLING_DELAY
+                            forceActiveNextPoll = false
+                        } else {
+                            val step = minOf(idlePolls, PLAYBACK_IDLE_BACKOFF_STEPS.lastIndex)
+                            _delayMs.value = PLAYBACK_IDLE_BACKOFF_STEPS[step]
+                            idlePolls++
+                        }
                     } else {
                         idlePolls = 0
+                        forceActiveNextPoll = false
                         if (_delayMs.value >= PLAYBACK_INACTIVE_POLLING_DELAY) {
                             _delayMs.value = PLAYBACK_ACTIVE_POLLING_DELAY
                         }
@@ -273,7 +295,8 @@ class PlaybackPoller(
                     Napier.e("Error polling for playback updates ($pollerName): ${e.message}", e)
                     onError(e.message)
                 }
-                delay(_delayMs.value)
+                // Sleep until the next poll — but wake early if a transport command fired.
+                withTimeoutOrNull(_delayMs.value) { wake.receive() }
             }
             Napier.d("Polling stopped for $pollerName")
         }
@@ -282,6 +305,17 @@ class PlaybackPoller(
     fun setPollingDelay(delayMs: Long) {
         if (delayMs <= PLAYBACK_ACTIVE_POLLING_DELAY) idlePolls = 0
         _delayMs.value = delayMs
+    }
+
+    /**
+     * Drop to the active cadence and poll now — call after a user transport command
+     * (play / pause / shuffle / skip) so it's reflected without waiting out an idle
+     * back-off delay (which can be up to 60 s).
+     */
+    fun pollNowActive() {
+        setPollingDelay(PLAYBACK_ACTIVE_POLLING_DELAY)
+        forceActiveNextPoll = true
+        wake.trySend(Unit)
     }
 
     fun stop() {

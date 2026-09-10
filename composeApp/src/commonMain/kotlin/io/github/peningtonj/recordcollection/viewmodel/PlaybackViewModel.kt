@@ -6,7 +6,6 @@ import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.AlbumCollection
 import io.github.peningtonj.recordcollection.db.domain.Track
 import io.github.peningtonj.recordcollection.repository.PlaybackRepository
-import io.github.peningtonj.recordcollection.service.PLAYBACK_ACTIVE_POLLING_DELAY
 import io.github.peningtonj.recordcollection.service.PlaybackSessionManager
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.CancellationException
@@ -95,12 +94,7 @@ class PlaybackViewModel(
     fun togglePlayPause() = viewModelScope.launch {
         executePlaybackAction {
             val isPlaying = sessionManager.playbackState.value?.isPlaying == true
-            if (isPlaying) {
-                playbackRepository.pausePlayback()
-            } else {
-                playbackRepository.resumePlayback()
-                sessionManager.setPollingDelay(PLAYBACK_ACTIVE_POLLING_DELAY)
-            }
+            if (isPlaying) playbackRepository.pausePlayback() else playbackRepository.resumePlayback()
         }
     }
 
@@ -164,6 +158,9 @@ class PlaybackViewModel(
     private suspend fun executePlaybackAction(action: suspend () -> Unit) {
         try {
             action()
+            // A transport button was pressed — reflect it now and keep polling fast,
+            // don't wait out an idle back-off.
+            sessionManager.pollNowActive()
             sessionManager.refreshPlaybackState("From ViewModel")
         } catch (e: CancellationException) {
             throw e
