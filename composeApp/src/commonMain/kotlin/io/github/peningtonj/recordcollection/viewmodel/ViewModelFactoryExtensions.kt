@@ -31,11 +31,9 @@ fun rememberAuthViewModel(
 @Composable
 fun rememberLoginViewModel(
     dependencies: DependencyContainer = LocalDependencyContainer.current,
-    navigator: Navigator = LocalNavigator.current
 ): LoginViewModel = viewModel {
     LoginViewModel(
         authRepository = dependencies.authRepository,
-        navigator = navigator
     )
 }
 

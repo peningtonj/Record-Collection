@@ -4,11 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.peningtonj.recordcollection.di.container.DependencyContainer
-import io.github.peningtonj.recordcollection.navigation.LocalDependencyContainer
-import io.github.peningtonj.recordcollection.navigation.LocalNavigator
-import io.github.peningtonj.recordcollection.navigation.Navigator
-import io.github.peningtonj.recordcollection.navigation.Screen
 import io.github.peningtonj.recordcollection.network.oauth.spotify.AuthState
 import io.github.peningtonj.recordcollection.repository.SpotifyAuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +15,6 @@ import kotlinx.coroutines.launch
 
 class LoginViewModel(
     private val authRepository: SpotifyAuthRepository,
-    private val navigator: Navigator
 ) : ViewModel() {
     data class LoginUiState(
         val isLoading: Boolean = false,
@@ -42,15 +36,12 @@ class LoginViewModel(
     init {
         viewModelScope.launch {
             authState.collect { state ->
-                when (state) {
-                    is AuthState.Authenticated -> navigateToLibrary()
-                    // Surface a failure that happened outside startAuth() (e.g. a token
-                    // refresh that failed mid-session and bounced the user back to Login)
-                    // so it isn't a dead end — the retry button drives startAuth() again.
-                    is AuthState.Error -> _uiState.update {
-                        it.copy(isLoading = false, error = state.message, showRetry = true)
-                    }
-                    else -> {}
+                // Navigation is owned by AuthNavigationWrapper — this VM only reflects
+                // auth state into the login screen's own UI. Surfacing an Error (e.g. a
+                // token refresh that failed mid-session and bounced the user here) keeps
+                // the screen from being a dead end — the retry button drives startAuth().
+                if (state is AuthState.Error) {
+                    _uiState.update { it.copy(isLoading = false, error = state.message, showRetry = true) }
                 }
             }
         }
@@ -68,9 +59,5 @@ class LoginViewModel(
                     )
                 }
         }
-    }
-
-    private fun navigateToLibrary() {
-        navigator.navigateTo(Screen.Library)
     }
 }
