@@ -300,9 +300,18 @@ disagree, this document is the source of truth for *what is actually wrong today
   open with nothing playing settled to ~3 `/me/player` req/min (was ~30–40), confirmed via
   `TrafficMetrics`. `+PlaybackPollerTest`.
 - [~] **Active rate 1.5 s → 2.5 s** (`PLAYBACK_ACTIVE_POLLING_DELAY`) — the now-playing bar
-  interpolates progress client-side and the last 4 s of a track drops to
-  `TRANSITIONING_POLLING_DELAY_MS`, so this only bounds how fast an external skip/pause
-  shows. ~40 % fewer `/me/player` calls while playing.
+  interpolates progress client-side, so the active rate only bounds how fast an external
+  skip/pause shows. ~40 % fewer `/me/player` calls while playing. A transport command
+  (play/pause/shuffle/skip/seek) calls `PlaybackSessionManager.pollNowActive()`, which
+  wakes the poller immediately instead of waiting out an in-flight idle back-off delay.
+- [~] **Album transition is timer-driven, not poll-driven** — was catching a 500 ms
+  "remaining" window across poll round-trips (unreliable on web — `progressMs` arrives
+  stale and the odd poll fails outright with no retry — reported as collection playback
+  not advancing on the web app). Now each poll schedules a one-shot job
+  (`PlaybackSessionManager.planTransition`) that fires the SFX queue-add / next-album
+  start at the computed instant, corrected for the poll's age (`Playback.lastUpdated`);
+  polls just re-arm it on pause/seek/skip, and a transient null poll can't cancel a
+  pending transition. The 150 ms burst-polling window is gone. `+PlaybackSessionManagerTest`.
 - [ ] **Still open**: no window-focus / lifecycle signal — a desktop window in the
   background or an Android app that's backgrounded still polls (just at the idle rate).
   Wiring an `isForeground` expect/actual into the poller would let it pause entirely.
@@ -482,5 +491,6 @@ Ordered oldest → newest. Docs-only commits (progress-log updates, link fixes) 
 | `35c0209` | 2.8 | `PLAYBACK_ACTIVE_POLLING_DELAY` 1.5 s → 2.5 s |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
-and `:composeApp:compileDebugKotlinAndroid` pass. `desktopTest` = **82 tests / 0 failing**.
+and `:composeApp:compileDebugKotlinAndroid` and `:composeApp:compileKotlinJs` pass.
+`desktopTest` = **98 tests / 0 failing**.
 Desktop app boots & runs.

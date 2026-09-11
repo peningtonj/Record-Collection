@@ -10,8 +10,8 @@ import io.github.peningtonj.recordcollection.repository.TrackRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.flow.first
 
-const val TRANSITION_TRIGGER_MS = 4000L // 4 seconds before track ends
-const val NEXT_ALBUM_TRIGGER_MS = 500L // 0.5 seconds before track ends
+/** How long before the album's last track ends the transition SFX is queued. */
+const val TRANSITION_TRIGGER_MS = 4000L
 
 class PlaybackQueueService(
     private val playbackRepository: PlaybackRepository,
@@ -29,37 +29,13 @@ class PlaybackQueueService(
         val playbackDifferenceCount: Int = 0,
     )
 
+    /** True when [playback] is on the track [session] recorded as the album's last one. */
     fun isLastTrackInAlbum(session: QueueSession?, playback: Playback?): Boolean {
         val currentSession = session ?: return false
         if (currentSession.queue.isEmpty()) return false
 
         val currentTrack = playback?.track ?: return false
         return currentTrack.id == currentSession.lastTrack.id
-    }
-    fun albumEnding(session: QueueSession?, playback: Playback?, transitionTriggerTime: Long = TRANSITION_TRIGGER_MS): Boolean {
-        val currentSession = session ?: return false
-
-        if (!isLastTrackInAlbum(currentSession, playback)) return false
-        if (currentSession.hasAddedTransitionTrack) return false
-
-        val currentTrack = playback?.track ?: return false
-
-        val progressMs = playback.progressMs ?: 0
-        val remainingMs = currentTrack.durationMs - progressMs
-//        Napier.d("Getting close to adding transition track | remainingMs: $remainingMs, transitionTriggerTime: $transitionTriggerTime")
-        return remainingMs <= transitionTriggerTime
-    }
-
-     fun shouldTransitionToNextAlbum(session: QueueSession?, playback: Playback?): Boolean {
-        val currentSession = session ?: return false
-        if (!currentSession.hasAddedTransitionTrack) return false
-        
-        val currentTrack = playback?.track ?: return false
-        if (currentTrack.spotifyUri != currentSession.transitionTrackUri) return false
-        
-        val progressMs = playback.progressMs ?: 0
-        val remainingMs = currentTrack.durationMs - progressMs
-        return remainingMs <= NEXT_ALBUM_TRIGGER_MS
     }
 
     suspend fun addTransitionTrack(session: QueueSession): Result<Unit> {

@@ -21,16 +21,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.datetime.Clock
+import kotlin.math.abs
 import kotlin.random.Random
 
 // Polling delays — defined here since PlaybackSessionManager owns the poller.
-// The now-playing bar interpolates progress client-side (PlaybackBar), so the active
-// delay only bounds how fast an external play/pause/skip is picked up — 2.5 s is plenty,
-// and the last-4 s of a track drops to TRANSITIONING_POLLING_DELAY_MS anyway.
+// The now-playing bar interpolates progress client-side (PlaybackBar) and the album
+// transition is driven by a timer (see below), so the active delay only bounds how fast
+// an external play/pause/skip is picked up — 2.5 s is plenty.
 const val PLAYBACK_ACTIVE_POLLING_DELAY = 2500L
 const val PLAYBACK_INACTIVE_POLLING_DELAY = 8000L
-const val TRANSITIONING_POLLING_DELAY_MS = 150L
+
+/** Start the next album this long before the current track (or the SFX) actually ends. */
+private const val NEXT_ALBUM_LEAD_MS = 300L
+
+/** Re-arm the transition timer only if the estimated fire time moved by more than this. */
+private const val RESCHEDULE_TOLERANCE_MS = 1_500L
 
 // Progressive back-off while nothing is playing (TECH_DEBT 2.8): each consecutive
 // idle poll steps the delay up to a cap, so an app left open with no playback settles
@@ -49,10 +58,9 @@ class PlaybackSessionManager(
     private val playbackRepository: PlaybackRepository,
     private val queueManager: PlaybackQueueService,
     private val settingsRepository: SettingsRepository,
+    /** Long-lived scope — cancelled only when [close] is called. Injectable for tests. */
+    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
-    /** Long-lived scope — cancelled only when [close] is called. */
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
     private val _currentSession = MutableStateFlow<PlaybackQueueService.QueueSession?>(null)
     val currentSession: StateFlow<PlaybackQueueService.QueueSession?> = _currentSession.asStateFlow()
 
@@ -81,8 +89,23 @@ class PlaybackSessionManager(
     }
 
     // ── Queue transition logic ────────────────────────────────────────────────
+    //
+    // The album (and optional SFX) transition is driven by a *timer*, not by catching a
+    // narrow "remaining <= X ms" window on a poll. Spotify only reports progress once per
+    // poll, and every poll is a network round-trip (especially on web, where progressMs
+    // arrives stale and the odd poll fails outright with no retry), so a poll-based
+    // trigger is flaky. Instead: each poll tells us how much of the current track is left
+    // and we (re)schedule a one-shot job to fire the transition at the right instant.
+    // Later polls just cancel/re-arm the job when the user pauses, seeks, or skips.
 
-    private suspend fun handleQueueTransitions(playback: Playback?) {
+    private val transitionMutex = Mutex()
+    private var transitionJob: Job? = null
+    private var transitionPlanKey: String? = null
+    private var transitionPlanFireAtMs: Long = 0L
+
+    private fun nowMs() = Clock.System.now().toEpochMilliseconds()
+
+    internal suspend fun handleQueueTransitions(playback: Playback?) {
         val session = _currentSession.value
 
         // Detect if Spotify has drifted to a different album than our session
@@ -104,50 +127,130 @@ class PlaybackSessionManager(
         }
 
         if (_isSessionAppInitialized.value && session != null) {
-            val settings = settingsRepository.settings.first()
-            val transitionTime = if (settings.transitionTrack) TRANSITION_TRIGGER_MS else NEXT_ALBUM_TRIGGER_MS
+            planTransition(playback, session)
+        } else {
+            cancelTransitionPlan()
+        }
+    }
 
-            if (!settings.transitionTrack && queueManager.albumEnding(session, playback, TRANSITION_TRIGGER_MS)) {
-                playbackPoller.setPollingDelay(TRANSITIONING_POLLING_DELAY_MS)
-            }
+    /**
+     * Given the latest poll, arm / re-arm / cancel the one-shot timer that performs the
+     * transition. Idempotent — called on every poll; only re-arms when the situation or
+     * the estimated fire time has meaningfully changed.
+     */
+    private suspend fun planTransition(
+        playback: Playback?,
+        session: PlaybackQueueService.QueueSession,
+    ) = transitionMutex.withLock {
+        if (_currentSession.value !== session) return@withLock // superseded while we waited for the lock
+        // A null poll (transient network failure / brief gap) must not tear down a pending
+        // timer — keep it and let the next good poll re-arm.
+        if (playback == null) return@withLock
+        if (session.queue.isEmpty()) { clearTimerLocked(); return@withLock }
 
-            if (queueManager.albumEnding(session, playback, transitionTime)) {
-                if (settings.transitionTrack) {
-                    addTransitionTrack(session)
-                } else {
-                    transitionToNextAlbum(session)
+        val track = playback.track
+        val progressMs = playback.progressMs ?: 0L
+        val ageMs = (nowMs() - playback.lastUpdated).coerceAtLeast(0L)
+        val remainingMs = (track.durationMs - progressMs - ageMs).coerceAtLeast(0L)
+
+        val onSfx = track.spotifyUri == session.transitionTrackUri
+        val onAlbumLastTrack = track.id == session.lastTrack.id
+
+        if (session.hasAddedTransitionTrack) {
+            when {
+                // SFX still sitting in Spotify's queue; the album's last track is finishing.
+                onAlbumLastTrack && playback.isPlaying -> clearTimerLocked()
+                // SFX is playing — time the jump to the next album to its end.
+                onSfx && playback.isPlaying && remainingMs > NEXT_ALBUM_LEAD_MS ->
+                    armTimer(remainingMs - NEXT_ALBUM_LEAD_MS, "sfx:${track.id}", session) {
+                        performTransitionToNextAlbum(it)
+                    }
+                // SFX ended / was skipped / playback stopped on it — advance now.
+                else -> {
+                    Napier.d("SFX done (playing=${playback.isPlaying}, onSfx=$onSfx) — advancing")
+                    clearTimerLocked()
+                    performTransitionToNextAlbum(session)
                 }
             }
+            return@withLock
+        }
 
-            if (queueManager.shouldTransitionToNextAlbum(session, playback)) {
-                transitionToNextAlbum(session)
+        // Haven't handled this album's end yet.
+        if (!onAlbumLastTrack || !playback.isPlaying) { clearTimerLocked(); return@withLock }
+
+        val settings = settingsRepository.settings.first()
+        if (settings.transitionTrack) {
+            armTimer(remainingMs - TRANSITION_TRIGGER_MS, "queueSfx:${track.id}", session) {
+                performAddTransitionTrack(it)
+            }
+        } else {
+            armTimer(remainingMs - NEXT_ALBUM_LEAD_MS, "next:${track.id}", session) {
+                performTransitionToNextAlbum(it)
             }
         }
     }
 
-    private suspend fun addTransitionTrack(session: PlaybackQueueService.QueueSession) {
+    /** Caller holds [transitionMutex]. Arms [transitionJob] unless an equivalent one is already pending. */
+    private fun armTimer(
+        fireInMsRaw: Long,
+        key: String,
+        session: PlaybackQueueService.QueueSession,
+        action: suspend (PlaybackQueueService.QueueSession) -> Unit,
+    ) {
+        val fireInMs = fireInMsRaw.coerceAtLeast(0L)
+        val fireAtMs = nowMs() + fireInMs
+        if (key == transitionPlanKey && abs(fireAtMs - transitionPlanFireAtMs) < RESCHEDULE_TOLERANCE_MS) {
+            return // already armed for this situation, close enough
+        }
+        transitionPlanKey = key
+        transitionPlanFireAtMs = fireAtMs
+        transitionJob?.cancel()
+        transitionJob = scope.launch {
+            delay(fireInMs)
+            transitionMutex.withLock {
+                if (_currentSession.value !== session) return@withLock // world moved on
+                transitionPlanKey = null
+                action(session)
+            }
+        }
+    }
+
+    private fun clearTimerLocked() {
+        transitionJob?.cancel()
+        transitionJob = null
+        transitionPlanKey = null
+    }
+
+    private suspend fun cancelTransitionPlan() = transitionMutex.withLock { clearTimerLocked() }
+
+    /** Caller holds [transitionMutex]. */
+    private suspend fun performAddTransitionTrack(session: PlaybackQueueService.QueueSession) {
         queueManager.addTransitionTrack(session).fold(
             onSuccess = {
                 _currentSession.value = session.copy(hasAddedTransitionTrack = true)
-                playbackPoller.setPollingDelay(TRANSITIONING_POLLING_DELAY_MS)
-                Napier.d("Transition track added for album: ${session.album.name}")
+                Napier.d("Transition track queued for album: ${session.album.name}")
             },
             onFailure = { e ->
+                // Don't stall the session on a failed queue write — hard-cut to the next album.
+                Napier.e("Failed to queue transition track — skipping SFX", e)
                 _error.value = "Failed to add transition track: ${e.message}"
-            }
+                performTransitionToNextAlbum(session)
+            },
         )
     }
 
-    private suspend fun transitionToNextAlbum(session: PlaybackQueueService.QueueSession) {
-        if (session.queue.isNotEmpty()) {
-            startAlbum(
-                album = session.queue.first(),
-                queue = session.queue.drop(1),
-                startFromTrack = null,
-                collection = session.playingFrom,
-                isShuffled = session.isShuffled
-            ) // startAlbum() re-polls at the active cadence
-        }
+    /** Caller holds [transitionMutex]. */
+    private suspend fun performTransitionToNextAlbum(session: PlaybackQueueService.QueueSession) {
+        if (_currentSession.value !== session) return
+        val next = session.queue.firstOrNull() ?: return
+        Napier.d("Transitioning to next album: ${next.album.name}")
+        startAlbum(
+            album = next,
+            queue = session.queue.drop(1),
+            startFromTrack = null,
+            collection = session.playingFrom,
+            isShuffled = session.isShuffled,
+        ) // startAlbum() re-polls at the active cadence
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
