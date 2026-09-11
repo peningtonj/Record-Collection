@@ -489,6 +489,8 @@ Ordered oldest → newest. Docs-only commits (progress-log updates, link fixes) 
 | `983d1ae` | traffic | liked-tracks sync diffs by track id (was `List<Track>` equality → ~4,400 Firestore writes/sync churning the whole set); `initUserSession` skips `GET /me` once the id is known; `+LibraryServiceTest` |
 | `47d28fa` | traffic | new-releases feed: page 1 only + 30-min session cache in `AlbumRepository` (was ~5 `/browse` calls + a 100-id whereIn per Search init); `+AlbumRepositoryTest` |
 | `35c0209` | 2.8 | `PLAYBACK_ACTIVE_POLLING_DELAY` 1.5 s → 2.5 s |
+| `48eba1d` | 2.8 | transport commands (play/pause/shuffle/skip/seek) → `pollNowActive()`: wakes the poller out of an in-flight idle back-off instead of waiting it out; `+PlaybackPollerTest` case |
+| `efd1155` | 2.8 | album transition timer-driven, not poll-window-driven (was unreliable on web); `+PlaybackSessionManagerTest` |
 
 **Verification**: `./gradlew :composeApp:compileKotlinDesktop :composeApp:compileTestKotlinDesktop`
 and `:composeApp:compileDebugKotlinAndroid` and `:composeApp:compileKotlinJs` pass.
