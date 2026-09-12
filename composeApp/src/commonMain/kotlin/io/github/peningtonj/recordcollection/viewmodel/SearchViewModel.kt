@@ -105,7 +105,7 @@ class SearchViewModel(
     fun clearSearch() {
         searchJob?.cancel()
         _currentQuery.value = ""
-        _uiState.value = SearchScreenUiState.Loading
+        _uiState.value = SearchScreenUiState.Idle
     }
 }
 
