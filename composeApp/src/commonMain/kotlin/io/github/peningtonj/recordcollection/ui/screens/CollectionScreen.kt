@@ -36,13 +36,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
 import io.github.peningtonj.recordcollection.repository.OnAddToCollection
@@ -165,162 +166,87 @@ private fun HeroCollectionHeader(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
+    val shuffleActive = isShuffled && isPlayingFromCollection
+
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            )
-            .padding(if (LocalPlatform.current == AppPlatform.ANDROID) 16.dp else 32.dp)
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+            .padding(horizontal = if (isAndroid) 12.dp else 24.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        val isAndroid = LocalPlatform.current == AppPlatform.ANDROID
-        Column(
-            verticalArrangement = Arrangement.spacedBy(if (isAndroid) 12.dp else 24.dp)
+        // Play button
+        FilledIconButton(
+            onClick = onPlayAll,
+            modifier = Modifier.size(44.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(if (isAndroid) 4.dp else 8.dp)
-                ) {
-                    // Collection icon badge — hide on Android (TopAppBar already labels it)
-                    if (!isAndroid) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Album,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "COLLECTION",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "Play",
+                modifier = Modifier.size(22.dp)
+            )
+        }
 
-                    // Collection name — much smaller on Android
-                    Text(
-                        text = collectionName,
-                        style = if (isAndroid) MaterialTheme.typography.titleLarge
-                                else MaterialTheme.typography.displayMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
+        // Shuffle button
+        IconButton(
+            onClick = onShuffle,
+            modifier = Modifier.size(44.dp),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = if (shuffleActive)
+                    MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Shuffle,
+                contentDescription = "Shuffle",
+                tint = if (shuffleActive) MaterialTheme.colorScheme.primary
+                       else MaterialTheme.colorScheme.onSurface
+            )
+        }
 
-                    // Album count
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(
-                            text = albumCount.toString(),
-                            style = if (isAndroid) MaterialTheme.typography.titleMedium
-                                    else MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = if (albumCount == 1) "album" else "albums",
-                            style = if (isAndroid) MaterialTheme.typography.bodyMedium
-                                    else MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = if (isAndroid) 2.dp else 4.dp)
-                        )
-                    }
-                }
-                
-                // Settings button
-                IconButton(
-                    onClick = onSettingsClick,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Collection settings",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            
-            // Action buttons row
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Large Play button
-                Button(
-                    onClick = onPlayAll,
-                    modifier = Modifier.height(56.dp),
-                    contentPadding = PaddingValues(horizontal = 32.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = "Play",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                
-                // Shuffle button
-                OutlinedButton(
-                    onClick = onShuffle,
-                    modifier = Modifier.height(56.dp),
-                    contentPadding = PaddingValues(horizontal = 24.dp),
-                    border = if (isShuffled && isPlayingFromCollection) {
-                        androidx.compose.foundation.BorderStroke(
-                            width = 2.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    } else {
-                        ButtonDefaults.outlinedButtonBorder
-                    },
-                    colors = if (isShuffled && isPlayingFromCollection) {
-                        ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    } else {
-                        ButtonDefaults.outlinedButtonColors()
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Shuffle,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = "Shuffle",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
+        // Name + album count, inline on one row
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Text(
+                text = collectionName,
+                style = if (isAndroid) MaterialTheme.typography.titleMedium
+                        else MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Text(
+                text = "$albumCount ${if (albumCount == 1) "album" else "albums"}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+
+        // Settings button
+        IconButton(
+            onClick = onSettingsClick,
+            modifier = Modifier.size(40.dp),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Collection settings",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
