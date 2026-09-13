@@ -1,6 +1,7 @@
 package io.github.peningtonj.recordcollection.viewmodel
 
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
+import io.github.peningtonj.recordcollection.repository.ProfileRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
 import io.mockk.coEvery
 import io.mockk.every
@@ -21,6 +22,7 @@ class SearchViewModelTest {
 
     private val searchRepository = mockk<SearchRepository>()
     private val albumRepository = mockk<AlbumRepository>()
+    private val profileRepository = mockk<ProfileRepository>()
 
     private lateinit var viewModel: SearchViewModel
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -30,7 +32,7 @@ class SearchViewModelTest {
         Dispatchers.setMain(testDispatcher)
         coEvery { albumRepository.fetchAllNewReleases(any()) } returns emptyList()
         every { albumRepository.getAlbumsByIds(any()) } returns flowOf(emptyList())
-        viewModel = SearchViewModel(searchRepository, albumRepository)
+        viewModel = SearchViewModel(searchRepository, albumRepository, profileRepository)
     }
 
     @AfterTest

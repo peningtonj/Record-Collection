@@ -14,6 +14,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 
@@ -81,13 +82,23 @@ class GetAlbumDetailUseCase(
             throw DomainException.AlbumNotFoundException(albumId)
         }
         val apiTracks = if (getTracks) trackRepository.fetchTracksForAlbum(apiAlbum) else emptyList()
+
+        // This branch only runs when the album has no `albums/{id}` catalog doc yet (a
+        // fresh add-to-library never writes one — see AlbumRepository.addAlbumToLibrary),
+        // so inLibrary/rating must still come from the per-user library, keyed by the
+        // stable internal id, not whatever `fetchAlbum` defaulted them to.
+        val libraryEntry = userLibraryRepository.getLibraryEntry(apiAlbum.id).first()
+        val enrichedAlbum = apiAlbum.copy(
+            inLibrary = libraryEntry?.inLibrary ?: false,
+            rating = libraryEntry?.rating,
+        )
         return AlbumDetailUiState(
-            album = apiAlbum,
+            album = enrichedAlbum,
             tags = emptyList(),
             collections = emptyList(),
             tracks = apiTracks,
             totalDuration = apiTracks.sumOf { it.durationMs },
-            rating = null,
+            rating = libraryEntry?.rating,
             isLoading = false,
             error = null,
             releaseGroup = emptyList()

@@ -124,7 +124,7 @@ fun rememberArtistDetailViewModel(
 ): ArtistDetailViewModel = viewModel {
     ArtistDetailViewModel(
         artistRepository = dependencies.artistRepository,
-        albumRepository = dependencies.albumRepository,
+        userLibraryRepository = dependencies.userLibraryRepository,
         artistId = artistId
     )
 }

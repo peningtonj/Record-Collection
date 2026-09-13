@@ -3,8 +3,8 @@ package io.github.peningtonj.recordcollection.viewmodel
 import androidx.lifecycle.ViewModel
 import io.github.aakira.napier.Napier
 import io.github.peningtonj.recordcollection.db.domain.Artist
-import io.github.peningtonj.recordcollection.repository.AlbumRepository
 import io.github.peningtonj.recordcollection.repository.ArtistRepository
+import io.github.peningtonj.recordcollection.repository.UserLibraryRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.catch
@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class ArtistDetailViewModel(
     private val artistRepository: ArtistRepository,
-    private val albumRepository: AlbumRepository,
+    private val userLibraryRepository: UserLibraryRepository,
     private val artistId: String
 ) : ViewModel() {
 
@@ -48,23 +48,27 @@ class ArtistDetailViewModel(
                 // Fetch API albums once up-front (one-shot)
                 val albumsFromApi = artistRepository.fetchAlbumArtists(artistId)
 
-                // Look up saved state by internal hash IDs directly — this is more reliable
-                // than querying by artist name, which requires the artist document to exist
-                // in Firestore and names to match exactly.
-                val albumIds = albumsFromApi.map { it.id }
+                // Library membership/rating come from the per-user library_albums
+                // collection, not the shared albums catalogue (whose inLibrary/rating
+                // fields are always unset — see UserLibraryRepository doc comment). Look
+                // up by internal hash ID directly — more reliable than artist name, which
+                // requires the artist document to exist in Firestore and names to match.
+                val albumIds = albumsFromApi.map { it.id }.toSet()
 
                 combine(
                     artistRepository.getArtistById(artistId),
-                    albumRepository.getAlbumsByIds(albumIds)
-                ) { artist, savedAlbums -> Pair(artist, savedAlbums) }
+                    userLibraryRepository.getAllLibraryEntries()
+                ) { artist, libraryEntries -> Pair(artist, libraryEntries) }
                     .catch { error ->
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             error = error.message
                         )
                     }
-                    .collect { (artist, savedAlbums) ->
-                        val savedAlbumMap = savedAlbums.associateBy { it.id }
+                    .collect { (artist, libraryEntries) ->
+                        val savedAlbumMap = libraryEntries
+                            .filter { it.albumId in albumIds }
+                            .associateBy { it.albumId }
 
                         val albumDetailStates = albumsFromApi.map { album ->
                             val saved = savedAlbumMap[album.id]
