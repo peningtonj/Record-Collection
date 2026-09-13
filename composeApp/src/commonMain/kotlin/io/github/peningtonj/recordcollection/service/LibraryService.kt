@@ -303,13 +303,9 @@ class LibraryService(
     suspend fun addAllSongsFromAlbumToSavedSongs(album: Album) {
         val tracks = trackRepository.getAlbumTracks(album, checkSaved = false)
         Napier.d { "Adding ${tracks.size} tracks to saved songs" }
-        trackRepository.saveTracksRemote(
-            tracks.map { it.id }
-        )
-        trackRepository.saveTracksLocalAndRemote(
-            tracks.map { it.id }
-        )
-
+        // saveTracksLocalAndRemote already does the remote save — the extra call here was
+        // hitting Spotify's save-tracks endpoint twice for the same ids.
+        trackRepository.saveTracksLocalAndRemote(tracks.map { it.id })
     }
 
 }

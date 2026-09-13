@@ -114,7 +114,13 @@ class TrackRepository(
 
     suspend fun saveTracksLocalAndRemote(trackIds: List<String>) {
         saveTracksRemote(trackIds)
-        trackIds.forEach { addTrackToLibrary(it) }
+        trackIds.forEach {
+            addTrackToLibrary(it)
+            // Without this, the open tracklist (from the in-memory cache) never learns
+            // these tracks are now saved — the hearts stayed empty until the cache's TTL
+            // expired and re-checked Spotify. See setTrackSaved's doc comment.
+            setTrackSaved(it, true)
+        }
     }
 
     suspend fun addTrackToLibrary(trackId: String) {

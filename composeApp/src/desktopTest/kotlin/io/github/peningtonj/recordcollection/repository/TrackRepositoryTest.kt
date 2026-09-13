@@ -3,6 +3,7 @@ package io.github.peningtonj.recordcollection.repository
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import io.github.peningtonj.recordcollection.network.spotify.LibraryApi
 import io.github.peningtonj.recordcollection.network.spotify.SpotifyApi
+import io.github.peningtonj.recordcollection.network.spotify.UserApi
 import io.github.peningtonj.recordcollection.testDataFactory.TestAlbumDataFactory
 import io.github.peningtonj.recordcollection.testDataFactory.TestTrackDataFactory
 import io.mockk.coEvery
@@ -16,7 +17,8 @@ import kotlin.test.assertEquals
 class TrackRepositoryTest {
 
     private val libraryApi = mockk<LibraryApi>()
-    private val spotifyApi = mockk<SpotifyApi> { every { library } returns libraryApi }
+    private val userApi = mockk<UserApi>(relaxed = true)
+    private val spotifyApi = mockk<SpotifyApi> { every { library } returns libraryApi; every { user } returns userApi }
     private val firestore = mockk<FirebaseFirestore>(relaxed = true)
 
     private val album = TestAlbumDataFactory.album(id = "alb1").copy(spotifyId = "sp1")
@@ -46,6 +48,21 @@ class TrackRepositoryTest {
         val tracks = repo.getAlbumTracks(album)
 
         assertEquals(listOf(false, false), tracks.map { it.isSaved })
+    }
+
+    @Test
+    fun `saveTracksLocalAndRemote patches the cache so an open tracklist shows the hearts filled`() = runTest {
+        // "Add All to Saved Songs": the write to Spotify/Firestore succeeded but the
+        // tracklist screen's cached copy never learned about it, so the hearts stayed
+        // empty until the cache's TTL expired and re-checked Spotify.
+        val repo = repo()
+        coEvery { libraryApi.checkSavedTracks(any()) } returns Result.success(listOf(false, false))
+
+        repo.getAlbumTracks(album) // populate cache, unsaved
+        repo.saveTracksLocalAndRemote(listOf(t1.id, t2.id))
+
+        val tracks = repo.getAlbumTracks(album) // cache hit — no re-fetch
+        assertEquals(listOf(true, true), tracks.map { it.isSaved })
     }
 
     @Test
