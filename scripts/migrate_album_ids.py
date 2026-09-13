@@ -88,7 +88,10 @@ def build_remap(db) -> dict[str, str]:
             for entry in (coll.to_dict() or {}).get("albums") or []:
                 if not isinstance(entry, dict):
                     continue
-                aid = entry.get("albumId")
+                # Firestore field is snake_case (CollectionAlbumEntry's @SerialName) —
+                # entry.get("albumId") was always None, so this loop, and the rewrite
+                # loop below, silently did nothing on every previous run.
+                aid = entry.get("album_id")
                 name, artist = entry.get("name"), entry.get("primary_artist")
                 if not aid or not name or not artist:
                     continue
@@ -147,8 +150,8 @@ def main() -> int:
             albums = (coll.to_dict() or {}).get("albums") or []
             changed = False
             for e in albums:
-                if isinstance(e, dict) and e.get("albumId") in remap:
-                    e["albumId"] = remap[e["albumId"]]
+                if isinstance(e, dict) and e.get("album_id") in remap:
+                    e["album_id"] = remap[e["album_id"]]
                     changed = True
             if changed:
                 print(f"  users/{user_id}/collections/{coll.id}: remapped album ids")

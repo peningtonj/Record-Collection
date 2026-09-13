@@ -56,7 +56,7 @@ class CollectionAlbumRepository(
                     else albumRepository.getAlbumsByIds(staleIds).map { it.associateBy(Album::id) }
 
                 combine(staleAlbumsFlow, userLibraryRepository.getAllLibraryEntries()) { staleAlbums, libraryEntries ->
-                    val libraryMap = libraryEntries.associateBy { it.albumId }
+                    val libraryLookup = LibraryEntryLookup(libraryEntries)
                     entries.mapNotNull { entry ->
                         val album = if (entry.name.isNotBlank()) AlbumMapper.collectionEntryToDomain(entry)
                                     else staleAlbums[entry.albumId]
@@ -64,7 +64,7 @@ class CollectionAlbumRepository(
                             LoggingUtils.w(LoggingUtils.Category.REPOSITORY, "Album '${entry.albumId}' in collection '$collectionName' not found")
                             null
                         } else {
-                            val lib = libraryMap[entry.albumId]
+                            val lib = libraryLookup.forEntry(entry)
                             CollectionAlbum(
                                 collectionName = collectionName,
                                 album = album.copy(rating = lib?.rating, inLibrary = lib?.inLibrary ?: false),
@@ -163,4 +163,21 @@ class CollectionAlbumRepository(
         LoggingUtils.logFirebaseWrite("collection", "set merge (clear albums)", collectionName)
         collectionsRef().document(collectionName).set(mapOf("albums" to emptyList<Any?>()), merge = true)
     }
+}
+
+/**
+ * Joins a collection entry to its `library_albums` doc, matched primarily by the internal
+ * id, falling back to spotifyId. A collection entry embeds a *copy* of the album's id at
+ * add-time; if that copy is ever stale relative to `library_albums` — an id migration
+ * (`scripts/migrate_album_ids.py`) that missed it, an entry added mid-migration — the
+ * rating/in-library it reports would otherwise silently go wrong with nothing to notice
+ * (confirmed in prod: a "Spring 26" entry stuck on a pre-migration id). spotifyId is
+ * stable across id schemes, same pattern as GetAlbumDetailUseCase / ArtistDetailViewModel.
+ */
+internal class LibraryEntryLookup(libraryEntries: List<UserLibraryRepository.LibraryAlbumDocument>) {
+    private val byId = libraryEntries.associateBy { it.albumId }
+    private val bySpotifyId = libraryEntries.associateBy { it.spotifyId }
+
+    fun forEntry(entry: CollectionAlbumEntry): UserLibraryRepository.LibraryAlbumDocument? =
+        byId[entry.albumId] ?: bySpotifyId[entry.spotifyId]
 }
