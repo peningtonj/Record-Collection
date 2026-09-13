@@ -13,7 +13,7 @@ class SearchRepository(
 
     suspend fun searchSpotify(
         query: String,
-        type: List<SearchType> = listOf(SearchType.ARTIST, SearchType.ALBUM, SearchType.TRACK),
+        type: List<SearchType> = listOf(SearchType.ARTIST, SearchType.ALBUM),
         limit: Int = 50,
         offset: Int = 0,
         market: String? = null,

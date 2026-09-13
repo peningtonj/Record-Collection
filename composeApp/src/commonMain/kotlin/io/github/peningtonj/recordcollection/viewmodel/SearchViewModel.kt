@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.peningtonj.recordcollection.db.domain.SearchResult
 import io.github.peningtonj.recordcollection.repository.AlbumRepository
+import io.github.peningtonj.recordcollection.repository.ProfileRepository
 import io.github.peningtonj.recordcollection.repository.SearchRepository
 import io.github.peningtonj.recordcollection.ui.models.AlbumDetailUiState
+import io.github.peningtonj.recordcollection.util.SearchRankingUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.first
 class SearchViewModel(
     private val searchRepository: SearchRepository,
     private val albumRepository: AlbumRepository,
+    private val profileRepository: ProfileRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SearchScreenUiState>(SearchScreenUiState.LoadingNewReleases)
@@ -28,6 +31,15 @@ class SearchViewModel(
     val newReleaseAlbums = _newReleaseAlbums.asStateFlow()
 
     private var searchJob: Job? = null
+
+    // Fetched once and reused — Spotify's own relevance ordering is more accurate with
+    // a market set, and the user's market doesn't change mid-session.
+    private var cachedMarket: String? = null
+
+    private suspend fun resolveMarket(): String? {
+        cachedMarket?.let { return it }
+        return profileRepository.getCurrentUserProfile()?.country?.also { cachedMarket = it }
+    }
 
     init {
         launchSafely(
@@ -92,8 +104,20 @@ class SearchViewModel(
             _uiState.value = SearchScreenUiState.Loading
 
             try {
-                val result = searchRepository.searchSpotify(query)
-                _uiState.value = SearchScreenUiState.Success(result)
+                val market = resolveMarket()
+                val rawResult = searchRepository.searchSpotify(query, market = market)
+
+                val libraryAlbums = albumRepository.getAllAlbumsInLibrary().first()
+                val libraryAlbumIds = libraryAlbums.mapNotNull { it.spotifyId.takeIf(String::isNotEmpty) }.toSet()
+                val libraryArtistIds = libraryAlbums.flatMap { it.artists.map { artist -> artist.id } }.toSet()
+
+                val refined = SearchRankingUtils.refineSearchResults(
+                    results = rawResult,
+                    query = query,
+                    libraryAlbumSpotifyIds = libraryAlbumIds,
+                    libraryArtistIds = libraryArtistIds,
+                )
+                _uiState.value = SearchScreenUiState.Success(refined)
             } catch (e: Exception) {
                 _uiState.value = SearchScreenUiState.Error(
                     e.message ?: "An unknown error occurred"
@@ -116,6 +140,5 @@ sealed interface SearchScreenUiState {
     data class Error(val message: String) : SearchScreenUiState
     data class Success(
         val result: SearchResult
-//        val result: RankedSearchResults
     ) : SearchScreenUiState
 }

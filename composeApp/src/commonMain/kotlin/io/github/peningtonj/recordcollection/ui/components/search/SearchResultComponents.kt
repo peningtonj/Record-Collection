@@ -1,28 +1,23 @@
 package io.github.peningtonj.recordcollection.ui.components.search
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.peningtonj.recordcollection.db.domain.Album
+import io.github.peningtonj.recordcollection.db.domain.AlbumType
 import io.github.peningtonj.recordcollection.db.domain.Artist
 import io.github.peningtonj.recordcollection.navigation.LocalNavigator
-import io.github.peningtonj.recordcollection.navigation.Navigator
 import io.github.peningtonj.recordcollection.navigation.Screen
-import io.github.peningtonj.recordcollection.util.RankedAlbum
-import io.github.peningtonj.recordcollection.util.RankedArtist
 
 @Composable
 fun AlbumSearchItem(
@@ -36,29 +31,52 @@ fun AlbumSearchItem(
             navigator.navigateTo(Screen.Album(album.id, album.spotifyId))
         }
     ) {
-        Row {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             AsyncImage(
                 model = album.images.firstOrNull()?.url,
                 contentDescription = "Album cover for ${album.name}",
                 modifier = Modifier
-                    .width(60.dp)
-                    .aspectRatio(1f)
+                    .size(48.dp)
                     .clip(RoundedCornerShape(4.dp)),
                 contentScale = ContentScale.Crop
             )
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp)
             ) {
                 Text(
                     text = album.name,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = album.artists.joinToString(", ") { it.name },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
+            // Uses the space that used to sit empty to the right of the text — also
+            // helps tell apart same-named albums/reissues and flags singles/EPs.
+            val typeLabel = when (album.albumType) {
+                AlbumType.EP -> "EP"
+                AlbumType.SINGLE -> "Single"
+                AlbumType.COMPILATION -> "Compilation"
+                AlbumType.ALBUM -> null
+            }
+            Text(
+                text = listOfNotNull(album.releaseDate.year.toString(), typeLabel).joinToString(" · "),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -75,22 +93,37 @@ fun ArtistSearchItem(
             navigator.navigateTo(Screen.Artist(artist.id))
         }
     ) {
-        Row {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             AsyncImage(
                 model = artist.images.firstOrNull()?.url,
-                contentDescription = "Album image for ${artist.name}",
+                contentDescription = "Artist image for ${artist.name}",
                 modifier = Modifier
-                    .width(60.dp)
-                    .aspectRatio(1f)
+                    .size(48.dp)
                     .clip(RoundedCornerShape(4.dp)),
                 contentScale = ContentScale.Crop
             )
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            Text(
+                text = artist.name,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp)
+            )
+            // Uses the space that used to sit empty to the right of the name.
+            artist.genres.firstOrNull()?.let { genre ->
                 Text(
-                    text = artist.name,
-                    style = MaterialTheme.typography.titleMedium
+                    text = genre.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

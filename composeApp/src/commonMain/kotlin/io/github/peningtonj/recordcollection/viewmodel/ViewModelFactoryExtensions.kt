@@ -136,6 +136,7 @@ fun rememberSearchViewModel(
     SearchViewModel(
         searchRepository = dependencies.searchRepository,
         albumRepository = dependencies.albumRepository,
+        profileRepository = dependencies.profileRepository,
     )
 }
 

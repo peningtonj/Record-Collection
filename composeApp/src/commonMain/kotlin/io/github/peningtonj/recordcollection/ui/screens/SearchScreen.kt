@@ -2,6 +2,7 @@ package io.github.peningtonj.recordcollection.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,10 +22,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
@@ -35,7 +41,6 @@ import io.github.peningtonj.recordcollection.ui.components.album.rememberAlbumAc
 import io.github.peningtonj.recordcollection.ui.components.common.LoadingIndicator
 import io.github.peningtonj.recordcollection.ui.components.search.AlbumSearchItem
 import io.github.peningtonj.recordcollection.ui.components.search.ArtistSearchItem
-import io.github.peningtonj.recordcollection.util.RankedSearchResults
 import io.github.peningtonj.recordcollection.ui.AppPlatform
 import io.github.peningtonj.recordcollection.ui.LocalPlatform
 import io.github.peningtonj.recordcollection.viewmodel.AlbumViewModel
@@ -168,37 +173,42 @@ private fun SearchResults(
     result: SearchResult,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Albums
-        result.albums.let { albums ->
-            if (albums?.isNotEmpty() ?: false) {
-                item {
-                    Text(
-                        text = "Albums",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-                items(albums.take(5)) { album ->
-                    AlbumSearchItem(album)
-                }
-            }
+    val albums = result.albums.orEmpty()
+    val artists = result.artists.orEmpty()
+    var selectedTab by remember { mutableStateOf(0) }
+    val itemsToShow = if (selectedTab == 0) albums else artists
+
+    Column(modifier = modifier) {
+        TabRow(selectedTabIndex = selectedTab) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = { Text("Albums (${albums.size})") }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = { Text("Artists (${artists.size})") }
+            )
         }
 
-        result.artists.let { artists ->
-            if (artists?.isNotEmpty() ?: false) {
-                item {
-                    Text(
-                        text = "Artists",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-                items(artists.take(3)) { artist ->
-                    ArtistSearchItem(artist)
+        if (itemsToShow.isEmpty()) {
+            Text(
+                text = if (selectedTab == 0) "No matching albums" else "No matching artists",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (selectedTab == 0) {
+                    items(albums) { album -> AlbumSearchItem(album) }
+                } else {
+                    items(artists) { artist -> ArtistSearchItem(artist) }
                 }
             }
         }

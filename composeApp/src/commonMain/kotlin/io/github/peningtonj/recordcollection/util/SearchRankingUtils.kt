@@ -10,6 +10,36 @@ import kotlin.math.min
 
 object SearchRankingUtils {
 
+    private const val FILLER_RELEVANCE_THRESHOLD = 15.0
+
+    /**
+     * Leaves Spotify's own ordering alone (it already ranks these reasonably) but:
+     *  - drops results with no meaningful relation to [query] — Spotify pads out search
+     *    with loosely-related filler once strong matches run out, with nothing to tell
+     *    that apart from an actual match
+     *  - stably promotes albums/artists already in the user's library to the front of
+     *    their section, since that's almost always what was meant. `sortedByDescending`
+     *    is a stable sort, so Spotify's relative order survives within each group.
+     */
+    fun refineSearchResults(
+        results: SearchResult,
+        query: String,
+        libraryAlbumSpotifyIds: Set<String>,
+        libraryArtistIds: Set<String>,
+    ): SearchResult {
+        val normalizedQuery = query.lowercase().trim()
+
+        val albums = results.albums
+            ?.filter { calculateAlbumRelevance(it, normalizedQuery) >= FILLER_RELEVANCE_THRESHOLD }
+            ?.sortedByDescending { it.spotifyId in libraryAlbumSpotifyIds }
+
+        val artists = results.artists
+            ?.filter { calculateArtistRelevance(it, normalizedQuery) >= FILLER_RELEVANCE_THRESHOLD }
+            ?.sortedByDescending { it.id in libraryArtistIds }
+
+        return results.copy(albums = albums, artists = artists, tracks = null)
+    }
+
     // Main ranking function that combines multiple scoring methods
     fun rankSearchResults(
         results: SearchResult,
