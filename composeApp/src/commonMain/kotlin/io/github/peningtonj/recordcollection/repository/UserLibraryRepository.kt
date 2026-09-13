@@ -93,6 +93,30 @@ class UserLibraryRepository(
                 }
         }
 
+    /**
+     * Looks up a library entry by Spotify ID rather than the internal document ID.
+     *
+     * `library_albums` documents predating the 96-bit-hash internal ID scheme (TECH_DEBT
+     * 2.2 / `scripts/migrate_album_ids.py`) are still keyed by whatever ID scheme was in
+     * use when they were added — that migration hasn't been run against every user's
+     * data. Any album freshly fetched from the Spotify API (search, new releases, an
+     * artist's discography) computes the *current* hash ID, which then doesn't match the
+     * un-migrated document. The Spotify ID is stable across every scheme and always
+     * present on both sides, so it's the reliable join key for "is this in my library".
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getLibraryEntryBySpotifyId(spotifyId: String): Flow<LibraryAlbumDocument?> =
+        userSession.userIdFlow.mapNotNull { it }.flatMapLatest { userId ->
+            LoggingUtils.logFirebaseQuery("library_albums", "snapshot by spotify_id", mapOf("spotifyId" to spotifyId))
+            firestore.collection("users").document(userId).collection("library_albums")
+                .where { "spotify_id" equalTo spotifyId }
+                .snapshots.map { snapshot ->
+                    snapshot.documents.firstOrNull()?.let { doc ->
+                        runCatching { doc.data<LibraryAlbumDocument>().copy(albumId = doc.id) }.getOrNull()
+                    }
+                }
+        }
+
     /** Returns the tag IDs for a given album. Waits for userId (new-user safe). */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getTagIds(albumId: String): Flow<List<String>> =

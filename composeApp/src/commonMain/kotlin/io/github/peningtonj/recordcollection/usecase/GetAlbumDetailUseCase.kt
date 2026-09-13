@@ -85,9 +85,11 @@ class GetAlbumDetailUseCase(
 
         // This branch only runs when the album has no `albums/{id}` catalog doc yet (a
         // fresh add-to-library never writes one — see AlbumRepository.addAlbumToLibrary),
-        // so inLibrary/rating must still come from the per-user library, keyed by the
-        // stable internal id, not whatever `fetchAlbum` defaulted them to.
-        val libraryEntry = userLibraryRepository.getLibraryEntry(apiAlbum.id).first()
+        // so inLibrary/rating must still come from the per-user library. Looked up by
+        // Spotify ID, not the internal hash id: un-migrated library_albums docs (TECH_DEBT
+        // 2.2) are still keyed by an older scheme, so apiAlbum.id (freshly hashed from this
+        // fetch) wouldn't match them — see UserLibraryRepository.getLibraryEntryBySpotifyId.
+        val libraryEntry = userLibraryRepository.getLibraryEntryBySpotifyId(apiAlbum.spotifyId).first()
         val enrichedAlbum = apiAlbum.copy(
             inLibrary = libraryEntry?.inLibrary ?: false,
             rating = libraryEntry?.rating,

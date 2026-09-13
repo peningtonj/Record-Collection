@@ -224,6 +224,15 @@ disagree, this document is the source of truth for *what is actually wrong today
 - [ ] **Not yet run** — run it once against Firestore
   (`python3 scripts/migrate_album_ids.py --cred key.json` to preview, then `--execute`).
   Until then, existing albums keep their old IDs and won't match new writes.
+  **Confirmed still un-migrated in prod** (`scripts/scan_firestore_health.py`-adjacent
+  check, 2026-09-13): every sampled `library_albums` doc is keyed by a legacy id, not the
+  current hash. Concrete symptom: any album freshly fetched from the Spotify API (search,
+  new releases, an artist's discography) computes the *current* hash id, which then can't
+  match the un-migrated `library_albums` doc by id — the album/artist pages showed those
+  albums as not-in-library even when they were. Worked around in `GetAlbumDetailUseCase`
+  and `ArtistDetailViewModel` by joining on `spotify_id` instead (stable across both id
+  schemes), so running the migration is no longer required to fix that display bug — but
+  it's still correct to run for overall consistency.
 - **Identity model** (deliberate): `id = f(name, primary_artist)`; `spotifyId` is a
   separate field. name+artist collapses remasters / deluxe editions on purpose
   (release-group swapping relies on it). Should be spelled out in `ARCHITECTURE.md`.

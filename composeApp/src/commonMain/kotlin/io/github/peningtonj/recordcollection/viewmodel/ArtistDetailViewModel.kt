@@ -50,10 +50,12 @@ class ArtistDetailViewModel(
 
                 // Library membership/rating come from the per-user library_albums
                 // collection, not the shared albums catalogue (whose inLibrary/rating
-                // fields are always unset — see UserLibraryRepository doc comment). Look
-                // up by internal hash ID directly — more reliable than artist name, which
-                // requires the artist document to exist in Firestore and names to match.
-                val albumIds = albumsFromApi.map { it.id }.toSet()
+                // fields are always unset — see UserLibraryRepository doc comment).
+                // Matched by Spotify ID, not the internal hash ID: library_albums docs
+                // predating the hash-ID migration (TECH_DEBT 2.2) are still keyed by an
+                // older scheme, so albumsFromApi's freshly-hashed ids wouldn't match them
+                // — the Spotify ID is stable across every scheme and always present.
+                val spotifyIds = albumsFromApi.map { it.spotifyId }.toSet()
 
                 combine(
                     artistRepository.getArtistById(artistId),
@@ -67,11 +69,11 @@ class ArtistDetailViewModel(
                     }
                     .collect { (artist, libraryEntries) ->
                         val savedAlbumMap = libraryEntries
-                            .filter { it.albumId in albumIds }
-                            .associateBy { it.albumId }
+                            .filter { it.spotifyId in spotifyIds }
+                            .associateBy { it.spotifyId }
 
                         val albumDetailStates = albumsFromApi.map { album ->
-                            val saved = savedAlbumMap[album.id]
+                            val saved = savedAlbumMap[album.spotifyId]
                             AlbumDetailUiState(
                                 album = album.copy(
                                     inLibrary = saved?.inLibrary ?: false,
