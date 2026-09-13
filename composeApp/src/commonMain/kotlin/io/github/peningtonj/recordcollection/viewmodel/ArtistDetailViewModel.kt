@@ -51,12 +51,16 @@ class ArtistDetailViewModel(
                 // Library membership/rating come from the per-user library_albums
                 // collection, not the shared albums catalogue (whose inLibrary/rating
                 // fields are always unset — see UserLibraryRepository doc comment).
-                // Matched by Spotify ID, not the internal hash ID: library_albums docs
-                // predating the hash-ID migration (TECH_DEBT 2.2) are still keyed by an
-                // older scheme, so albumsFromApi's freshly-hashed ids wouldn't match them
-                // — the Spotify ID is stable across every scheme and always present.
-                val spotifyIds = albumsFromApi.map { it.spotifyId }.toSet()
-
+                //
+                // Matched primarily by the internal id (hash of name + primary artist),
+                // not spotifyId: Spotify's artist-albums endpoint can return a different
+                // catalog entry for what's conceptually the same album — a remaster,
+                // deluxe edition, or regional variant — with a different Spotify ID than
+                // whichever one the user actually saved. The internal id collapses that by
+                // design (that's the whole point of hashing on name+artist — see TECH_DEBT
+                // 2.2's "Identity model" note). spotifyId is kept only as a fallback for a
+                // library entry that, for whatever reason, hasn't been re-keyed onto the
+                // current id scheme yet.
                 combine(
                     artistRepository.getArtistById(artistId),
                     userLibraryRepository.getAllLibraryEntries()
@@ -68,12 +72,11 @@ class ArtistDetailViewModel(
                         )
                     }
                     .collect { (artist, libraryEntries) ->
-                        val savedAlbumMap = libraryEntries
-                            .filter { it.spotifyId in spotifyIds }
-                            .associateBy { it.spotifyId }
+                        val byId = libraryEntries.associateBy { it.albumId }
+                        val bySpotifyId = libraryEntries.associateBy { it.spotifyId }
 
                         val albumDetailStates = albumsFromApi.map { album ->
-                            val saved = savedAlbumMap[album.spotifyId]
+                            val saved = byId[album.id] ?: bySpotifyId[album.spotifyId]
                             AlbumDetailUiState(
                                 album = album.copy(
                                     inLibrary = saved?.inLibrary ?: false,

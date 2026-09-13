@@ -20,8 +20,9 @@ import kotlin.test.assertTrue
  * A fresh "add to library" never writes an `albums/{id}` catalog doc (see
  * AlbumRepository.addAlbumToLibrary), so execute() falls into the API-fetch branch for
  * most of a user's own library. That branch must still report inLibrary/rating correctly
- * — looked up by Spotify ID, since a library_albums doc predating the hash-ID migration
- * (TECH_DEBT 2.2) won't be keyed by the internal id a fresh API fetch computes.
+ * — looked up by the internal id first (it collapses remasters/deluxe/regional variants
+ * onto one identity by design — TECH_DEBT 2.2), falling back to spotifyId only for a
+ * library entry that hasn't been re-keyed onto the current id scheme yet.
  */
 class GetAlbumDetailUseCaseTest {
 
@@ -35,16 +36,32 @@ class GetAlbumDetailUseCaseTest {
         albumRepository, albumTagRepository, collectionAlbumRepository, trackRepository, userLibraryRepository,
     )
 
-    // The library doc is deliberately keyed by a legacy internal id ("old7chr") that does
-    // NOT match TestAlbumDataFactory's freshly-computed id ("lib1") — only spotifyId ties
-    // them together, exactly like the un-migrated production data that surfaced this bug.
     private val album = TestAlbumDataFactory.album(id = "lib1", name = "In Rainbows", spotifyId = "spotify1", inLibrary = false)
 
     @Test
-    fun `an album not yet in the shared catalog still shows as in-library when it's in the user's library`() = runTest {
+    fun `an album not yet in the shared catalog shows as in-library when the migrated entry matches by id`() = runTest {
         coEvery { albumRepository.albumExists("lib1") } returns false
         coEvery { albumRepository.fetchAlbum("spotify1") } returns Result.success(album)
         coEvery { trackRepository.fetchTracksForAlbum(album) } returns emptyList()
+        every { userLibraryRepository.getLibraryEntry("lib1") } returns flowOf(
+            UserLibraryRepository.LibraryAlbumDocument(albumId = "lib1", spotifyId = "spotify1", inLibrary = true, rating = 5),
+        )
+
+        val state = useCase.execute(albumId = "lib1", spotifyId = "spotify1").first()
+
+        assertTrue(state.album.inLibrary, "album should be reported as in-library")
+        assertEquals(5, state.rating)
+    }
+
+    @Test
+    fun `falls back to a spotifyId match when the library entry hasn't been re-keyed`() = runTest {
+        // Deliberately keyed by a legacy internal id ("old7chr") that does NOT match
+        // TestAlbumDataFactory's freshly-computed id ("lib1") — only spotifyId ties them
+        // together, exactly like an un-migrated (or edition-variant) library entry.
+        coEvery { albumRepository.albumExists("lib1") } returns false
+        coEvery { albumRepository.fetchAlbum("spotify1") } returns Result.success(album)
+        coEvery { trackRepository.fetchTracksForAlbum(album) } returns emptyList()
+        every { userLibraryRepository.getLibraryEntry("lib1") } returns flowOf(null)
         every { userLibraryRepository.getLibraryEntryBySpotifyId("spotify1") } returns flowOf(
             UserLibraryRepository.LibraryAlbumDocument(albumId = "old7chr", spotifyId = "spotify1", inLibrary = true, rating = 5),
         )
@@ -60,6 +77,7 @@ class GetAlbumDetailUseCaseTest {
         coEvery { albumRepository.albumExists("lib1") } returns false
         coEvery { albumRepository.fetchAlbum("spotify1") } returns Result.success(album)
         coEvery { trackRepository.fetchTracksForAlbum(album) } returns emptyList()
+        every { userLibraryRepository.getLibraryEntry("lib1") } returns flowOf(null)
         every { userLibraryRepository.getLibraryEntryBySpotifyId("spotify1") } returns flowOf(null)
 
         val state = useCase.execute(albumId = "lib1", spotifyId = "spotify1").first()
