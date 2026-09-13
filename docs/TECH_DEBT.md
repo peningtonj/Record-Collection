@@ -237,6 +237,9 @@ disagree, this document is the source of truth for *what is actually wrong today
   catalogue side is already migrated) and re-run to completion: `albums` catalogue was
   already correct, `library_albums` re-keyed for all 3 users (460 entries on the primary
   account), 0 structural problems on `scan_firestore_health.py`, spot-checked end to end.
+  The `spotify_id` join above was then itself wrong as the *primary* key (see the
+  Identity model note right below — that's exactly the mismatch it collapses) and got
+  demoted to a fallback once the migration confirmed the internal id join works.
 - **Identity model** (deliberate): `id = f(name, primary_artist)`; `spotifyId` is a
   separate field. name+artist collapses remasters / deluxe editions on purpose
   (release-group swapping relies on it). Should be spelled out in `ARCHITECTURE.md`.
