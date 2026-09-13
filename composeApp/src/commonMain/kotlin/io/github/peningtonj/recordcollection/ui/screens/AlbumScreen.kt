@@ -68,6 +68,15 @@ fun AlbumScreen(
         collectionsViewModel = collectionViewModel,
         settings = settingsViewModel,
         navigator = navigator
+    ).copy(
+        // The shared action only writes to Spotify/Firestore — it has no reference to
+        // this screen's own AlbumDetailViewModel, so the tracklist here never learned the
+        // write succeeded (same gap the individual heart button avoids by calling
+        // viewModel.setTrackSaved directly below). Flip every track's heart here too.
+        addAllSongsToSavedSongs = { album ->
+            album.tracks.forEach { viewModel.setTrackSaved(it.id, true) }
+            libraryViewModel.addAllSongsFromAlbumToSavedSongs(album.album)
+        }
     )
 
     val playbackActions = rememberPlaybackActions(
