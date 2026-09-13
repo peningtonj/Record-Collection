@@ -221,18 +221,22 @@ disagree, this document is the source of truth for *what is actually wrong today
   default, `--execute` to apply). Re-keys `albums/{id}`,
   `users/{uid}/library_albums/{id}`, `users/{uid}/collections/*.albums[].albumId`, and
   `tracks.*.album_id`. Idempotent. Normalization kept byte-for-byte in sync with Kotlin.
-- [ ] **Not yet run** — run it once against Firestore
-  (`python3 scripts/migrate_album_ids.py --cred key.json` to preview, then `--execute`).
-  Until then, existing albums keep their old IDs and won't match new writes.
-  **Confirmed still un-migrated in prod** (`scripts/scan_firestore_health.py`-adjacent
-  check, 2026-09-13): every sampled `library_albums` doc is keyed by a legacy id, not the
-  current hash. Concrete symptom: any album freshly fetched from the Spotify API (search,
-  new releases, an artist's discography) computes the *current* hash id, which then can't
-  match the un-migrated `library_albums` doc by id — the album/artist pages showed those
-  albums as not-in-library even when they were. Worked around in `GetAlbumDetailUseCase`
-  and `ArtistDetailViewModel` by joining on `spotify_id` instead (stable across both id
-  schemes), so running the migration is no longer required to fix that display bug — but
-  it's still correct to run for overall consistency.
+- [x] **Run 2026-09-13** — confirmed still un-migrated in prod first (every sampled
+  `library_albums` doc keyed by a legacy id, not the current hash; concrete symptom: any
+  album freshly fetched from the Spotify API — search, new releases, an artist's
+  discography — computes the *current* hash id, which can't match the un-migrated
+  `library_albums` doc by id, so album/artist pages showed those albums as not-in-library
+  even when they were. Worked around independently of the migration in
+  `GetAlbumDetailUseCase` / `ArtistDetailViewModel` by joining on `spotify_id`, stable
+  across both id schemes.). The script itself had a bug — it enumerated users with
+  `.stream()`, which skips a `users/{uid}` doc that has no fields of its own (only
+  `list_documents()` sees those) — so a first `--execute` silently re-keyed the shared
+  `albums` catalogue but did nothing for any user's `library_albums`/`collections`.
+  Fixed (`.list_documents()`; `build_remap()` also derives old→new pairs from
+  `library_albums`/`collections` themselves so a second run isn't starved once the
+  catalogue side is already migrated) and re-run to completion: `albums` catalogue was
+  already correct, `library_albums` re-keyed for all 3 users (460 entries on the primary
+  account), 0 structural problems on `scan_firestore_health.py`, spot-checked end to end.
 - **Identity model** (deliberate): `id = f(name, primary_artist)`; `spotifyId` is a
   separate field. name+artist collapses remasters / deluxe editions on purpose
   (release-group swapping relies on it). Should be spelled out in `ARCHITECTURE.md`.
