@@ -240,6 +240,19 @@ disagree, this document is the source of truth for *what is actually wrong today
   The `spotify_id` join above was then itself wrong as the *primary* key (see the
   Identity model note right below — that's exactly the mismatch it collapses) and got
   demoted to a fallback once the migration confirmed the internal id join works.
+- [x] **The migration script never actually fixed collection entries** — found via a
+  "Spring 26" entry reporting rating/in-library as unset despite being rated and saved.
+  `build_remap()` and the collection-rewrite step both read `entry.get("albumId")`
+  (camelCase); the real Firestore field (`CollectionAlbumEntry`'s `@SerialName`) is
+  `album_id` — always `None`, so collection entries never contributed remap pairs and
+  were never rewritten, on either prior run. Fixed the field name and re-ran: 644 ids
+  needed re-keying — most only recoverable via a collection entry's own denormalised
+  projection, since the matching `library_albums` doc was a blank/removed tombstone with
+  no name to hash from — across 18 collections and 347 more `library_albums` entries.
+  Re-running now reports 0 remaining; `scan_firestore_health.py` clean.
+  `CollectionAlbumRepository.getAlbumsInCollection` also now falls back to a spotifyId
+  match (`LibraryEntryLookup`), same pattern as the album/artist screens, so a future
+  stale collection-entry id degrades gracefully instead of silently misreporting.
 - **Identity model** (deliberate): `id = f(name, primary_artist)`; `spotifyId` is a
   separate field. name+artist collapses remasters / deluxe editions on purpose
   (release-group swapping relies on it). Should be spelled out in `ARCHITECTURE.md`.
